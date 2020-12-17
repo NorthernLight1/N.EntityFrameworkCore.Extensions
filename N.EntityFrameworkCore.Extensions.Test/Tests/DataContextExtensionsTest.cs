@@ -259,6 +259,27 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
         }
         [TestMethod]
+        public void Fetch()
+        {
+            TestDbContext dbContext = new TestDbContext();
+            SetupData(dbContext, true);
+            int batchSize = 1000;
+            int batchCount = 0;
+            int totalCount = 0;
+            int expectedTotalCount = dbContext.Orders.Where(o => o.Price < 10M).Count();
+            int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount/(decimal)batchSize);
+
+            dbContext.Orders.Where(o => o.Price < 10M).Fetch(result =>
+            {
+                batchCount++;
+                totalCount += result.Results.Count();
+            }, new FetchOptions { BatchSize = 1000 });
+
+            Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");
+            Assert.IsTrue(expectedTotalCount == totalCount, "The total number of rows fetched must match the count of existing rows in database");
+            Assert.IsTrue(expectedBatchCount == batchCount, "The total number of batches fetched must match what is expected");
+        }
+        [TestMethod]
         public void InsertFromQuery()
         {
             TestDbContext dbContext = new TestDbContext();

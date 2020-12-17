@@ -72,7 +72,54 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new Exception("You must have a primary key on this table to use this function.");
             }
         }
+        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options) where T : class, new()
+        {
+            var dbContext = GetDbContextFromIQuerable(querable);
+            var dbConnection = dbContext.GetSqlConnection();
+            //Open datbase connection
+            if (dbConnection.State == ConnectionState.Closed)
+                dbConnection.Open();
+            var command = new SqlCommand(querable.ToQueryString(), dbConnection);
+            var reader = command.ExecuteReader();
 
+            List<PropertyInfo> propertySetters = new List<PropertyInfo>();
+            var entityType = typeof(T);
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
+            }
+            //Read data
+            int batch = 1;
+            int count = 0;
+            int totalCount = 0;
+            var entities = new List<T>();
+            while (reader.Read())
+            {
+                var entity = new T();
+                for(int i=0; i < reader.FieldCount; i++)
+                {
+                    var value = reader.GetValue(i);
+                    if (value == DBNull.Value)
+                        value = null;
+                    propertySetters[i].SetValue(entity, value);
+                }
+                entities.Add(entity);
+                count++;
+                totalCount++;
+                if(count == options.BatchSize)
+                {
+                    action(new FetchResult<T> { Results = entities, Batch = batch });
+                    entities.Clear();
+                    count = 0;
+                    batch++;
+                }
+            }
+
+            if(entities.Count > 0)
+                action(new FetchResult<T> { Results = entities, Batch = batch });
+            //close the DataReader
+            reader.Close();
+        }
         public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
         {
             return context.BulkInsert<T>(entities, new BulkInsertOptions<T> { });
