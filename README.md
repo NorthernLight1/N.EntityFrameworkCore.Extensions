@@ -1,4 +1,4 @@
-# N.EntityFramework.Extensions
+# N.EntityFrameworkCore.Extensions
 
 ## Bulk data support for the EntityFrameworkCore 5.0.1+
 
