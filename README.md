@@ -1,4 +1,4 @@
-# N.EntityFrameworkCore.Extensions
+N.EntityFrameworkCore.Extensions
 --------------------
 
 [![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions)
@@ -17,7 +17,7 @@ The framework currently supports the following operations:
   dotnet add package N.EntityFrameworkCore.Extensions
   ```
   
- ## Usage
+ ### Usage
    
  **BulkInsert()**  
    ```
