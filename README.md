@@ -1,10 +1,21 @@
 # N.EntityFrameworkCore.Extensions
+--------------------
 
-## Bulk data support for the EntityFrameworkCore 5.0.1+
+[![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions)
+
+N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v5.0.1+
 
 The framework currently supports the following operations:
 
-  BulkDelete, BulkInsert, BulkMerge, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery
+  BulkDelete, BulkInsert, BulkMerge, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
+  
+  ### Installation
+
+  The latest stable version is available on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions).
+
+  ```sh
+  dotnet add package N.EntityFrameworkCore.Extensions
+  ```
   
  ## Usage
    
