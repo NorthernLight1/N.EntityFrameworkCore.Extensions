@@ -1,13 +1,16 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using N.EntityFrameworkCore.Extensions.Common;
+using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -524,16 +527,142 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath) where T : class
+        {
+            return QueryToCsvFile<T>(querable, filePath, new QueryToFileOptions());
+        }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream) where T : class
+        {
+            return QueryToCsvFile<T>(querable, stream, new QueryToFileOptions());
+        }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
+        {
+            return QueryToCsvFile<T>(querable, filePath, optionsAction.Build());
+        }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
+        {
+            return QueryToCsvFile<T>(querable, stream, optionsAction.Build());
+        }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options) where T : class
+        {
+            var fileStream = File.Create(filePath);
+            return QueryToCsvFile<T>(querable, fileStream, options);
+        }
+        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+        {
+            return InternalQueryToFile<T>(querable, stream, options);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
+        {
+            return SqlQueryToCsvFile(database, filePath, new QueryToFileOptions(), sqlText, parameters);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
+        {
+            return SqlQueryToCsvFile(database, stream, new QueryToFileOptions(), sqlText, parameters);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
+        {
+            return SqlQueryToCsvFile(database, filePath, optionsAction.Build(), sqlText, parameters);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
+        {
+            return SqlQueryToCsvFile(database, stream, optionsAction.Build(), sqlText, parameters);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
+        {
+            var fileStream = File.Create(filePath);
+            return SqlQueryToCsvFile(database, fileStream, options, sqlText, parameters);
+        }
+        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
+        {
+            var dbConnection = database.GetDbConnection() as SqlConnection;
+            return InternalQueryToFile(dbConnection, stream, options, sqlText, parameters);
+        }
+        private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+        {
+            var dbContext = GetDbContextFromIQuerable(querable);
+            var dbConnection = dbContext.GetSqlConnection();
+            return InternalQueryToFile(dbConnection, stream, options, querable.ToQueryString());
+        }
+        private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
+        {
+            int dataRowCount = 0;
+            int totalRowCount = 0;
+            long bytesWritten = 0;
+
+            //Open datbase connection
+            if (dbConnection.State == ConnectionState.Closed)
+                dbConnection.Open();
+
+            var command = new SqlCommand(sqlText, dbConnection);
+            if (parameters != null)
+            {
+                command.Parameters.AddRange(parameters);
+            }
+            if (options.CommandTimeout.HasValue)
+            {
+                command.CommandTimeout = options.CommandTimeout.Value;
+            }
+
+            StreamWriter streamWriter = new StreamWriter(stream);
+            using (var reader = command.ExecuteReader())
+            {
+                //Header row
+                if (options.IncludeHeaderRow)
+                {
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        streamWriter.Write(options.TextQualifer);
+                        streamWriter.Write(reader.GetName(i));
+                        streamWriter.Write(options.TextQualifer);
+                        if (i != reader.FieldCount - 1)
+                        {
+                            streamWriter.Write(options.ColumnDelimiter);
+                        }
+                    }
+                    totalRowCount++;
+                    streamWriter.Write(options.RowDelimiter);
+                }
+                //Write data rows to file
+                while (reader.Read())
+                {
+                    Object[] values = new Object[reader.FieldCount];
+                    reader.GetValues(values);
+                    for (int i = 0; i < values.Length; i++)
+                    {
+                        streamWriter.Write(options.TextQualifer);
+                        streamWriter.Write(values[i]);
+                        streamWriter.Write(options.TextQualifer);
+                        if (i != values.Length - 1)
+                        {
+                            streamWriter.Write(options.ColumnDelimiter);
+                        }
+                    }
+                    streamWriter.Write(options.RowDelimiter);
+                    dataRowCount++;
+                    totalRowCount++;
+                }
+                streamWriter.Flush();
+                bytesWritten = streamWriter.BaseStream.Length;
+                streamWriter.Close();
+            }
+            return new QueryToFileResult()
+            {
+                BytesWritten = bytesWritten,
+                DataRowCount = dataRowCount,
+                TotalRowCount = totalRowCount
+            };
+        }
         private static DbContext GetDbContextFromIQuerable<T>(IQueryable<T> querable) where T : class
         {
             DbContext dbContext;
             try
             {
-                if ((querable as DbSet<T>) != null)
+               if ((querable as InternalDbSet<T>) != null)
                 {
                     dbContext = querable.GetPrivateFieldValue("_context") as DbContext;
                 }
-                else if((querable as EntityQueryable<T>) != null)
+                else if ((querable as EntityQueryable<T>) != null)
                 {
                     var queryProvider = querable.GetPrivateFieldValue("_queryProvider");
                     var queryCompiler = queryProvider.GetPrivateFieldValue("_queryCompiler");
@@ -542,7 +671,7 @@ namespace N.EntityFrameworkCore.Extensions
                     dbContext = queryDependencies.CurrentContext.Context as DbContext;
                 }
                 else
-                {
+               {
                     throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
                 }
             }
@@ -553,7 +682,6 @@ namespace N.EntityFrameworkCore.Extensions
             return dbContext;
         }
         private static SqlConnection GetSqlConnection(this DbContext context)
-        
         {
             return context.Database.GetDbConnection() as SqlConnection;
         }
