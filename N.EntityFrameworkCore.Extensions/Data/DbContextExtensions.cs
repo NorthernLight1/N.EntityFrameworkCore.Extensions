@@ -51,7 +51,7 @@ namespace N.EntityFrameworkCore.Extensions
                     SqlUtil.CloneTable(destinationTableName, stagingTableName, storeGeneratedColumnNames, dbConnection, transaction);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, storeGeneratedColumnNames, SqlBulkCopyOptions.KeepIdentity);
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName, deleteCondition);
-                    rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction);
+                    rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
                     SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
                     transaction.Commit();
                 }
@@ -165,10 +165,10 @@ namespace N.EntityFrameworkCore.Extensions
                         destinationTableName, SqlUtil.ConvertToColumnString(columnsToInsert), SqlUtil.ConvertToColumnString(columnsToOutput), SqlUtil.ConvertToColumnString(columnsToInsert), stagingTableName);
 
                     if (options.KeepIdentity)
-                        SqlUtil.ToggleIdentiyInsert(true, destinationTableName, dbConnection, transaction);
+                        SqlUtil.ToggleIdentityInsert(true, destinationTableName, dbConnection, transaction);
                     var bulkQueryResult = context.BulkQuery(mergeSqlText, dbConnection, transaction);
                     if (options.KeepIdentity)
-                        SqlUtil.ToggleIdentiyInsert(false, destinationTableName, dbConnection, transaction);
+                        SqlUtil.ToggleIdentityInsert(false, destinationTableName, dbConnection, transaction);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
                     if (options.AutoMapOutputIdentity)
@@ -357,7 +357,7 @@ namespace N.EntityFrameworkCore.Extensions
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
                         updateSetExpression, stagingTableName, destinationTableName, updateOnExpression);
 
-                    rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction);
+                    rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction, options.CommandTimeout);
                     SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
@@ -425,7 +425,7 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-        public static int DeleteFromQuery<T>(this IQueryable<T> querable) where T : class
+        public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout=null) where T : class
         {
             int rowAffected = 0;
             var dbContext = GetDbContextFromIQuerable(querable);
@@ -437,9 +437,9 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var sqlQuery = SqlQuery.Parse(querable.ToQueryString());
-                    sqlQuery.ChangeToDelete("[o]");
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction);
+                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+                    sqlQuery.ChangeToDelete();
+                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
 
                     dbTransaction.Commit();
                 }
@@ -455,7 +455,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression) where T: class
+        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout=null) where T : class
         {
             int rowAffected = 0;
             var dbContext = GetDbContextFromIQuerable(querable);
@@ -468,18 +468,18 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var sqlQuery = SqlQuery.Parse(querable.ToQueryString());
+                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     if (SqlUtil.TableExists(tableName, dbConnection, dbTransaction))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
-                        SqlUtil.ToggleIdentiyInsert(true, tableName, dbConnection, dbTransaction);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction);
-                        SqlUtil.ToggleIdentiyInsert(false, tableName, dbConnection, dbTransaction);
+                        SqlUtil.ToggleIdentityInsert(true, tableName, dbConnection, dbTransaction);
+                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
+                        SqlUtil.ToggleIdentityInsert(false, tableName, dbConnection, dbTransaction);
                     }
                     else
                     {
                         sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction);
+                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
                     }
 
                     dbTransaction.Commit();
@@ -496,7 +496,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression) where T: class
+        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout=null) where T: class
         {
             int rowAffected = 0;
             var dbContext = GetDbContextFromIQuerable(querable);
@@ -509,10 +509,10 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var sqlQuery = SqlQuery.Parse(querable.ToQueryString());
+                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression("o");
                     sqlQuery.ChangeToUpdate("[o]", setSqlExpression);
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction);
+                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
                     dbTransaction.Commit();
                 }
                 catch (Exception ex)
@@ -652,6 +652,16 @@ namespace N.EntityFrameworkCore.Extensions
                 DataRowCount = dataRowCount,
                 TotalRowCount = totalRowCount
             };
+        }
+        public static SqlQuery FromSqlQuery(this DatabaseFacade database, string sqlText, params object[] parameters)
+        {
+            var dbConnection = database.GetDbConnection() as SqlConnection;
+            return new SqlQuery(dbConnection, sqlText, parameters);
+        }
+        public static bool TableExists(this DatabaseFacade database, string tableName)
+        {
+            var dbConnection = database.GetDbConnection() as SqlConnection;
+            return SqlUtil.TableExists(tableName, dbConnection, null);
         }
         private static DbContext GetDbContextFromIQuerable<T>(IQueryable<T> querable) where T : class
         {
