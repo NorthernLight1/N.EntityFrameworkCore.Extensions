@@ -5,6 +5,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
 {
     public class TestDbContext : DbContext
     {
+        public virtual DbSet<Article> Articles { get; set; }
         public virtual DbSet<Order> Orders { get; set;  }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

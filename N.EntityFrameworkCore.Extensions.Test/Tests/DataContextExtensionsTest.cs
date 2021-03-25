@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions;
@@ -41,8 +43,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkDelete()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             var orders = dbContext.Orders.Where(o => o.Price <= 2).ToList();
             int rowsDeleted = dbContext.BulkDelete(orders);
             int newTotal = dbContext.Orders.Where(o => o.Price <= 2).Count();
@@ -70,8 +71,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkInsert_Options_AutoMapIdentity()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             var orders = new List<Order>
             {
                 new Order { ExternalId = "id-1", Price=7.10M },
@@ -100,8 +100,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkInsert_Options_KeepIdentity()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, false);
+            var dbContext = SetupDbContext(false);
             var orders = new List<Order>();
             for (int i = 0; i < 20000; i++)
             {
@@ -132,8 +131,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkMerge_Options_Default()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             var orders = dbContext.Orders.Where(o => o.Id <= 10000).OrderBy(o => o.Id).ToList();
             int ordersToAdd = 5000;
             int ordersToUpdate = orders.Count;
@@ -179,8 +177,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkMerge_Options_AutoMapIdentity()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             int ordersToUpdate = 3;
             int ordersToAdd = 2;
             var orders = new List<Order>
@@ -214,8 +211,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void BulkUpdate()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             var orders = dbContext.Orders.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).ToList();
             long maxId = 0;
             foreach (var order in orders)
@@ -235,8 +231,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void DeleteFromQuery_IQuerable()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
             int rowsDeleted = dbContext.Orders.Where(o => o.Price <= 10).DeleteFromQuery();
             int newTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
@@ -248,8 +243,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void DeleteFromQuery_IEnumerable()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             int oldTotal = dbContext.Orders.Count();
             int rowsDeleted = dbContext.Orders.DeleteFromQuery();
             int newTotal = dbContext.Orders.Count();
@@ -261,8 +255,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void Fetch()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             int batchSize = 1000;
             int batchCount = 0;
             int totalCount = 0;
@@ -282,8 +275,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         [TestMethod]
         public void InsertFromQuery()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             string tableName = "OrdersUnderTen";
             int oldSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
             //int oldTargetTotal = dbContext.Orders.Where(o => o.Price < 10M).UsingTable(tableName).Count();
@@ -297,10 +289,70 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             //Assert.IsTrue(rowsInserted == newTargetTotal, "The different in count in the target table before and after the insert must match the total row inserted");
         }
         [TestMethod]
+        public void QueryToCsvFile()
+        {
+            var dbContext = SetupDbContext(true);
+            var query = dbContext.Orders.Where(o => o.Price < 10M);
+            int count = query.Count();
+            var queryToCsvFileResult = query.QueryToCsvFile("QueryToCsvFile-Test.csv");
+
+            Assert.IsTrue(count > 0, "There should be existing data in the source table");
+            Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
+            Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
+        }
+        [TestMethod]
+        public void QueryToCsvFile_Options_ColumnDelimiter_TextQualifer_HeaderRow()
+        {
+            var dbContext = SetupDbContext(true);
+            var query = dbContext.Orders.Where(o => o.Price < 10M);
+            int count = query.Count();
+            var queryToCsvFileResult = query.QueryToCsvFile("QueryToCsvFile_Options_ColumnDelimiter_TextQualifer_HeaderRow-Test.csv", options => { options.ColumnDelimiter = "|"; options.TextQualifer = "\""; options.IncludeHeaderRow = false; });
+
+            Assert.IsTrue(count > 0, "There should be existing data in the source table");
+            Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
+            Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count, "The total number of rows written to the file should match the count from the database without any header row");
+        }
+        [TestMethod]
+        public void QueryToCsvFile_FileStream()
+        {
+            var dbContext = SetupDbContext(true);
+            var query = dbContext.Orders.Where(o => o.Price < 10M);
+            int count = query.Count();
+            var fileStream = File.Create("QueryToCsvFile_Stream-Test.csv");
+            var queryToCsvFileResult = query.QueryToCsvFile(fileStream);
+
+            Assert.IsTrue(count > 0, "There should be existing data in the source table");
+            Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
+            Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
+        }
+        [TestMethod]
+        public void SqlQueryToCsvFile()
+        {
+            var dbContext = SetupDbContext(true);
+            int count = dbContext.Orders.Where(o => o.Price > 5M).Count();
+            var queryToCsvFileResult = dbContext.Database.SqlQueryToCsvFile("SqlQueryToCsvFile-Test.csv", "SELECT * FROM Orders WHERE Price > @Price", new SqlParameter("@Price", 5M));
+
+            Assert.IsTrue(count > 0, "There should be existing data in the source table");
+            Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
+            Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
+        }
+        [TestMethod]
+        public void SqlQueryToCsvFile_Options_ColumnDelimiter_TextQualifer()
+        {
+            var dbContext = SetupDbContext(true);
+            string filePath = "SqlQueryToCsvFile_Options_ColumnDelimiter_TextQualifer-Test.csv";
+            int count = dbContext.Orders.Where(o => o.Price > 5M).Count();
+            var queryToCsvFileResult = dbContext.Database.SqlQueryToCsvFile(filePath, options => { options.ColumnDelimiter = "|"; options.TextQualifer = "\""; },
+                "SELECT * FROM Orders WHERE Price > @Price", new SqlParameter("@Price", 5M));
+
+            Assert.IsTrue(count > 0, "There should be existing data in the source table");
+            Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
+            Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
+        }
+        [TestMethod]
         public void UpdateFromQuery()
         {
-            TestDbContext dbContext = new TestDbContext();
-            SetupData(dbContext, true);
+            var dbContext = SetupDbContext(true);
             int oldTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
             int rowUpdated = dbContext.Orders.Where(o => o.Price < 10M).UpdateFromQuery(o => new Order { Price = 25.30M });
             int newTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
@@ -311,16 +363,40 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
             Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
         }
-        private void SetupData(TestDbContext dbcontext, bool populateData)
+        [TestMethod]
+        public void Sql_SqlQuery_Count()
         {
-            dbcontext.Orders.DeleteFromQuery();
+            var dbContext = SetupDbContext(true);
+            int efCount = dbContext.Orders.Where(o => o.Price > 5M).Count();
+            var sqlCount = dbContext.Database.FromSqlQuery("SELECT * FROM Orders WHERE Price > @Price", new SqlParameter("@Price", 5M)).Count();
+
+            Assert.IsTrue(efCount > 0, "Count from EF should be greater than zero");
+            Assert.IsTrue(efCount > 0, "Count from SQL should be greater than zero");
+            Assert.IsTrue(efCount == sqlCount, "Count from EF should match the count from the SqlQuery");
+        }
+        [TestMethod]
+        public void Sql_TableExists()
+        {
+            var dbContext = SetupDbContext(true);
+            int efCount = dbContext.Orders.Where(o => o.Price > 5M).Count();
+            bool ordersTableExists = dbContext.Database.TableExists("Orders");
+            bool orderNewTableExists = dbContext.Database.TableExists("OrdersNew");
+
+            Assert.IsTrue(ordersTableExists, "Orders table should exist");
+            Assert.IsTrue(!orderNewTableExists, "Orders_New table should not exist");
+        }
+        private TestDbContext SetupDbContext(bool populateData)
+        {
+            TestDbContext dbContext = new TestDbContext();
+            dbContext.Orders.DeleteFromQuery();
+            dbContext.Articles.DeleteFromQuery();
             if (populateData)
             {
                 var orders = new List<Order>();
                 int id = 1;
                 for (int i = 0; i < 2050; i++)
                 {
-                    orders.Add(new Order { Id = id, ExternalId=string.Format("id-{0}",i), Price = 1.25M });
+                    orders.Add(new Order { Id = id, ExternalId = string.Format("id-{0}", i), Price = 1.25M });
                     id++;
                 }
                 for (int i = 0; i < 1050; i++)
@@ -343,9 +419,26 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
                     orders.Add(new Order { Id = id, Price = 15.35M });
                     id++;
                 }
+
                 Debug.WriteLine("Last Id for Order is {0}", id);
-                dbcontext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
+                dbContext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
+                var articles = new List<Article>();
+                id = 1;
+                for (int i = 0; i < 2050; i++)
+                {
+                    articles.Add(new Article { ArticleId = string.Format("id-{0}", i), Price = 1.25M, OutOfStock = false });
+                    id++;
+                }
+                for (int i = 0; i < 2050; i++)
+                {
+                    articles.Add(new Article { ArticleId = string.Format("id-{0}", id), Price = 1.25M, OutOfStock = true });
+                    id++;
+                }
+
+                Debug.WriteLine("Last Id for Article is {0}", id);
+                dbContext.BulkInsert(articles, new BulkInsertOptions<Article>() { KeepIdentity = false, AutoMapOutputIdentity = false });
             }
+            return dbContext;
         }
     }
 }

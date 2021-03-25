@@ -11,5 +11,6 @@ namespace N.EntityFrameworkCore.Extensions
         public int BatchSize { get; set; }
         public bool UsePermanentTable { get; set; }
         public string TableName { get; set; }
+        public int? CommandTimeout { get; set; }
     }
 }
