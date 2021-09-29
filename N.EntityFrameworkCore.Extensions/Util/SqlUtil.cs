@@ -34,6 +34,10 @@ namespace N.EntityFrameworkCore.Extensions
                 sqlCommand.Parameters.AddRange(parameters);
             return sqlCommand.ExecuteScalar();
         }
+        internal static int ClearTable(string tableName, SqlConnection connection, SqlTransaction transaction)
+        {
+            return ExecuteSql(string.Format("DELETE FROM {0}", tableName), connection, transaction, null);
+        }
         internal static int DeleteTable(string tableName, SqlConnection connection, SqlTransaction transaction)
         {
             return ExecuteSql(string.Format("DROP TABLE {0}", tableName), connection, transaction, null);
