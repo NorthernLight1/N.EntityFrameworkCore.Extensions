@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query;
@@ -20,9 +21,17 @@ namespace N.EntityFrameworkCore.Extensions
 {
     public static partial class DbContextExtensions
     {
+        private static EfExtensionsCommandInterceptor efExtensionsCommandInterceptor;
         static DbContextExtensions()
         {
-
+            efExtensionsCommandInterceptor = new EfExtensionsCommandInterceptor();
+            
+        }
+        public static void SetupEfCoreExtensions(this DbContextOptionsBuilder builder)
+        {
+            //var options = context.GetPrivateFieldValue("_options") as DbContextOptions;
+            //var optionsBuilder = new DbContextOptionsBuilder(options);
+            builder.AddInterceptors(efExtensionsCommandInterceptor);
         }
         public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities)
         {
@@ -439,7 +448,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
+                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
 
                     dbTransaction.Commit();
                 }
@@ -473,13 +482,13 @@ namespace N.EntityFrameworkCore.Extensions
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                         SqlUtil.ToggleIdentityInsert(true, tableName, dbConnection, dbTransaction);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
+                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
                         SqlUtil.ToggleIdentityInsert(false, tableName, dbConnection, dbTransaction);
                     }
                     else
                     {
                         sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
+                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
                     }
 
                     dbTransaction.Commit();
@@ -510,9 +519,9 @@ namespace N.EntityFrameworkCore.Extensions
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
-                    string setSqlExpression = updateExpression.ToSqlUpdateSetExpression("o");
-                    sqlQuery.ChangeToUpdate("[o]", setSqlExpression);
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, commandTimeout);
+                    string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
+                    sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
+                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
                     dbTransaction.Commit();
                 }
                 catch (Exception ex)
@@ -658,12 +667,31 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return new SqlQuery(dbConnection, sqlText, parameters);
         }
+        public static int ClearTable(this DatabaseFacade database, string tableName)
+        {
+            var dbConnection = database.GetDbConnection() as SqlConnection;
+            return SqlUtil.ClearTable(tableName, dbConnection, null);
+        }
         public static bool TableExists(this DatabaseFacade database, string tableName)
         {
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return SqlUtil.TableExists(tableName, dbConnection, null);
         }
-        private static DbContext GetDbContextFromIQuerable<T>(IQueryable<T> querable) where T : class
+        public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
+        {
+            var dbContext = GetDbContextFromIQuerable(querable);
+            var tableMapping = dbContext.GetTableMapping(typeof(T));
+            efExtensionsCommandInterceptor.AddCommand(Guid.NewGuid(),
+                new EfExtensionsCommand
+                {
+                    CommandType = EfExtensionsCommandType.ChangeTableName,
+                    OldValue = string.Format("[{0}]", tableMapping.TableName),
+                    NewValue = string.Format("[{0}].[{1}]", tableMapping.Schema, tableName),
+                    Connection = dbContext.GetSqlConnection()
+                });
+            return querable;
+        }
+        private static DbContext GetDbContextFromIQuerable<T>(IQueryable<T> querable) where T: class
         {
             DbContext dbContext;
             try
@@ -696,36 +724,45 @@ namespace N.EntityFrameworkCore.Extensions
             return context.Database.GetDbConnection() as SqlConnection;
         }
 
-        private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        {
-            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-            int i = 0;
-            foreach (var expressionParam in expression.Parameters)
-            {
-                if (parameters.Length <= i) break;
-                stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-                i++;
-            }
-            stringBuilder.Replace("&&", "AND");
-            stringBuilder.Replace("==", "=");
-            return stringBuilder.ToString();
-        }
-        private static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
-        {
-            List<string> setValues = new List<string>();
-            var memberInitExpression = expression.Body as MemberInitExpression;
-            foreach (var binding in memberInitExpression.Bindings)
-            {
-                var constantExpression = binding.GetPrivateFieldValue("Expression") as ConstantExpression;
-                setValues.Add(string.Format("[{0}].[{1}]='{2}'", tableName, binding.Member.Name, constantExpression.Value));
-            }
-            return string.Join(",", setValues);
-        }
+        //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
+        //{
+        //    var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
+        //    int i = 0;
+        //    foreach (var expressionParam in expression.Parameters)
+        //    {
+        //        if (parameters.Length <= i) break;
+        //        stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
+        //        i++;
+        //    }
+        //    stringBuilder.Replace("&&", "AND");
+        //    stringBuilder.Replace("==", "=");
+        //    return stringBuilder.ToString();
+        //}
+        //private static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
+        //{
+        //    List<string> setValues = new List<string>();
+        //    var memberInitExpression = expression.Body as MemberInitExpression;
+        //    foreach (var binding in memberInitExpression.Bindings)
+        //    {
+        //        var constantExpression = binding.GetPrivateFieldValue("Expression") as ConstantExpression;
+        //        var setValue = "";
+        //        if(constantExpression.Value == null)
+        //        {
+        //            setValue = string.Format("[{0}].[{1}]=NULL", tableName, binding.Member.Name);
+        //        }
+        //        else
+        //        {
+        //            setValue = string.Format("[{0}].[{1}]='{2}'", tableName, binding.Member.Name, constantExpression.Value);
+        //        }
+        //        setValues.Add(setValue);
+        //    }
+        //    return string.Join(",", setValues);
+        //}
 
         public static TableMapping GetTableMapping(this DbContext dbContext, Type type)
         {
             var entityType = dbContext.Model.FindEntityType(type);
-            return new TableMapping(entityType);
+            return new TableMapping(dbContext, entityType);
         }
     }
 }

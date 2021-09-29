@@ -1,4 +1,7 @@
-﻿using N.EntityFrameworkCore.Extensions.Common;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
+using N.EntityFrameworkCore.Extensions.Common;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -16,7 +19,7 @@ namespace N.EntityFrameworkCore.Extensions
         private int tableFieldCount;
         private IEnumerable<T> entities;
         private IEnumerator<T> enumerator;
-        private Dictionary<int, Func<T, object>> selectors;
+        private Dictionary<int, Func<EntityEntry, object>> selectors;
 
         public EntityDataReader(TableMapping tableMapping, IEnumerable<T> entities, bool useInternalId)
         {
@@ -26,7 +29,7 @@ namespace N.EntityFrameworkCore.Extensions
             this.tableFieldCount = tableMapping.Properties.Length;
             this.entities = entities;
             this.enumerator = entities.GetEnumerator();
-            this.selectors = new Dictionary<int, Func<T, object>>();
+            this.selectors = new Dictionary<int, Func<EntityEntry, object>>();
             this.EntityMap = new Dictionary<int, T>();
             this.FieldCount = tableMapping.Properties.Length;
             this.TableMapping = tableMapping;
@@ -35,10 +38,18 @@ namespace N.EntityFrameworkCore.Extensions
             int i = 0;
             foreach (var property in tableMapping.Properties)
             {
-                var type = Expression.Parameter(typeof(T), "type");
-                var propertyExpression = Expression.PropertyOrField(type, property.Name);
-                var expression = Expression.Lambda<Func<T, object>>(Expression.Convert(propertyExpression, typeof(object)), type);
-                selectors[i] = expression.Compile();
+                var valueGeneratorFactory = property.GetValueGeneratorFactory();
+                if(valueGeneratorFactory != null)
+                {
+                    var valueGenerator = valueGeneratorFactory.Invoke(property, this.TableMapping.EntityType);
+                    Func<EntityEntry, object> selector = entry => valueGenerator.Next(entry);
+                    selectors[i] = selector;
+                }
+                else
+                {
+                    Func<EntityEntry, object> selector = entry => entry.CurrentValues[property];
+                    selectors[i] = selector;
+                }
                 columnIndexes[property.Name] = i;
                 i++;
             }
@@ -181,7 +192,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
             else
             {
-                return selectors[i](enumerator.Current);
+                return selectors[i](this.TableMapping.DbContext.Entry(enumerator.Current));
             }
             
         }

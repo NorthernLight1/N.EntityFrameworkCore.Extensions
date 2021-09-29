@@ -2,13 +2,18 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>1.5.4</Version>
+    <Version>1.5.5</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/</PackageProjectUrl>
     <Authors>Northern25</Authors>
-    <Copyright>Copyright © 2020</Copyright>
+    <Copyright>Copyright © 2021</Copyright>
     <Company />
     <Description>N.EntityFrameworkCore.Extensions extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>5</WarningLevel>
   </PropertyGroup>
 
   <ItemGroup>

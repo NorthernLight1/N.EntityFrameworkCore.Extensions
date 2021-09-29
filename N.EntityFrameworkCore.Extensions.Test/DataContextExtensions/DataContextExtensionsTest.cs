@@ -229,30 +229,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             //Assert.IsTrue(entitiesWithChanges == 0, "There should be no pending Order entities with changes after BulkInsert completes");
         }
         [TestMethod]
-        public void DeleteFromQuery_IQuerable()
-        {
-            var dbContext = SetupDbContext(true);
-            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
-            int rowsDeleted = dbContext.Orders.Where(o => o.Price <= 10).DeleteFromQuery();
-            int newTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
-
-            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
-            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
-            Assert.IsTrue(newTotal == 0, "Delete() Failed: must be 0 to indicate all records were delted");
-        }
-        [TestMethod]
-        public void DeleteFromQuery_IEnumerable()
-        {
-            var dbContext = SetupDbContext(true);
-            int oldTotal = dbContext.Orders.Count();
-            int rowsDeleted = dbContext.Orders.DeleteFromQuery();
-            int newTotal = dbContext.Orders.Count();
-
-            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
-            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
-            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
-        }
-        [TestMethod]
         public void Fetch()
         {
             var dbContext = SetupDbContext(true);
@@ -272,22 +248,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             Assert.IsTrue(expectedTotalCount == totalCount, "The total number of rows fetched must match the count of existing rows in database");
             Assert.IsTrue(expectedBatchCount == batchCount, "The total number of batches fetched must match what is expected");
         }
-        [TestMethod]
-        public void InsertFromQuery()
-        {
-            var dbContext = SetupDbContext(true);
-            string tableName = "OrdersUnderTen";
-            int oldSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
-            //int oldTargetTotal = dbContext.Orders.Where(o => o.Price < 10M).UsingTable(tableName).Count();
-            int rowsInserted = dbContext.Orders.Where(o => o.Price < 10M).InsertFromQuery(tableName, o => new { o.Price, o.Id  });
-            int newSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
-            //int newTargetTotal = dbContext.Orders.Where(o => o.Price < 10M).UsingTable(tableName).Count();
 
-            Assert.IsTrue(oldSourceTotal > 0, "There should be existing data in the source table");
-            Assert.IsTrue(oldSourceTotal == newSourceTotal, "There should not be any change in the count of rows in the source table");
-            Assert.IsTrue(rowsInserted == oldSourceTotal, "The number of records inserted  must match the count of the source table");
-            //Assert.IsTrue(rowsInserted == newTargetTotal, "The different in count in the target table before and after the insert must match the total row inserted");
-        }
         [TestMethod]
         public void QueryToCsvFile()
         {
@@ -350,20 +311,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
         }
         [TestMethod]
-        public void UpdateFromQuery()
-        {
-            var dbContext = SetupDbContext(true);
-            int oldTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
-            int rowUpdated = dbContext.Orders.Where(o => o.Price < 10M).UpdateFromQuery(o => new Order { Price = 25.30M });
-            int newTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
-            int matchCount = dbContext.Orders.Where(o => o.Price == 25.30M).Count();
-
-            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
-            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
-            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
-            Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
-        }
-        [TestMethod]
         public void Sql_SqlQuery_Count()
         {
             var dbContext = SetupDbContext(true);
@@ -389,7 +336,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
         {
             TestDbContext dbContext = new TestDbContext();
             dbContext.Orders.DeleteFromQuery();
-            dbContext.Articles.DeleteFromQuery();
+            dbContext.Products.DeleteFromQuery();
             if (populateData)
             {
                 var orders = new List<Order>();
@@ -422,21 +369,21 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
 
                 Debug.WriteLine("Last Id for Order is {0}", id);
                 dbContext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
-                var articles = new List<Article>();
+                var products = new List<Product>();
                 id = 1;
                 for (int i = 0; i < 2050; i++)
                 {
-                    articles.Add(new Article { ArticleId = string.Format("id-{0}", i), Price = 1.25M, OutOfStock = false });
+                    products.Add(new Product { Id = i, Price = 1.25M, OutOfStock = false });
                     id++;
                 }
                 for (int i = 0; i < 2050; i++)
                 {
-                    articles.Add(new Article { ArticleId = string.Format("id-{0}", id), Price = 1.25M, OutOfStock = true });
+                    products.Add(new Product { Id = i, Price = 1.25M, OutOfStock = true });
                     id++;
                 }
 
-                Debug.WriteLine("Last Id for Article is {0}", id);
-                dbContext.BulkInsert(articles, new BulkInsertOptions<Article>() { KeepIdentity = false, AutoMapOutputIdentity = false });
+                Debug.WriteLine("Last Id for Product is {0}", id);
+                dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutputIdentity = false });
             }
             return dbContext;
         }
