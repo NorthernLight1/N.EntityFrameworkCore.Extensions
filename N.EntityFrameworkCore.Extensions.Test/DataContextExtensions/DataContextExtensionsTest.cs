@@ -9,17 +9,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 
-namespace N.EntityFrameworkCore.Extensions.Test.Tests
+namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
 {
     [TestClass]
-    public class DataContextExtensionsTest
+    public class DataContextExtensionsTest : DataContextExtensionsBase
     {
-        [TestInitialize]
-        public void Init()
-        {
-            TestDbContext testDbContext = new TestDbContext();
-            testDbContext.Database.EnsureCreated();
-        }
         //[TestMethod]
         //public void TestBulkInsert_EF_CustomTable()
         //{
@@ -51,82 +45,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price < $2)");
             Assert.IsTrue(rowsDeleted == orders.Count, "The number of rows deleted must match the count of existing rows in database");
             Assert.IsTrue(newTotal == 0, "Must be 0 to indicate all records were deleted");
-        }
-        [TestMethod]
-        public void BulkInsert()
-        {
-            TestDbContext dbContext = new TestDbContext();
-            var orders = new List<Order>();
-            for (int i = 0; i < 20000; i++)
-            {
-                orders.Add(new Order { Id = i, Price = 1.57M });
-            }
-            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
-            int rowsInserted = dbContext.BulkInsert(orders);
-            int newTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
-
-            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
-            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
-        }
-        [TestMethod]
-        public void BulkInsert_Options_AutoMapIdentity()
-        {
-            var dbContext = SetupDbContext(true);
-            var orders = new List<Order>
-            {
-                new Order { ExternalId = "id-1", Price=7.10M },
-                new Order { ExternalId = "id-2", Price=9.33M },
-                new Order { ExternalId = "id-3", Price=3.25M },
-                new Order { ExternalId = "id-1000001", Price=2.15M },
-                new Order { ExternalId = "id-1000002", Price=5.75M },
-            };
-            int rowsAdded = dbContext.BulkInsert(orders, new BulkInsertOptions<Order>
-            {
-                UsePermanentTable = true
-            });
-            bool autoMapIdentityMatched = true;
-            foreach (var order in orders)
-            {
-                if (!dbContext.Orders.Any(o => o.ExternalId == order.ExternalId && o.Id == order.Id && o.Price == order.Price))
-                {
-                    autoMapIdentityMatched = false;
-                    break;
-                }
-            }
-
-            Assert.IsTrue(rowsAdded == orders.Count, "The number of rows inserted must match the count of order list");
-            Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
-        }
-        [TestMethod]
-        public void BulkInsert_Options_KeepIdentity()
-        {
-            var dbContext = SetupDbContext(false);
-            var orders = new List<Order>();
-            for (int i = 0; i < 20000; i++)
-            {
-                orders.Add(new Order { Id = i, Price = 1.57M });
-            }
-            int oldTotal = dbContext.Orders.Count();
-            int rowsInserted = dbContext.BulkInsert(orders, new BulkInsertOptions<Order>()
-            {
-                KeepIdentity = true,
-                BatchSize = 1000,
-            });
-            var oldOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
-            var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
-            bool allIdentityFieldsMatch = true;
-            for (int i = 0; i < 20000; i++)
-            {
-                if (newOrders[i].Id != oldOrders[i].Id)
-                {
-                    allIdentityFieldsMatch = false;
-                    break;
-                }
-            }
-
-            Assert.IsTrue(oldTotal == 0, "There should not be any records in the table");
-            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
-            Assert.IsTrue(allIdentityFieldsMatch, "The identities between the source and the database should match.");
         }
         [TestMethod]
         public void BulkMerge_Options_Default()
@@ -229,27 +147,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
             //Assert.IsTrue(entitiesWithChanges == 0, "There should be no pending Order entities with changes after BulkInsert completes");
         }
         [TestMethod]
-        public void Fetch()
-        {
-            var dbContext = SetupDbContext(true);
-            int batchSize = 1000;
-            int batchCount = 0;
-            int totalCount = 0;
-            int expectedTotalCount = dbContext.Orders.Where(o => o.Price < 10M).Count();
-            int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount/(decimal)batchSize);
-
-            dbContext.Orders.Where(o => o.Price < 10M).Fetch(result =>
-            {
-                batchCount++;
-                totalCount += result.Results.Count();
-            }, new FetchOptions { BatchSize = 1000 });
-
-            Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");
-            Assert.IsTrue(expectedTotalCount == totalCount, "The total number of rows fetched must match the count of existing rows in database");
-            Assert.IsTrue(expectedBatchCount == batchCount, "The total number of batches fetched must match what is expected");
-        }
-
-        [TestMethod]
         public void QueryToCsvFile()
         {
             var dbContext = SetupDbContext(true);
@@ -331,61 +228,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Tests
 
             Assert.IsTrue(ordersTableExists, "Orders table should exist");
             Assert.IsTrue(!orderNewTableExists, "Orders_New table should not exist");
-        }
-        private TestDbContext SetupDbContext(bool populateData)
-        {
-            TestDbContext dbContext = new TestDbContext();
-            dbContext.Orders.DeleteFromQuery();
-            dbContext.Products.DeleteFromQuery();
-            if (populateData)
-            {
-                var orders = new List<Order>();
-                int id = 1;
-                for (int i = 0; i < 2050; i++)
-                {
-                    orders.Add(new Order { Id = id, ExternalId = string.Format("id-{0}", i), Price = 1.25M });
-                    id++;
-                }
-                for (int i = 0; i < 1050; i++)
-                {
-                    orders.Add(new Order { Id = id, Price = 5.35M });
-                    id++;
-                }
-                for (int i = 0; i < 2050; i++)
-                {
-                    orders.Add(new Order { Id = id, Price = 1.25M });
-                    id++;
-                }
-                for (int i = 0; i < 6000; i++)
-                {
-                    orders.Add(new Order { Id = id, Price = 15.35M });
-                    id++;
-                }
-                for (int i = 0; i < 6000; i++)
-                {
-                    orders.Add(new Order { Id = id, Price = 15.35M });
-                    id++;
-                }
-
-                Debug.WriteLine("Last Id for Order is {0}", id);
-                dbContext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
-                var products = new List<Product>();
-                id = 1;
-                for (int i = 0; i < 2050; i++)
-                {
-                    products.Add(new Product { Id = i, Price = 1.25M, OutOfStock = false });
-                    id++;
-                }
-                for (int i = 0; i < 2050; i++)
-                {
-                    products.Add(new Product { Id = i, Price = 1.25M, OutOfStock = true });
-                    id++;
-                }
-
-                Debug.WriteLine("Last Id for Product is {0}", id);
-                dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutputIdentity = false });
-            }
-            return dbContext;
         }
     }
 }

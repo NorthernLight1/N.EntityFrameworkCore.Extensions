@@ -25,8 +25,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
             dbContext.Orders.DeleteFromQuery();
             dbContext.Products.DeleteFromQuery();
             dbContext.Database.ClearTable("TphPeople");
-            ClearTableIfExists(dbContext, "OrdersUnderTen");
-            ClearTableIfExists(dbContext, "OrdersLast30Days");
+            dbContext.Database.DeleteTable("OrdersUnderTen", true);
+            dbContext.Database.DeleteTable("OrdersLast30Days", true);
             if (populateData)
             {
                 var orders = new List<Order>();
@@ -67,24 +67,21 @@ namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
 
                 Debug.WriteLine("Last Id for Order is {0}", id);
                 dbContext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
-                //var order = dbContext.Orders.Where(o => o.Id == 1).FirstOrDefault();
-                //order.Price = 5.22M;
-                //dbContext.SaveChanges();
-                var articles = new List<Product>();
+                var products = new List<Product>();
                 id = 1;
                 for (int i = 0; i < 2050; i++)
                 {
-                    articles.Add(new Product { Id = i, Price = 1.25M, OutOfStock = false });
+                    products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false });
                     id++;
                 }
-                for (int i = 0; i < 2050; i++)
+                for (int i = 2050; i < 7000; i++)
                 {
-                    articles.Add(new Product { Id = i, Price = 1.25M, OutOfStock = true });
+                    products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = true });
                     id++;
                 }
 
                 Debug.WriteLine("Last Id for Article is {0}", id);
-                dbContext.BulkInsert(articles, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutputIdentity = false });
+                dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutputIdentity = false });
 
                 //TPH Customers & Vendors
                 var tphCustomers = new List<TphCustomer>();
@@ -116,14 +113,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
                 dbContext.BulkInsert(tphVendors, new BulkInsertOptions<TphVendor>() { KeepIdentity = true });
             }
             return dbContext;
-        }
-
-        private void ClearTableIfExists(DbContext dbContext, string tableName)
-        {
-            if (dbContext.Database.TableExists(tableName))
-            {
-                dbContext.Database.ClearTable(tableName);
-            }
         }
     }
 }

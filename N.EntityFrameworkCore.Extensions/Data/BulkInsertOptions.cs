@@ -10,6 +10,8 @@ namespace N.EntityFrameworkCore.Extensions
         public Expression<Func<T, object>> InputColumns { get; set; }
         public bool AutoMapOutputIdentity { get; set; }
         public bool KeepIdentity { get; set; }
+        public bool InsertIfNotExists { get; set; }
+        public Expression<Func<T, T, bool>> InsertOnCondition { get; set; }
 
         public string[] GetInputColumns()
         {
@@ -19,6 +21,7 @@ namespace N.EntityFrameworkCore.Extensions
         public BulkInsertOptions()
         {
             this.AutoMapOutputIdentity = true;
+            this.InsertIfNotExists = false;
         }
     }
 }

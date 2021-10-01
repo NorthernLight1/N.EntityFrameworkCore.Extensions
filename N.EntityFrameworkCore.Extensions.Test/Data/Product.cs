@@ -8,7 +8,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
     public class Product
     {
         [Key]
-        public long Id { get; set; }
+        public string Id { get; set; }
         public decimal Price { get; set; }
         public bool OutOfStock { get; set; }
         public DateTime? UpdatedDateTime { get; set; }

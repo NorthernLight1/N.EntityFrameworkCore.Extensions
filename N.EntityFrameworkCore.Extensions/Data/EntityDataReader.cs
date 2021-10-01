@@ -12,7 +12,7 @@ namespace N.EntityFrameworkCore.Extensions
     internal class EntityDataReader<T> : IDataReader
     {
         public TableMapping TableMapping { get; set; }
-        public Dictionary<int,T> EntityMap { get; set; }
+        public Dictionary<long,T> EntityMap { get; set; }
         private Dictionary<string, int> columnIndexes;
         private int currentId;
         private bool useInternalId;
@@ -30,7 +30,7 @@ namespace N.EntityFrameworkCore.Extensions
             this.entities = entities;
             this.enumerator = entities.GetEnumerator();
             this.selectors = new Dictionary<int, Func<EntityEntry, object>>();
-            this.EntityMap = new Dictionary<int, T>();
+            this.EntityMap = new Dictionary<long, T>();
             this.FieldCount = tableMapping.Properties.Length;
             this.TableMapping = tableMapping;
             
@@ -57,7 +57,7 @@ namespace N.EntityFrameworkCore.Extensions
             if(useInternalId)
             {
                 this.FieldCount++;
-                columnIndexes[Constants.Guid_ColumnName] = i;
+                columnIndexes[Constants.InternalId_ColumnName] = i;
             }
         }
 
