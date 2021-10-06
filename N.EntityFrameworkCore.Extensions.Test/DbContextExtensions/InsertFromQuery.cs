@@ -2,10 +2,10 @@
 using System;
 using System.Linq;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
     [TestClass]
-    public class InsertFromQuery : DataContextExtensionsBase
+    public class InsertFromQuery : DbContextExtensionsBase
     {
         [TestMethod]
         public void With_DateTime_Value()

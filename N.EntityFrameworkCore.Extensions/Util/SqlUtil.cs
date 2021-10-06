@@ -57,11 +57,14 @@ namespace N.EntityFrameworkCore.Extensions
             string boolString = enable ? "ON" : "OFF";
             return ExecuteSql(string.Format("SET IDENTITY_INSERT {0} {1}", tableName, boolString), dbConnection, dbTransaction, null);
         }
-
         internal static bool TableExists(string tableName, SqlConnection dbConnection, SqlTransaction dbTransaction)
         {
             return Convert.ToBoolean(ExecuteScalar(string.Format("SELECT CASE WHEN OBJECT_ID(N'{0}', N'U') IS NOT NULL THEN 1 ELSE 0 END", tableName),
                 dbConnection, dbTransaction, null));
+        }
+        internal static void TruncateTable(string tableName, SqlConnection connection, SqlTransaction transaction)
+        {
+            ExecuteSql(string.Format("TRUNCATE TABLE {0}", tableName), connection, transaction, null);
         }
     }
 }

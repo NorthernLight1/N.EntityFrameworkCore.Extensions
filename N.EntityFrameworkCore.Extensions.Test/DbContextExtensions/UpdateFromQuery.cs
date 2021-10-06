@@ -5,10 +5,10 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
     [TestClass]
-    public class UpdateFromQuery : DataContextExtensionsBase
+    public class UpdateFromQuery : DbContextExtensionsBase
     {
         [TestMethod]
         public void With_Boolean_Value()

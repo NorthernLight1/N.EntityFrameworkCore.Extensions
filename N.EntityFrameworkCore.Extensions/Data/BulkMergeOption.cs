@@ -8,12 +8,13 @@ namespace N.EntityFrameworkCore.Extensions
     public class BulkMergeOptions<T> : BulkOptions
     {
         public Expression<Func<T, T, bool>> MergeOnCondition { get; set; }
-        public Func<T, T, bool> NotMatchedBySourceCondition { get; set; }
-        public Func<T, T, bool> NotMatchedByTargetCondition { get; set; }
-        public Func<T, T, bool> MatchedCondition { get; set; }
+        //public Func<T, T, bool> NotMatchedBySourceCondition { get; set; }
+        //public Func<T, T, bool> NotMatchedByTargetCondition { get; set; }
+        //public Func<T, T, bool> MatchedCondition { get; set; }
         public Expression<Func<T, object>> IgnoreColumnsOnInsert { get; set; }
         public Expression<Func<T, object>> IgnoreColumnsOnUpdate { get; set; }
         public bool AutoMapOutputIdentity { get; set; }
+        internal bool DeleteIfNotMatched { get; set; }
 
         public BulkMergeOptions()
         {
