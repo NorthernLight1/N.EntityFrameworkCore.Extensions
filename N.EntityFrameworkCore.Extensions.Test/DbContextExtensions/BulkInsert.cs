@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
     [TestClass]
-    public class BulkInsert : DataContextExtensionsBase
+    public class BulkInsert : DbContextExtensionsBase
     {
         [TestMethod]
         public void With_Default_Options()

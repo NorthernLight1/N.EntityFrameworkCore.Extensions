@@ -1,12 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
 using System;
 using System.Linq;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
     [TestClass]
-    public class DeleteFromQuery : DataContextExtensionsBase
+    public class DeleteFromQuery : DbContextExtensionsBase
     {
         [TestMethod]
         public void With_Boolean_Value()

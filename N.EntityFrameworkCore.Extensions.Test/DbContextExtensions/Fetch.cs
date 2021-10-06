@@ -1,14 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DataContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
     [TestClass]
-    public class Fetch : DataContextExtensionsBase
+    public class Fetch : DbContextExtensionsBase
     {
         [TestMethod]
         public void With_DateTime()

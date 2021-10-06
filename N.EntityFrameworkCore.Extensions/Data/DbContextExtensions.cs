@@ -26,24 +26,23 @@ namespace N.EntityFrameworkCore.Extensions
         static DbContextExtensions()
         {
             efExtensionsCommandInterceptor = new EfExtensionsCommandInterceptor();
-            
         }
         public static void SetupEfCoreExtensions(this DbContextOptionsBuilder builder)
         {
-            //var options = context.GetPrivateFieldValue("_options") as DbContextOptions;
-            //var optionsBuilder = new DbContextOptionsBuilder(options);
             builder.AddInterceptors(efExtensionsCommandInterceptor);
         }
         public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities)
         {
             return context.BulkDelete(entities, new BulkDeleteOptions<T>());
         }
+        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction)
+        {
+            return context.BulkDelete(entities, optionsAction.Build());
+        }
         public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options)
         {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
-            Validate(tableMapping);
-
             var dbConnection = context.GetSqlConnection();
 
             if (dbConnection.State == ConnectionState.Closed)
@@ -55,20 +54,25 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    string deleteCondition = string.Join(" AND ", storeGeneratedColumnNames.Select(o => string.Format("s.{0}=t.{0}", o)));
+                    string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
+                        : tableMapping.GetPrimaryKeyColumns().ToArray();
 
-                    SqlUtil.CloneTable(destinationTableName, stagingTableName, storeGeneratedColumnNames, dbConnection, transaction);
-                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, storeGeneratedColumnNames, SqlBulkCopyOptions.KeepIdentity);
-                    string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName, deleteCondition);
+                    if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
+                        throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
+
+
+                    SqlUtil.CloneTable(destinationTableName, stagingTableName, keyColumnNames, dbConnection, transaction);
+                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+                    string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
+                        CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
                     rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
                     SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
                     transaction.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     transaction.Rollback();
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
@@ -77,7 +81,6 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-
         private static void Validate(TableMapping tableMapping)
         {
             if(!tableMapping.GetPrimaryKeyColumns().Any())
@@ -257,7 +260,19 @@ namespace N.EntityFrameworkCore.Extensions
                 EntityMap = dataReader.EntityMap
             };
         }
+        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
+        {
+            return BulkMerge(context, entities, new BulkMergeOptions<T>());
+        }
         public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+        {
+            return InternalBulkMerge(context, entities, options);
+        }
+        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction)
+        {
+            return BulkMerge(context, entities, optionsAction.Build());
+        }
+        private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
         {
             int rowsAffected = 0;
             var outputRows = new List<BulkMergeOutputRow<T>>();
@@ -279,61 +294,74 @@ namespace N.EntityFrameworkCore.Extensions
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
+                    if (storeGeneratedColumnNames.Length == 0 && options.MergeOnCondition == null)
+                        throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
+
                     SqlUtil.CloneTable(destinationTableName, stagingTableName, null, dbConnection, transaction, Common.Constants.InternalId_ColumnName);
                     var bulkInsertResult = BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true);
 
                     IEnumerable<string> columnsToInsert = columnNames.Where(o => !options.GetIgnoreColumnsOnInsert().Contains(o));
                     IEnumerable<string> columnstoUpdate = columnNames.Where(o => !options.GetIgnoreColumnsOnUpdate().Contains(o)).Select(o => string.Format("t.{0}=s.{0}", o));
-                    List<string> columnsToOutput = new List<string> { "$Action", string.Format("{0}.{1}","s", Constants.InternalId_ColumnName) };
+                    List<string> columnsToOutput = new List<string> { "$Action", string.Format("{0}.{1}", "s", Constants.InternalId_ColumnName) };
                     List<PropertyInfo> propertySetters = new List<PropertyInfo>();
                     Type entityType = typeof(T);
 
                     foreach (var storeGeneratedColumnName in storeGeneratedColumnNames)
                     {
-                        //columnsToOutput.Add(string.Format("deleted.[{0}]", storeGeneratedColumnName)); Not Yet Supported
                         columnsToOutput.Add(string.Format("inserted.[{0}]", storeGeneratedColumnName));
+                        columnsToOutput.Add(string.Format("deleted.[{0}]", storeGeneratedColumnName));
                         propertySetters.Add(entityType.GetProperty(storeGeneratedColumnName));
                     }
 
-                    string mergeSqlText = string.Format("MERGE {0} t USING {1} s ON ({2}) WHEN NOT MATCHED BY TARGET THEN INSERT ({3}) VALUES ({3}) WHEN MATCHED THEN UPDATE SET {4} OUTPUT {5};",
-                        destinationTableName, stagingTableName, options.MergeOnCondition.ToSqlPredicate("s", "t"),
+                    string mergeSqlText = string.Format("MERGE {0} t USING {1} s ON ({2}) WHEN NOT MATCHED BY TARGET THEN INSERT ({3}) VALUES ({3}) WHEN MATCHED THEN UPDATE SET {4}{5}OUTPUT {6};",
+                        destinationTableName, stagingTableName, CommonUtil<T>.GetJoinConditionSql(options.MergeOnCondition, storeGeneratedColumnNames, "s", "t"),
                         SqlUtil.ConvertToColumnString(columnsToInsert),
                         SqlUtil.ConvertToColumnString(columnstoUpdate),
+                        options.DeleteIfNotMatched ? " WHEN NOT MATCHED BY SOURCE THEN DELETE " : " ",
                         SqlUtil.ConvertToColumnString(columnsToOutput)
                         );
 
                     var bulkQueryResult = context.BulkQuery(mergeSqlText, dbConnection, transaction, options);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
-                    //var entitiesEnumerator = entities.GetEnumerator();
-                    //entitiesEnumerator.MoveNext();
                     foreach (var result in bulkQueryResult.Results)
                     {
+                        string id = string.Empty;
+                        object entity = null;
                         string action = (string)result[0];
-                        int id = (int)result[1];
-                        var entity = bulkInsertResult.EntityMap[id];
-                        outputRows.Add(new BulkMergeOutputRow<T>(action, entity));
-                        if (options.AutoMapOutputIdentity && entity != null)
+                        if (action != SqlMergeAction.Delete)
                         {
-                            
-                            for (int i = 2; i < result.Length; i++)
+                            int entityId = (int)result[1];
+                            id = (storeGeneratedColumnNames.Length > 0 ? Convert.ToString(result[2]) : "PrimaryKeyMissing");
+                            entity = bulkInsertResult.EntityMap[entityId];
+                            if (options.AutoMapOutputIdentity && entity != null)
                             {
-                                propertySetters[0].SetValue(entity, result[i]);
+
+                                for (int i = 2; i < 2 + storeGeneratedColumnNames.Length; i++)
+                                {
+                                    propertySetters[0].SetValue(entity, result[i]);
+                                }
                             }
                         }
+                        else
+                        {
+                            id = Convert.ToString(result[2 + storeGeneratedColumnNames.Length]);
+                        }
+                        outputRows.Add(new BulkMergeOutputRow<T>(action, id));
+
                         if (action == SqlMergeAction.Insert) rowsInserted++;
                         else if (action == SqlMergeAction.Update) rowsUpdated++;
-                        else if (action == SqlMergeAction.Detete) rowsDeleted++;
+                        else if (action == SqlMergeAction.Delete) rowsDeleted++;
                     }
                     SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
                     transaction.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     transaction.Rollback();
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
@@ -614,6 +642,13 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return InternalQueryToFile(dbConnection, stream, options, sqlText, parameters);
         }
+        public static void Truncate<T>(this DbSet<T> dbSet) where T : class
+        {
+            var dbContext = GetDbContextFromIQuerable(dbSet);
+            var tableMapping = dbContext.GetTableMapping(typeof(T));
+            var dbConnection = dbContext.GetSqlConnection();
+            SqlUtil.TruncateTable(tableMapping.FullQualifedTableName, dbConnection, null);
+        }
         private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
         {
             var dbContext = GetDbContextFromIQuerable(querable);
@@ -704,6 +739,15 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             bool deleteTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
             return deleteTable ? SqlUtil.DeleteTable(tableName, dbConnection, null) : -1;
+        }
+        public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
+        {
+            var dbConnection = database.GetDbConnection() as SqlConnection;
+            bool truncateTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
+            if (truncateTable)
+            {
+                SqlUtil.TruncateTable(tableName, dbConnection, null);
+            }
         }
         public static bool TableExists(this DatabaseFacade database, string tableName)
         {

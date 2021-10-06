@@ -10,6 +10,6 @@ namespace N.EntityFrameworkCore.Extensions
     {
         public static string Insert = "INSERT";
         public static string Update = "UPDATE";
-        public static string Detete = "DELETE";
+        public static string Delete = "DELETE";
     }
 }
