@@ -45,7 +45,7 @@ The framework currently supports the following operations:
   }
   dbcontext.BulkUpdate(products);
   ```
-  **BulkMerge()**  
+  **BulkMerge() - Performs a merge on the target database. Any entities that do not exist, will be inserted otherwise existing entities will be updated**  
   ```
   var dbcontext = new MyDbContext();
   var products = new List<Product>();
@@ -59,7 +59,7 @@ The framework currently supports the following operations:
   products.Add(new Product { Name="Shirt", Price=20.95M });
   dbcontext.BulkMerge(products);
   ```
-   **BulkSync() - Performs a full sync on the target databse. Any entities that do not exists in the source list will be deleted**
+   **BulkSync() - Performs a full sync on the target database. Any entities that do not exists in the source list will be deleted**
   ```
   var dbcontext = new MyDbContext();
   var products = new List<Product>();
