@@ -272,6 +272,18 @@ namespace N.EntityFrameworkCore.Extensions
         {
             return BulkMerge(context, entities, optionsAction.Build());
         }
+        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities)
+        {
+            return BulkSync(context, entities, new BulkSyncOptions<T>());
+        }
+        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction)
+        {
+            return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, optionsAction.Build()));
+        }
+        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options)
+        {
+            return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, options));
+        }
         private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
         {
             int rowsAffected = 0;
@@ -382,6 +394,10 @@ namespace N.EntityFrameworkCore.Extensions
         {
             return BulkUpdate<T>(context, entities, new BulkUpdateOptions<T>());
         }
+        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction)
+        {
+            return BulkUpdate<T>(context, entities, optionsAction.Build());
+        }
         public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
         {
             int rowsUpdated = 0;
@@ -401,15 +417,17 @@ namespace N.EntityFrameworkCore.Extensions
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
+                    if (storeGeneratedColumnNames.Length == 0 && options.UpdateOnCondition == null)
+                        throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
+
                     SqlUtil.CloneTable(destinationTableName, stagingTableName, null, dbConnection, transaction);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
 
                     IEnumerable<string> columnstoUpdate = columnNames.Where(o => !options.IgnoreColumnsOnUpdate.GetObjectProperties().Contains(o));
 
                     string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-                    string updateOnExpression = string.Join(" AND ", storeGeneratedColumnNames.Select(o => string.Format("s.{0}=t.{0}", o)));
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                        updateSetExpression, stagingTableName, destinationTableName, updateOnExpression);
+                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, storeGeneratedColumnNames, "s", "t"));
 
                     rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction, options.CommandTimeout);
                     SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
@@ -417,10 +435,10 @@ namespace N.EntityFrameworkCore.Extensions
                     //ClearEntityStateToUnchanged(context, entities);
                     transaction.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     transaction.Rollback();
-                    throw ex;
+                    throw;
                 }
                 finally
                 {
