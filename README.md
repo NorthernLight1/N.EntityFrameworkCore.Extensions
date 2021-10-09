@@ -44,7 +44,7 @@ The framework currently supports the following operations:
       order.Price = 6M;
   }
   dbcontext.BulkUpdate(products);
-    ```
+  ```
   **BulkMerge()**  
   ```
   var dbcontext = new MyDbContext();
@@ -112,55 +112,3 @@ The framework currently supports the following operations:
   //This will change all products priced at $5.35 to $5.75 
   dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
 ```
-  **Fetch() - Retrieve data in batches**  
-  ```
-  var dbcontext = new MyDbContext();  
-  var query = dbcontext.Products.Where(o => o.Price < 5.35M);
-  query.Fetch(result =>
-    {
-      batchCount++;
-      totalCount += result.Results.Count();
-    }, 
-    new FetchOptions { BatchSize = 1000 }
-  );
-  dbcontext.BulkUpdate(products);
-  ```
-  **DeleteFromQuery()**  
-   ``` 
-  var dbcontext = new MyDbContext(); 
-  
-  //This will delete all products  
-  dbcontext.Products.DeleteFromQuery() 
-  
-  //This will delete all products that are under $5.35  
-  dbcontext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery()  
-```
-  **InsertFromQuery()**  
-   ``` 
-  var dbcontext = new MyDbContext(); 
-  
-  //This will take all products priced under $10 from the Products table and 
-  //insert it into the ProductsUnderTen table
-  dbcontext.Products.Where(x => x.Price < 10M).InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
-```
-  **UpdateFromQuery()**  
-   ``` 
-  var dbcontext = new MyDbContext(); 
-  
-  //This will change all products priced at $5.35 to $5.75 
-  dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
-```
-  **Fetch() - Retrieve data in batches**  
-  ```
-  var dbcontext = new MyDbContext();  
-  var query = dbcontext.Products.Where(o => o.Price < 5.35M);
-  query.Fetch(result =>
-    {
-      batchCount++;
-      totalCount += result.Results.Count();
-    }, 
-    new FetchOptions { BatchSize = 1000 }
-  );
-  dbcontext.BulkUpdate(products);
-  ```
-  
