@@ -18,11 +18,11 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         protected TestDbContext SetupDbContext(bool populateData)
         {
             TestDbContext dbContext = new TestDbContext();
-            dbContext.Orders.DeleteFromQuery();
-            dbContext.Products.DeleteFromQuery();
+            dbContext.Orders.Truncate();
+            dbContext.Products.Truncate();
             dbContext.Database.ClearTable("TphPeople");
-            dbContext.Database.DeleteTable("OrdersUnderTen", true);
-            dbContext.Database.DeleteTable("OrdersLast30Days", true);
+            dbContext.Database.DropTable("OrdersUnderTen", true);
+            dbContext.Database.DropTable("OrdersLast30Days", true);
             if (populateData)
             {
                 var orders = new List<Order>();
