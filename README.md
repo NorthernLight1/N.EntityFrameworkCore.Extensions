@@ -19,7 +19,7 @@ The framework currently supports the following operations:
   
  ### Usage
    
- **BulkInsert()**  
+  **BulkInsert() - Performs a insert operation with a large number of entities**  
    ```
   var dbcontext = new MyDbContext();  
   var orders = new List<Order>();  
@@ -29,13 +29,13 @@ The framework currently supports the following operations:
   }  
   dbcontext.BulkInsert(orders);  
  ```
-  **BulkDelete()**  
+  **BulkDelete() - Performs a delete operation with a large number of entities**  
   ```
   var dbcontext = new MyDbContext();  
   var orders = dbcontext.Orders.Where(o => o.TotalPrice < 5.35M);  
   dbcontext.BulkDelete(orders);
   ```
-  **BulkUpdate()**  
+  **BulkUpdate() - Performs a update operation with a large number of entities**  
   ```
   var dbcontext = new MyDbContext();  
   var products = dbcontext.Products.Where(o => o.Price < 5.35M);
@@ -45,7 +45,7 @@ The framework currently supports the following operations:
   }
   dbcontext.BulkUpdate(products);
   ```
-  **BulkMerge() - Performs a merge on the target database. Any entities that do not exist, will be inserted otherwise existing entities will be updated**  
+  **BulkMerge() - Performs a merge operation with a large number of entities**
   ```
   var dbcontext = new MyDbContext();
   var products = new List<Product>();
@@ -59,7 +59,7 @@ The framework currently supports the following operations:
   products.Add(new Product { Name="Shirt", Price=20.95M });
   dbcontext.BulkMerge(products);
   ```
-   **BulkSync() - Performs a full sync on the target database. Any entities that do not exists in the source list will be deleted**
+   **BulkSync() - Performs a sync operation with a large number of entities. By default any entities that do not exists in the source list will be deleted, but this can be disalbed in the options.**
   ```
   var dbcontext = new MyDbContext();
   var products = new List<Product>();
@@ -87,7 +87,7 @@ The framework currently supports the following operations:
   );
   dbcontext.BulkUpdate(products);
   ```
-  **DeleteFromQuery()**  
+  **DeleteFromQuery() - Deletes records from the database using a LINQ query without loading data in the context**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
@@ -97,7 +97,7 @@ The framework currently supports the following operations:
   //This will delete all products that are under $5.35  
   dbcontext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery()  
 ```
-  **InsertFromQuery()**  
+  **InsertFromQuery() - Inserts records from the database using a LINQ query without loading data in the context**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
@@ -105,10 +105,11 @@ The framework currently supports the following operations:
   //insert it into the ProductsUnderTen table
   dbcontext.Products.Where(x => x.Price < 10M).InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
 ```
-  **UpdateFromQuery()**  
+  **UpdateFromQuery() - Updates records from the database using a LINQ query without loading data in the context**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
   //This will change all products priced at $5.35 to $5.75 
   dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
 ```
+  
