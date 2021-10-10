@@ -38,7 +38,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             return ExecuteSql(string.Format("DELETE FROM {0}", tableName), connection, transaction, null);
         }
-        internal static int DeleteTable(string tableName, SqlConnection connection, SqlTransaction transaction)
+        internal static int DropTable(string tableName, SqlConnection connection, SqlTransaction transaction)
         {
             return ExecuteSql(string.Format("DROP TABLE {0}", tableName), connection, transaction, null);
         }

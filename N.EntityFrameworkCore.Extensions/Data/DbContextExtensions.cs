@@ -66,7 +66,7 @@ namespace N.EntityFrameworkCore.Extensions
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
                         CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
                     rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
-                    SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
+                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
                     transaction.Commit();
                 }
                 catch (Exception)
@@ -211,7 +211,7 @@ namespace N.EntityFrameworkCore.Extensions
                         }
                     }
 
-                    SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
+                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
                     transaction.Commit();
@@ -365,7 +365,7 @@ namespace N.EntityFrameworkCore.Extensions
                         else if (action == SqlMergeAction.Update) rowsUpdated++;
                         else if (action == SqlMergeAction.Delete) rowsDeleted++;
                     }
-                    SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
+                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
                     transaction.Commit();
@@ -430,7 +430,7 @@ namespace N.EntityFrameworkCore.Extensions
                         updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, storeGeneratedColumnNames, "s", "t"));
 
                     rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction, options.CommandTimeout);
-                    SqlUtil.DeleteTable(stagingTableName, dbConnection, transaction);
+                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
                     transaction.Commit();
@@ -660,6 +660,13 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return InternalQueryToFile(dbConnection, stream, options, sqlText, parameters);
         }
+        public static void Clear<T>(this DbSet<T> dbSet) where T : class
+        {
+            var dbContext = GetDbContextFromIQuerable(dbSet);
+            var tableMapping = dbContext.GetTableMapping(typeof(T));
+            var dbConnection = dbContext.GetSqlConnection();
+            SqlUtil.ClearTable(tableMapping.FullQualifedTableName, dbConnection, null);
+        }
         public static void Truncate<T>(this DbSet<T> dbSet) where T : class
         {
             var dbContext = GetDbContextFromIQuerable(dbSet);
@@ -752,11 +759,11 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return SqlUtil.ClearTable(tableName, dbConnection, null);
         }
-        public static int DeleteTable(this DatabaseFacade database, string tableName, bool ifExists=false)
+        public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists=false)
         {
             var dbConnection = database.GetDbConnection() as SqlConnection;
             bool deleteTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
-            return deleteTable ? SqlUtil.DeleteTable(tableName, dbConnection, null) : -1;
+            return deleteTable ? SqlUtil.DropTable(tableName, dbConnection, null) : -1;
         }
         public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
