@@ -17,7 +17,7 @@ The framework currently supports the following operations:
   dotnet add package N.EntityFrameworkCore.Extensions
   ```
   
- ### Usage
+ ## Usage
    
   **BulkInsert() - Performs a insert operation with a large number of entities**  
    ```
@@ -112,4 +112,22 @@ The framework currently supports the following operations:
   //This will change all products priced at $5.35 to $5.75 
   dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
 ```
+
+## Options
+  **Transaction** 
   
+  When using any of the following bulk data operations (BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery), if an external transaction exists, then it will be utilized.
+   
+   ``` 
+  var dbcontext = new MyDbContext(); 
+  var transaction = context.Database.BeginTransaction();
+  try
+  {
+      dbcontext.BulkInsert(orders);
+      transaction.Commit();
+  }
+  catch
+  {
+      transaction.Rollback();
+  }
+```  

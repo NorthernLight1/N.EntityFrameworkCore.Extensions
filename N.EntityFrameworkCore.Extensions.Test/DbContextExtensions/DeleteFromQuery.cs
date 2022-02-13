@@ -76,5 +76,24 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(rowsDeleted == rowsToDelete, "The number of rows deleted must match the count of the rows that matched in the database");
             Assert.IsTrue(oldTotal - newTotal == rowsDeleted, "The rows deleted must match the new count minues the old count");
         }
+        [TestMethod]
+        public void With_Transaction()
+        {
+            var dbContext = SetupDbContext(true);
+            int rowsDeleted;
+            int oldTotal = dbContext.Orders.Count();
+            var orders = dbContext.Orders.Where(o => o.Price <= 10);
+            int rowsToDelete = orders.Count();
+            using (var transaction = dbContext.Database.BeginTransaction())
+            {
+                rowsDeleted = orders.DeleteFromQuery();
+                transaction.Rollback();
+            }
+            int newTotal = dbContext.Orders.Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
+            Assert.IsTrue(rowsDeleted == orders.Count(), "The number of rows update must match the count of rows that match the condtion (Price < $10)");
+            Assert.IsTrue(newTotal == oldTotal, "The new count must match the old count since the transaction was rollbacked");
+        }
     }
 }

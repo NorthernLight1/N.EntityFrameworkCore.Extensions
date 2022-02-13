@@ -155,6 +155,29 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(allIdentityFieldsMatch, "The identities between the source and the database should match.");
         }
         [TestMethod]
+        public void With_Transaction()
+        {
+            var dbContext = SetupDbContext(false);
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+            int rowsInserted, newTotal;
+            using (var transaction = dbContext.Database.BeginTransaction())
+            {
+                rowsInserted = dbContext.BulkInsert(orders);
+                newTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+                transaction.Rollback();
+            }
+            int rollbackTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+
+            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+            Assert.IsTrue(rollbackTotal == oldTotal, "The number of rows after the transacation has been rollbacked should match the original count");
+        }
+        [TestMethod]
         public void With_Options_InsertIfNotExists()
         {
             var dbContext = SetupDbContext(true);
