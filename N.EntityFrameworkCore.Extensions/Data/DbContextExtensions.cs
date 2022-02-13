@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
+using Microsoft.EntityFrameworkCore.Storage;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
@@ -43,13 +44,11 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
-            var dbConnection = context.GetSqlConnection();
 
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var transaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(context))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
@@ -67,23 +66,19 @@ namespace N.EntityFrameworkCore.Extensions
                         CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
                     rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
-                    transaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    transaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
                 return rowsAffected;
             }
         }
         private static void Validate(TableMapping tableMapping)
         {
-            if(!tableMapping.GetPrimaryKeyColumns().Any())
+            if (!tableMapping.GetPrimaryKeyColumns().Any())
             {
                 throw new Exception("You must have a primary key on this table to use this function.");
             }
@@ -94,7 +89,7 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options) where T : class, new()
         {
-            var dbContext = GetDbContextFromIQuerable(querable);
+            var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
             //Open datbase connection
             if (dbConnection.State == ConnectionState.Closed)
@@ -116,7 +111,7 @@ namespace N.EntityFrameworkCore.Extensions
             while (reader.Read())
             {
                 var entity = new T();
-                for(int i=0; i < reader.FieldCount; i++)
+                for (int i = 0; i < reader.FieldCount; i++)
                 {
                     var value = reader.GetValue(i);
                     if (value == DBNull.Value)
@@ -126,7 +121,7 @@ namespace N.EntityFrameworkCore.Extensions
                 entities.Add(entity);
                 count++;
                 totalCount++;
-                if(count == options.BatchSize)
+                if (count == options.BatchSize)
                 {
                     action(new FetchResult<T> { Results = entities, Batch = batch });
                     entities.Clear();
@@ -135,7 +130,7 @@ namespace N.EntityFrameworkCore.Extensions
                 }
             }
 
-            if(entities.Count > 0)
+            if (entities.Count > 0)
                 action(new FetchResult<T> { Results = entities, Batch = batch });
             //close the DataReader
             reader.Close();
@@ -152,15 +147,13 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
-            var dbConnection = context.GetSqlConnection();
 
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var transaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(context))
             {
                 try
                 {
+                    var dbConnection = dbTransactionContext.Connection;
+                    var transaction = dbTransactionContext.CurrentTransaction;
                     string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetColumns(options.KeepIdentity);
@@ -214,23 +207,18 @@ namespace N.EntityFrameworkCore.Extensions
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
-                    transaction.Commit();
+                    dbTransactionContext.Commit();
                     return rowsAffected;
                 }
                 catch (Exception ex)
                 {
-                    transaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw;
                 }
-                finally
-                {
-                    dbConnection.Close();
-                }
-
             }
         }
         private static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-            string[] inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId=false)
+            string[] inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
         {
             var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId);
 
@@ -289,16 +277,14 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsAffected = 0;
             var outputRows = new List<BulkMergeOutputRow<T>>();
             var tableMapping = context.GetTableMapping(typeof(T));
-            var dbConnection = context.GetSqlConnection();
             int rowsInserted = 0;
             int rowsUpdated = 0;
             int rowsDeleted = 0;
 
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var transaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(context))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
@@ -368,16 +354,12 @@ namespace N.EntityFrameworkCore.Extensions
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
-                    transaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    transaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
 
                 return new BulkMergeResult<T>
@@ -403,13 +385,11 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsUpdated = 0;
             var outputRows = new List<BulkMergeOutputRow<T>>();
             var tableMapping = context.GetTableMapping(typeof(T));
-            var dbConnection = context.GetSqlConnection();
 
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var transaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(context))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
@@ -433,16 +413,12 @@ namespace N.EntityFrameworkCore.Extensions
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
-                    transaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    transaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
 
                 return rowsUpdated;
@@ -507,47 +483,36 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-        public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout=null) where T : class
+        public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            var dbContext = GetDbContextFromIQuerable(querable);
-            var dbConnection = dbContext.GetSqlConnection();
-            //Open datbase connection
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-            using (var dbTransaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var dbTransaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
                     rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
 
-                    dbTransaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception ex)
                 {
-                    dbTransaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw ex;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
             }
             return rowAffected;
         }
-        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout=null) where T : class
+        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            var dbContext = GetDbContextFromIQuerable(querable);
-            var dbConnection = dbContext.GetSqlConnection();
-            //Open datbase connection
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var dbTransaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var dbTransaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
@@ -564,47 +529,35 @@ namespace N.EntityFrameworkCore.Extensions
                         rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
                     }
 
-                    dbTransaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception ex)
                 {
-                    dbTransaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw ex;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
             }
             return rowAffected;
         }
-        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout=null) where T: class
+        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            var dbContext = GetDbContextFromIQuerable(querable);
-            var dbConnection = dbContext.GetSqlConnection();
-            //Open datbase connection
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-
-            using (var dbTransaction = dbConnection.BeginTransaction())
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
+                var dbConnection = dbTransactionContext.Connection;
+                var dbTransaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                     sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
                     rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
-                    dbTransaction.Commit();
+                    dbTransactionContext.Commit();
                 }
                 catch (Exception ex)
                 {
-                    dbTransaction.Rollback();
+                    dbTransactionContext.Rollback();
                     throw ex;
-                }
-                finally
-                {
-                    dbConnection.Close();
                 }
             }
             return rowAffected;
@@ -662,21 +615,21 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public static void Clear<T>(this DbSet<T> dbSet) where T : class
         {
-            var dbContext = GetDbContextFromIQuerable(dbSet);
+            var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             var dbConnection = dbContext.GetSqlConnection();
             SqlUtil.ClearTable(tableMapping.FullQualifedTableName, dbConnection, null);
         }
         public static void Truncate<T>(this DbSet<T> dbSet) where T : class
         {
-            var dbContext = GetDbContextFromIQuerable(dbSet);
+            var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             var dbConnection = dbContext.GetSqlConnection();
             SqlUtil.TruncateTable(tableMapping.FullQualifedTableName, dbConnection, null);
         }
         private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
         {
-            var dbContext = GetDbContextFromIQuerable(querable);
+            var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
             return InternalQueryToFile(dbConnection, stream, options, querable.ToQueryString());
         }
@@ -759,7 +712,7 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return SqlUtil.ClearTable(tableName, dbConnection, null);
         }
-        public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists=false)
+        public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
             var dbConnection = database.GetDbConnection() as SqlConnection;
             bool deleteTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
@@ -776,12 +729,13 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public static bool TableExists(this DatabaseFacade database, string tableName)
         {
+            var dbTransaction = database.CurrentTransaction != null ? database.CurrentTransaction.GetDbTransaction() as SqlTransaction : null;
             var dbConnection = database.GetDbConnection() as SqlConnection;
-            return SqlUtil.TableExists(tableName, dbConnection, null);
+            return SqlUtil.TableExists(tableName, dbConnection, dbTransaction);
         }
         public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
         {
-            var dbContext = GetDbContextFromIQuerable(querable);
+            var dbContext = querable.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             efExtensionsCommandInterceptor.AddCommand(Guid.NewGuid(),
                 new EfExtensionsCommand
@@ -793,12 +747,12 @@ namespace N.EntityFrameworkCore.Extensions
                 });
             return querable;
         }
-        private static DbContext GetDbContextFromIQuerable<T>(IQueryable<T> querable) where T: class
+        internal static DbContext GetDbContext<T>(this IQueryable<T> querable) where T : class
         {
             DbContext dbContext;
             try
             {
-               if ((querable as InternalDbSet<T>) != null)
+                if ((querable as InternalDbSet<T>) != null)
                 {
                     dbContext = querable.GetPrivateFieldValue("_context") as DbContext;
                 }
@@ -811,7 +765,7 @@ namespace N.EntityFrameworkCore.Extensions
                     dbContext = queryDependencies.CurrentContext.Context as DbContext;
                 }
                 else
-               {
+                {
                     throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
                 }
             }
@@ -821,7 +775,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return dbContext;
         }
-        private static SqlConnection GetSqlConnection(this DbContext context)
+        internal static SqlConnection GetSqlConnection(this DbContext context)
         {
             return context.Database.GetDbConnection() as SqlConnection;
         }

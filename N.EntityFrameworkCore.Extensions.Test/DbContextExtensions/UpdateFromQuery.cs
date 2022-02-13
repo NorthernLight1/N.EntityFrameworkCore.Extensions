@@ -133,6 +133,25 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
         }
         [TestMethod]
+        public void With_Transaction()
+        {
+            var dbContext = SetupDbContext(true);
+            int oldTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
+            int rowUpdated;
+            using (var transaction = dbContext.Database.BeginTransaction())
+            {
+                rowUpdated = dbContext.Orders.Where(o => o.Price < 10M).UpdateFromQuery(o => new Order { Price = 25.30M });
+                transaction.Rollback();
+            }
+            int newTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
+            int matchCount = dbContext.Orders.Where(o => o.Price == 25.30M).Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
+            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
+            Assert.IsTrue(newTotal == oldTotal, "The new count must match the old count since the transaction was rollbacked");
+            Assert.IsTrue(matchCount == 0, "The match count must be equal to 0 since the transaction was rollbacked.");
+        }
+        [TestMethod]
         public void With_Variables()
         {
             var dbContext = SetupDbContext(true);
