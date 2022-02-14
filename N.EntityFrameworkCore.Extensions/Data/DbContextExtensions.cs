@@ -21,7 +21,7 @@ using System.Text;
 
 namespace N.EntityFrameworkCore.Extensions
 {
-    public static partial class DbContextExtensions
+    public static class DbContextExtensions
     {
         private static EfExtensionsCommandInterceptor efExtensionsCommandInterceptor;
         static DbContextExtensions()
@@ -435,7 +435,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        private static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
+        internal static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
         {
             string tableName = string.Empty;
             if (usePermanentTable)
@@ -701,37 +701,6 @@ namespace N.EntityFrameworkCore.Extensions
                 DataRowCount = dataRowCount,
                 TotalRowCount = totalRowCount
             };
-        }
-        public static SqlQuery FromSqlQuery(this DatabaseFacade database, string sqlText, params object[] parameters)
-        {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return new SqlQuery(dbConnection, sqlText, parameters);
-        }
-        public static int ClearTable(this DatabaseFacade database, string tableName)
-        {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return SqlUtil.ClearTable(tableName, dbConnection, null);
-        }
-        public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
-        {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            bool deleteTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
-            return deleteTable ? SqlUtil.DropTable(tableName, dbConnection, null) : -1;
-        }
-        public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
-        {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            bool truncateTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
-            if (truncateTable)
-            {
-                SqlUtil.TruncateTable(tableName, dbConnection, null);
-            }
-        }
-        public static bool TableExists(this DatabaseFacade database, string tableName)
-        {
-            var dbTransaction = database.CurrentTransaction != null ? database.CurrentTransaction.GetDbTransaction() as SqlTransaction : null;
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return SqlUtil.TableExists(tableName, dbConnection, dbTransaction);
         }
         public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
         {
