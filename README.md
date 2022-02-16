@@ -171,5 +171,17 @@ The framework currently supports the following operations:
 | BulkUpdateAsync(items, cancellationToken)  | Bulk update entities asynchronously in your database.  |
 | BulkUpdateAsync(items, options)  | Bulk update entities asynchronously in your database.  |
 | BulkUpdateAsync(items, options, cancellationToken)  | Bulk update entities asynchronously in your database.  |
+| **DeleteFromQuery** |
+| DeleteFromQuery() | Deletes all rows from the database using a LINQ query without loading in context |
+| DeleteFromQueryAsync() | Deletes all rows from the database using a LINQ query without loading in context using asynchronous task |
+| DeleteFromQueryAsync(cancellationToken) | Deletes all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **InsertFromQuery** |
+| InsertFromQuery(tableName, selectExpression) | Insert all rows from the database using a LINQ query without loading in context |
+| InsertFromQueryAsync(tableName, selectExpression) | Insert all rows from the database using a LINQ query without loading in context using asynchronous task |
+| InsertFromQueryAsync(tableName, selectExpression, cancellationToken) | Insert all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **UpdateFromQuery** |
+| UpdateFromQuery(updateExpression) | Updates all rows from the database using a LINQ query without loading in context |
+| UpdateFromQueryAsync(updateExpression) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task |
+| UpdateFromQueryAsync(updateExpression, cancellationToken) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task  | 
   
   
