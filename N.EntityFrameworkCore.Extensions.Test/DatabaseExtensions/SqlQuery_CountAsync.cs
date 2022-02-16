@@ -5,7 +5,7 @@ using System.Linq;
 namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
     [TestClass]
-    public class SqlQuery_Count : DatabaseExtensionsBase
+    public class SqlQuery_CountAsync : DatabaseExtensionsBase
     {
         [TestMethod]
         public void With_Orders_Table()

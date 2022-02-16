@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
-    class DatabaseExtensionsBase
+    public class DatabaseExtensionsBase
     {
         protected TestDbContext SetupDbContext(bool populateData)
         {

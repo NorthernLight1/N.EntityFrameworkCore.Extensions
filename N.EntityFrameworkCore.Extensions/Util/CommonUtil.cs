@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -6,6 +7,18 @@ using System.Text;
 
 namespace N.EntityFrameworkCore.Extensions.Util
 {
+    internal static class CommonUtil
+    {
+        internal static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
+        {
+            string tableName = string.Empty;
+            if (usePermanentTable)
+                tableName = string.Format("[{0}].[tmp_be_xx_{1}_{2}]", tableMapping.Schema, tableMapping.TableName, sqlConnection.ClientConnectionId.ToString());
+            else
+                tableName = string.Format("[{0}].[#tmp_be_xx_{1}]", tableMapping.Schema, tableMapping.TableName);
+            return tableName;
+        }
+    }
     internal static class CommonUtil<T>
     {
         internal static string[] GetColumns(Expression<Func<T, T, bool>> expression, string[] tableNames)

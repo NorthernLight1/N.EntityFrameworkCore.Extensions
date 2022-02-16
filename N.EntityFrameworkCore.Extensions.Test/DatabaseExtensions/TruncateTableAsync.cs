@@ -1,18 +1,21 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
     [TestClass]
-    public class Clear : DbContextExtensionsBase
+    public class TruncateTableAsync :DatabaseExtensionsBase
     {
         [TestMethod]
-        public void Using_Dbset()
+        public async Task With_Orders_Table()
         {
             var dbContext = SetupDbContext(true);
             int oldOrdersCount = dbContext.Orders.Count();
-            dbContext.Orders.Clear();
+            await dbContext.Database.TruncateTableAsync("Orders");
             int newOrdersCount = dbContext.Orders.Count();
 
             Assert.IsTrue(oldOrdersCount > 0, "Orders table should have data");

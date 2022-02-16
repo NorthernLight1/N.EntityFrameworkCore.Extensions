@@ -2,13 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <Version>1.6.0</Version>
+    <Version>1.6.1</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/</PackageProjectUrl>
     <Authors>Northern25</Authors>
     <Copyright>Copyright © 2022</Copyright>
     <Company />
-    <Description>N.EntityFrameworkCore.Extensions extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.</Description>
+    <Description>N.EntityFrameworkCore.Extensions extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.
+
+Inheritance models supported: Table-Per-Hierarchy</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 

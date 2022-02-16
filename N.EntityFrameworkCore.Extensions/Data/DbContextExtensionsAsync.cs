@@ -1,11 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.EntityFrameworkCore.Query;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
@@ -17,30 +12,22 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions
 {
-    public static class DbContextExtensions
+    public static class DbContextExtensionsAsync
     {
-        private static EfExtensionsCommandInterceptor efExtensionsCommandInterceptor;
-        static DbContextExtensions()
+        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            efExtensionsCommandInterceptor = new EfExtensionsCommandInterceptor();
+            return await context.BulkDeleteAsync(entities, new BulkDeleteOptions<T>(), cancellationToken);
         }
-        public static void SetupEfCoreExtensions(this DbContextOptionsBuilder builder)
+        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction, CancellationToken cancellationToken = default)
         {
-            builder.AddInterceptors(efExtensionsCommandInterceptor);
+            return await context.BulkDeleteAsync(entities, optionsAction.Build(), cancellationToken);
         }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities)
-        {
-            return context.BulkDelete(entities, new BulkDeleteOptions<T>());
-        }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction)
-        {
-            return context.BulkDelete(entities, optionsAction.Build());
-        }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options)
+        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options, CancellationToken cancellationToken = default)
         {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
@@ -59,13 +46,13 @@ namespace N.EntityFrameworkCore.Extensions
                     if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
                         throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
-
-                    SqlUtil.CloneTable(destinationTableName, stagingTableName, keyColumnNames, dbConnection, transaction);
-                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+                    context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
+                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, 
+                        false, cancellationToken);
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
                         CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
-                    rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
-                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
+                    rowsAffected = await context.Database.ExecuteSqlRawAsync(deleteSql, cancellationToken);
+                    context.Database.DropTable(stagingTableName);
                     dbTransactionContext.Commit();
                 }
                 catch (Exception)
@@ -76,18 +63,11 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-        private static void Validate(TableMapping tableMapping)
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
         {
-            if (!tableMapping.GetPrimaryKeyColumns().Any())
-            {
-                throw new Exception("You must have a primary key on this table to use this function.");
-            }
+            await FetchAsync(querable, action, optionsAction.Build(), cancellationToken);
         }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions> optionsAction) where T : class, new()
-        {
-            Fetch(querable, action, optionsAction.Build());
-        }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options) where T : class, new()
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options, CancellationToken cancellationToken = default) where T : class, new()
         {
             var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
@@ -95,7 +75,7 @@ namespace N.EntityFrameworkCore.Extensions
             if (dbConnection.State == ConnectionState.Closed)
                 dbConnection.Open();
             var command = new SqlCommand(querable.ToQueryString(), dbConnection);
-            var reader = command.ExecuteReader();
+            var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             List<PropertyInfo> propertySetters = new List<PropertyInfo>();
             var entityType = typeof(T);
@@ -108,7 +88,7 @@ namespace N.EntityFrameworkCore.Extensions
             int count = 0;
             int totalCount = 0;
             var entities = new List<T>();
-            while (reader.Read())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var entity = new T();
                 for (int i = 0; i < reader.FieldCount; i++)
@@ -128,22 +108,23 @@ namespace N.EntityFrameworkCore.Extensions
                     count = 0;
                     batch++;
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             if (entities.Count > 0)
                 action(new FetchResult<T> { Results = entities, Batch = batch });
             //close the DataReader
-            reader.Close();
+            await reader.CloseAsync();
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
+        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return context.BulkInsert<T>(entities, new BulkInsertOptions<T> { });
+            return await context.BulkInsertAsync<T>(entities, new BulkInsertOptions<T> { }, cancellationToken);
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction)
+        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction, CancellationToken cancellationToken = default)
         {
-            return context.BulkInsert<T>(entities, optionsAction.Build());
+            return await context.BulkInsertAsync<T>(entities, optionsAction.Build(), cancellationToken);
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
+        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options, CancellationToken cancellationToken = default)
         {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
@@ -159,8 +140,8 @@ namespace N.EntityFrameworkCore.Extensions
                     string[] columnNames = tableMapping.GetColumns(options.KeepIdentity);
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
-                    SqlUtil.CloneTable(destinationTableName, stagingTableName, null, dbConnection, transaction, Common.Constants.InternalId_ColumnName);
-                    var bulkInsertResult = BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true);
+                    context.Database.CloneTable(destinationTableName, stagingTableName, null, Common.Constants.InternalId_ColumnName);
+                    var bulkInsertResult = await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true, cancellationToken);
 
                     IEnumerable<string> columnsToInsert = columnNames;
 
@@ -183,7 +164,7 @@ namespace N.EntityFrameworkCore.Extensions
 
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
                         SqlUtil.ToggleIdentityInsert(true, destinationTableName, dbConnection, transaction);
-                    var bulkQueryResult = context.BulkQuery(insertSqlText, dbConnection, transaction, options);
+                    var bulkQueryResult = await context.BulkQueryAsync(insertSqlText, dbConnection, transaction, options, cancellationToken);
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
                         SqlUtil.ToggleIdentityInsert(false, destinationTableName, dbConnection, transaction);
                     rowsAffected = bulkQueryResult.RowsAffected;
@@ -204,8 +185,7 @@ namespace N.EntityFrameworkCore.Extensions
                         }
                     }
 
-                    SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
-
+                    context.Database.DropTable(stagingTableName);
                     //ClearEntityStateToUnchanged(context, entities);
                     dbTransactionContext.Commit();
                     return rowsAffected;
@@ -217,8 +197,8 @@ namespace N.EntityFrameworkCore.Extensions
                 }
             }
         }
-        private static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-            string[] inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
+        private async static Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+            string[] inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false, CancellationToken cancellationToken = default)
         {
             var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId);
 
@@ -240,7 +220,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
             }
-            sqlBulkCopy.WriteToServer(dataReader);
+            await sqlBulkCopy.WriteToServerAsync(dataReader, cancellationToken);
 
             return new BulkInsertResult<T>
             {
@@ -248,31 +228,31 @@ namespace N.EntityFrameworkCore.Extensions
                 EntityMap = dataReader.EntityMap
             };
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
+        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return BulkMerge(context, entities, new BulkMergeOptions<T>());
+            return await BulkMergeAsync(context, entities, new BulkMergeOptions<T>(), cancellationToken);
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
         {
-            return InternalBulkMerge(context, entities, options);
+            return await InternalBulkMergeAsync(context, entities, options, cancellationToken);
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction)
+        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction, CancellationToken cancellationToken = default)
         {
-            return BulkMerge(context, entities, optionsAction.Build());
+            return await BulkMergeAsync(context, entities, optionsAction.Build(), cancellationToken);
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities)
+        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return BulkSync(context, entities, new BulkSyncOptions<T>());
+            return await BulkSyncAsync(context, entities, new BulkSyncOptions<T>(), cancellationToken);
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction)
+        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction, CancellationToken cancellationToken = default)
         {
-            return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, optionsAction.Build()));
+            return BulkSyncResult<T>.Map(await InternalBulkMergeAsync(context, entities, optionsAction.Build(), cancellationToken));
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options)
+        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options, CancellationToken cancellationToken = default)
         {
-            return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, options));
+            return BulkSyncResult<T>.Map(await InternalBulkMergeAsync(context, entities, options, cancellationToken));
         }
-        private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+        private async static Task<BulkMergeResult<T>> InternalBulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
         {
             int rowsAffected = 0;
             var outputRows = new List<BulkMergeOutputRow<T>>();
@@ -296,7 +276,7 @@ namespace N.EntityFrameworkCore.Extensions
                         throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
 
                     SqlUtil.CloneTable(destinationTableName, stagingTableName, null, dbConnection, transaction, Common.Constants.InternalId_ColumnName);
-                    var bulkInsertResult = BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true);
+                    var bulkInsertResult = await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true, cancellationToken);
 
                     IEnumerable<string> columnsToInsert = columnNames.Where(o => !options.GetIgnoreColumnsOnInsert().Contains(o));
                     IEnumerable<string> columnstoUpdate = columnNames.Where(o => !options.GetIgnoreColumnsOnUpdate().Contains(o)).Select(o => string.Format("t.{0}=s.{0}", o));
@@ -319,7 +299,7 @@ namespace N.EntityFrameworkCore.Extensions
                         SqlUtil.ConvertToColumnString(columnsToOutput)
                         );
 
-                    var bulkQueryResult = context.BulkQuery(mergeSqlText, dbConnection, transaction, options);
+                    var bulkQueryResult = await context.BulkQueryAsync(mergeSqlText, dbConnection, transaction, options, cancellationToken);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
                     foreach (var result in bulkQueryResult.Results)
@@ -350,6 +330,7 @@ namespace N.EntityFrameworkCore.Extensions
                         if (action == SqlMergeAction.Insert) rowsInserted++;
                         else if (action == SqlMergeAction.Update) rowsUpdated++;
                         else if (action == SqlMergeAction.Delete) rowsDeleted++;
+                        cancellationToken.ThrowIfCancellationRequested();
                     }
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
@@ -372,15 +353,15 @@ namespace N.EntityFrameworkCore.Extensions
                 };
             }
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities)
+        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
-            return BulkUpdate<T>(context, entities, new BulkUpdateOptions<T>());
+            return await BulkUpdateAsync<T>(context, entities, new BulkUpdateOptions<T>(), cancellationToken);
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction)
+        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction, CancellationToken cancellationToken = default)
         {
-            return BulkUpdate<T>(context, entities, optionsAction.Build());
+            return await BulkUpdateAsync<T>(context, entities, optionsAction.Build(), cancellationToken);
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
+        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options, CancellationToken cancellationToken = default)
         {
             int rowsUpdated = 0;
             var outputRows = new List<BulkMergeOutputRow<T>>();
@@ -401,7 +382,7 @@ namespace N.EntityFrameworkCore.Extensions
                         throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
 
                     SqlUtil.CloneTable(destinationTableName, stagingTableName, null, dbConnection, transaction);
-                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
+                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
 
                     IEnumerable<string> columnstoUpdate = columnNames.Where(o => !options.IgnoreColumnsOnUpdate.GetObjectProperties().Contains(o));
 
@@ -409,7 +390,7 @@ namespace N.EntityFrameworkCore.Extensions
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
                         updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, storeGeneratedColumnNames, "s", "t"));
 
-                    rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction, options.CommandTimeout);
+                    rowsUpdated = await context.Database.ExecuteSqlRawAsync(updateSql, cancellationToken);
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 
                     //ClearEntityStateToUnchanged(context, entities);
@@ -424,18 +405,7 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsUpdated;
             }
         }
-
-        private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
-        {
-            foreach (var entity in entities)
-            {
-                var entry = dbContext.Entry(entity);
-                if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
-                    dbContext.Entry(entity).State = EntityState.Unchanged;
-            }
-        }
-
-        private static BulkQueryResult BulkQuery(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options)
+        private async static Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
         {
             var results = new List<object[]>();
             var columns = new List<string>();
@@ -444,7 +414,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 command.CommandTimeout = options.CommandTimeout.Value;
             }
-            var reader = command.ExecuteReader();
+            var reader = await command.ExecuteReaderAsync(cancellationToken);
             //Get column names
             for (int i = 0; i < reader.FieldCount; i++)
             {
@@ -453,7 +423,7 @@ namespace N.EntityFrameworkCore.Extensions
             try
             {
                 //Read data
-                while (reader.Read())
+                while (await reader.ReadAsync(cancellationToken))
                 {
                     Object[] values = new Object[reader.FieldCount];
                     reader.GetValues(values);
@@ -463,7 +433,7 @@ namespace N.EntityFrameworkCore.Extensions
             finally
             {
                 //close the DataReader
-                reader.Close();
+                await reader.CloseAsync();
             }
 
             return new BulkQueryResult
@@ -473,10 +443,11 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-        public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
+        public async static Task<int> DeleteFromQueryAsync<T>(this IQueryable<T> querable, int? commandTimeout = null, CancellationToken cancellationToken = default) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            var dbContext = querable.GetDbContext();
+            using (var dbTransactionContext = new DbTransactionContext(dbContext))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;
@@ -484,7 +455,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters, cancellationToken);
 
                     dbTransactionContext.Commit();
                 }
@@ -496,10 +467,12 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
+        public async static Task<int> InsertFromQueryAsync<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null, 
+            CancellationToken cancellationToken = default) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            var dbContext = querable.GetDbContext();
+            using (var dbTransactionContext = new DbTransactionContext(dbContext))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;
@@ -510,13 +483,13 @@ namespace N.EntityFrameworkCore.Extensions
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                         SqlUtil.ToggleIdentityInsert(true, tableName, dbConnection, dbTransaction);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                         SqlUtil.ToggleIdentityInsert(false, tableName, dbConnection, dbTransaction);
                     }
                     else
                     {
                         sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                     }
 
                     dbTransactionContext.Commit();
@@ -529,10 +502,12 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
+        public async static Task<int> UpdateFromQueryAsync<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null, 
+            CancellationToken cancellationToken = default) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            var dbContext = querable.GetDbContext();
+            using (var dbTransactionContext = new DbTransactionContext(dbContext))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;
@@ -541,7 +516,7 @@ namespace N.EntityFrameworkCore.Extensions
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                     sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                     dbTransactionContext.Commit();
                 }
                 catch (Exception ex)
@@ -552,78 +527,88 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath) where T : class
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, CancellationToken cancellationToken = default) where T : class
         {
-            return QueryToCsvFile<T>(querable, filePath, new QueryToFileOptions());
+            return await QueryToCsvFileAsync<T>(querable, filePath, new QueryToFileOptions(), cancellationToken);
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream) where T : class
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, CancellationToken cancellationToken = default) where T : class
         {
-            return QueryToCsvFile<T>(querable, stream, new QueryToFileOptions());
+            return await QueryToCsvFileAsync<T>(querable, stream, new QueryToFileOptions(), cancellationToken);
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction, 
+            CancellationToken cancellationToken = default) where T : class
         {
-            return QueryToCsvFile<T>(querable, filePath, optionsAction.Build());
+            return await QueryToCsvFileAsync<T>(querable, filePath, optionsAction.Build(), cancellationToken);
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction, 
+            CancellationToken cancellationToken = default) where T : class
         {
-            return QueryToCsvFile<T>(querable, stream, optionsAction.Build());
+            return await QueryToCsvFileAsync<T>(querable, stream, optionsAction.Build(), cancellationToken);
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options) where T : class
-        {
-            var fileStream = File.Create(filePath);
-            return QueryToCsvFile<T>(querable, fileStream, options);
-        }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
-        {
-            return InternalQueryToFile<T>(querable, stream, options);
-        }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
-        {
-            return SqlQueryToCsvFile(database, filePath, new QueryToFileOptions(), sqlText, parameters);
-        }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
-        {
-            return SqlQueryToCsvFile(database, stream, new QueryToFileOptions(), sqlText, parameters);
-        }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
-        {
-            return SqlQueryToCsvFile(database, filePath, optionsAction.Build(), sqlText, parameters);
-        }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
-        {
-            return SqlQueryToCsvFile(database, stream, optionsAction.Build(), sqlText, parameters);
-        }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options, 
+            CancellationToken cancellationToken = default) where T : class
         {
             var fileStream = File.Create(filePath);
-            return SqlQueryToCsvFile(database, fileStream, options, sqlText, parameters);
+            return await QueryToCsvFileAsync<T>(querable, fileStream, options, cancellationToken);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
+        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options, 
+            CancellationToken cancellationToken = default) where T : class
+        {
+            return await InternalQueryToFileAsync<T>(querable, stream, options, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, string sqlText, object[] parameters, 
+            CancellationToken cancellationToken = default)
+        {
+            return await SqlQueryToCsvFileAsync(database, filePath, new QueryToFileOptions(), sqlText, parameters, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, string sqlText, object[] parameters, 
+            CancellationToken cancellationToken = default)
+        {
+            return await SqlQueryToCsvFileAsync(database, stream, new QueryToFileOptions(), sqlText, parameters, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters, 
+            CancellationToken cancellationToken = default)
+        {
+            return await SqlQueryToCsvFileAsync(database, filePath, optionsAction.Build(), sqlText, parameters, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters,
+            CancellationToken cancellationToken = default)
+        {
+            return await SqlQueryToCsvFileAsync(database, stream, optionsAction.Build(), sqlText, parameters, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, object[] parameters, 
+            CancellationToken cancellationToken = default)
+        {
+            var fileStream = File.Create(filePath);
+            return await SqlQueryToCsvFileAsync(database, fileStream, options, sqlText, parameters, cancellationToken);
+        }
+        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters, 
+            CancellationToken cancellationToken = default)
         {
             var dbConnection = database.GetDbConnection() as SqlConnection;
-            return InternalQueryToFile(dbConnection, stream, options, sqlText, parameters);
+            return await InternalQueryToFileAsync(dbConnection, stream, options, sqlText, parameters, cancellationToken);
         }
-        public static void Clear<T>(this DbSet<T> dbSet) where T : class
+        public async static Task ClearAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
         {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
-            var dbConnection = dbContext.GetSqlConnection();
-            SqlUtil.ClearTable(tableMapping.FullQualifedTableName, dbConnection, null);
+            await dbContext.Database.ClearTableAsync(tableMapping.FullQualifedTableName, cancellationToken);
         }
-        public static void Truncate<T>(this DbSet<T> dbSet) where T : class
+        public async static Task TruncateAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
         {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
-            var dbConnection = dbContext.GetSqlConnection();
-            SqlUtil.TruncateTable(tableMapping.FullQualifedTableName, dbConnection, null);
+            await dbContext.Database.TruncateTableAsync(tableMapping.FullQualifedTableName, false, cancellationToken);
         }
-        private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+        private async static Task<QueryToFileResult> InternalQueryToFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options, 
+            CancellationToken cancellationToken = default) where T : class
         {
             var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
-            return InternalQueryToFile(dbConnection, stream, options, querable.ToQueryString());
+            return await InternalQueryToFileAsync(dbConnection, stream, options, querable.ToQueryString(), null, cancellationToken);
         }
-        private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
+        private async static Task<QueryToFileResult> InternalQueryToFileAsync(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null,
+            CancellationToken cancellationToken = default)
         {
             int dataRowCount = 0;
             int totalRowCount = 0;
@@ -644,7 +629,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
 
             StreamWriter streamWriter = new StreamWriter(stream);
-            using (var reader = command.ExecuteReader())
+            using (var reader = await command.ExecuteReaderAsync(cancellationToken))
             {
                 //Header row
                 if (options.IncludeHeaderRow)
@@ -656,14 +641,14 @@ namespace N.EntityFrameworkCore.Extensions
                         streamWriter.Write(options.TextQualifer);
                         if (i != reader.FieldCount - 1)
                         {
-                            streamWriter.Write(options.ColumnDelimiter);
+                            await streamWriter.WriteAsync(options.ColumnDelimiter);
                         }
                     }
                     totalRowCount++;
-                    streamWriter.Write(options.RowDelimiter);
+                    await streamWriter.WriteAsync(options.RowDelimiter);
                 }
                 //Write data rows to file
-                while (reader.Read())
+                while (await reader.ReadAsync(cancellationToken))
                 {
                     Object[] values = new Object[reader.FieldCount];
                     reader.GetValues(values);
@@ -674,14 +659,14 @@ namespace N.EntityFrameworkCore.Extensions
                         streamWriter.Write(options.TextQualifer);
                         if (i != values.Length - 1)
                         {
-                            streamWriter.Write(options.ColumnDelimiter);
+                            await streamWriter.WriteAsync(options.ColumnDelimiter);
                         }
                     }
-                    streamWriter.Write(options.RowDelimiter);
+                    await streamWriter.WriteAsync(options.RowDelimiter);
                     dataRowCount++;
                     totalRowCount++;
                 }
-                streamWriter.Flush();
+                await streamWriter.FlushAsync();
                 bytesWritten = streamWriter.BaseStream.Length;
                 streamWriter.Close();
             }
@@ -692,93 +677,5 @@ namespace N.EntityFrameworkCore.Extensions
                 TotalRowCount = totalRowCount
             };
         }
-        public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
-        {
-            var dbContext = querable.GetDbContext();
-            var tableMapping = dbContext.GetTableMapping(typeof(T));
-            efExtensionsCommandInterceptor.AddCommand(Guid.NewGuid(),
-                new EfExtensionsCommand
-                {
-                    CommandType = EfExtensionsCommandType.ChangeTableName,
-                    OldValue = string.Format("[{0}]", tableMapping.TableName),
-                    NewValue = string.Format("[{0}].[{1}]", tableMapping.Schema, tableName),
-                    Connection = dbContext.GetSqlConnection()
-                });
-            return querable;
-        }
-        internal static DbContext GetDbContext<T>(this IQueryable<T> querable) where T : class
-        {
-            DbContext dbContext;
-            try
-            {
-                if ((querable as InternalDbSet<T>) != null)
-                {
-                    dbContext = querable.GetPrivateFieldValue("_context") as DbContext;
-                }
-                else if ((querable as EntityQueryable<T>) != null)
-                {
-                    var queryProvider = querable.GetPrivateFieldValue("_queryProvider");
-                    var queryCompiler = queryProvider.GetPrivateFieldValue("_queryCompiler");
-                    var contextFactory = queryCompiler.GetPrivateFieldValue("_queryContextFactory");
-                    var queryDependencies = contextFactory.GetPrivateFieldValue("_dependencies") as QueryContextDependencies;
-                    dbContext = queryDependencies.CurrentContext.Context as DbContext;
-                }
-                else
-                {
-                    throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
-                }
-            }
-            catch
-            {
-                throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
-            }
-            return dbContext;
-        }
-        internal static SqlConnection GetSqlConnection(this DbContext context)
-        {
-            return context.Database.GetDbConnection() as SqlConnection;
-        }
-
-        //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        //{
-        //    var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-        //    int i = 0;
-        //    foreach (var expressionParam in expression.Parameters)
-        //    {
-        //        if (parameters.Length <= i) break;
-        //        stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-        //        i++;
-        //    }
-        //    stringBuilder.Replace("&&", "AND");
-        //    stringBuilder.Replace("==", "=");
-        //    return stringBuilder.ToString();
-        //}
-        //private static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
-        //{
-        //    List<string> setValues = new List<string>();
-        //    var memberInitExpression = expression.Body as MemberInitExpression;
-        //    foreach (var binding in memberInitExpression.Bindings)
-        //    {
-        //        var constantExpression = binding.GetPrivateFieldValue("Expression") as ConstantExpression;
-        //        var setValue = "";
-        //        if(constantExpression.Value == null)
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]=NULL", tableName, binding.Member.Name);
-        //        }
-        //        else
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]='{2}'", tableName, binding.Member.Name, constantExpression.Value);
-        //        }
-        //        setValues.Add(setValue);
-        //    }
-        //    return string.Join(",", setValues);
-        //}
-
-        public static TableMapping GetTableMapping(this DbContext dbContext, Type type)
-        {
-            var entityType = dbContext.Model.FindEntityType(type);
-            return new TableMapping(dbContext, entityType);
-        }
     }
 }
-
