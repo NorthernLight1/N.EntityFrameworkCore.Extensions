@@ -7,7 +7,9 @@ N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v
 
 The framework currently supports the following operations:
 
-  BulkDelete, BulkInsert, BulkMerge, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
+  BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
+  
+  Inheritance models supported: Table-Per-Hierarchy
   
   ### Installation
 
