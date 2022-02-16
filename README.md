@@ -11,6 +11,8 @@ The framework currently supports the following operations:
   
   Inheritance models supported: Table-Per-Hierarchy
   
+  Supports: local transactions, asynchronous execution
+  
   ### Installation
 
   The latest stable version is available on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions).
@@ -184,6 +186,10 @@ The framework currently supports the following operations:
 | **UpdateFromQuery** |
 | UpdateFromQuery(updateExpression) | Updates all rows from the database using a LINQ query without loading in context |
 | UpdateFromQueryAsync(updateExpression) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task |
-| UpdateFromQueryAsync(updateExpression, cancellationToken) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task  | 
+| UpdateFromQueryAsync(updateExpression, cancellationToken) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **Fetch** |
+| Fetch(fetchAction) | Fetch rows in batches from the database using a LINQ query |
+| FetchAsync(fetchAction)  | Fetch rows asynchronously in batches from the database using a LINQ query |
+| FetchAsync(fetchAction, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
   
   
