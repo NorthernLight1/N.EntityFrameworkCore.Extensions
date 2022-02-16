@@ -7,7 +7,11 @@ N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v
 
 The framework currently supports the following operations:
 
-  BulkDelete, BulkInsert, BulkMerge, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
+  BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
+  
+  Inheritance models supported: Table-Per-Hierarchy
+  
+  Supports: local transactions, asynchronous execution
   
   ### Installation
 
@@ -59,7 +63,9 @@ The framework currently supports the following operations:
   products.Add(new Product { Name="Shirt", Price=20.95M });
   dbcontext.BulkMerge(products);
   ```
-   **BulkSync() - Performs a sync operation with a large number of entities. By default any entities that do not exists in the source list will be deleted, but this can be disalbed in the options.**
+   **BulkSync() - Performs a sync operation with a large number of entities.** 
+   
+   By default any entities that do not exists in the source list will be deleted, but this can be disabled in the options.
   ```
   var dbcontext = new MyDbContext();
   var products = new List<Product>();
@@ -130,4 +136,60 @@ The framework currently supports the following operations:
   {
       transaction.Rollback();
   }
-```  
+```
+## Documentation
+| Name  | Description |
+| ------------- | ------------- |
+| **BulkDelete** |
+| BulkDelete<T>(items)  | Bulk delete entities in your database.  |
+| BulkDelete<T>(items, options)  | Bulk delete entities in your database.   |
+| BulkDeleteAsync(items)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, options)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, options, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
+| **BulkInsert** |
+| BulkInsert<T>(items)  | Bulk insert entities in your database.  |
+| BulkInsert<T>(items, options)  | Bulk insert entities in your database.   |
+| BulkInsertAsync(items)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, cancellationToken)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, options)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, options, cancellationToken)  | Bulk insert entities asynchronously in your database.  |
+| **BulkMerge** |
+| BulkMerge<T>(items)  | Bulk merge entities in your database.  |
+| BulkMerge<T>(items, options)  | Bulk merge entities in your database.   |
+| BulkMergeAsync(items)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, options)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, options, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
+| **BulkSync** |
+| BulkSync<T>(items)  | Bulk sync entities in your database.  |
+| BulkSync<T>(items, options)  | Bulk sync entities in your database.   |
+| BulkSyncAsync(items)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, cancellationToken)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, options)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, options, cancellationToken)  | Bulk sync entities asynchronously in your database.  |
+| **BulkUpdate** |  
+| BulkUpdate<T>(items)  | Bulk update entities in your database.  |
+| BulkUpdate<T>(items, options)  | Bulk update entities in your database.   |
+| BulkUpdateAsync(items)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, cancellationToken)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, options)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, options, cancellationToken)  | Bulk update entities asynchronously in your database.  |
+| **DeleteFromQuery** |
+| DeleteFromQuery() | Deletes all rows from the database using a LINQ query without loading in context |
+| DeleteFromQueryAsync() | Deletes all rows from the database using a LINQ query without loading in context using asynchronous task |
+| DeleteFromQueryAsync(cancellationToken) | Deletes all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **InsertFromQuery** |
+| InsertFromQuery(tableName, selectExpression) | Insert all rows from the database using a LINQ query without loading in context |
+| InsertFromQueryAsync(tableName, selectExpression) | Insert all rows from the database using a LINQ query without loading in context using asynchronous task |
+| InsertFromQueryAsync(tableName, selectExpression, cancellationToken) | Insert all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **UpdateFromQuery** |
+| UpdateFromQuery(updateExpression) | Updates all rows from the database using a LINQ query without loading in context |
+| UpdateFromQueryAsync(updateExpression) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task |
+| UpdateFromQueryAsync(updateExpression, cancellationToken) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task  |
+| **Fetch** |
+| Fetch(fetchAction) | Fetch rows in batches from the database using a LINQ query |
+| FetchAsync(fetchAction)  | Fetch rows asynchronously in batches from the database using a LINQ query |
+| FetchAsync(fetchAction, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
+  
+  
