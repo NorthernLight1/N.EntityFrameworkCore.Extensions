@@ -47,10 +47,11 @@ namespace N.EntityFrameworkCore.Extensions
                         throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
                     context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
-                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, 
+                        false, cancellationToken);
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
                         CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
-                    rowsAffected = context.Database.ExecuteSqlRaw(deleteSql);
+                    rowsAffected = await context.Database.ExecuteSqlRawAsync(deleteSql, cancellationToken);
                     context.Database.DropTable(stagingTableName);
                     dbTransactionContext.Commit();
                 }
@@ -107,6 +108,7 @@ namespace N.EntityFrameworkCore.Extensions
                     count = 0;
                     batch++;
                 }
+                cancellationToken.ThrowIfCancellationRequested();
             }
 
             if (entities.Count > 0)
@@ -328,6 +330,7 @@ namespace N.EntityFrameworkCore.Extensions
                         if (action == SqlMergeAction.Insert) rowsInserted++;
                         else if (action == SqlMergeAction.Update) rowsUpdated++;
                         else if (action == SqlMergeAction.Delete) rowsDeleted++;
+                        cancellationToken.ThrowIfCancellationRequested();
                     }
                     SqlUtil.DropTable(stagingTableName, dbConnection, transaction);
 

@@ -51,7 +51,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
+                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
@@ -154,7 +154,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     var dbConnection = dbTransactionContext.Connection;
                     var transaction = dbTransactionContext.CurrentTransaction;
-                    string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
+                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetColumns(options.KeepIdentity);
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
@@ -287,7 +287,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
+                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
@@ -392,7 +392,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
+                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
                     string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
@@ -433,16 +433,6 @@ namespace N.EntityFrameworkCore.Extensions
                 if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
                     dbContext.Entry(entity).State = EntityState.Unchanged;
             }
-        }
-
-        internal static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
-        {
-            string tableName = string.Empty;
-            if (usePermanentTable)
-                tableName = string.Format("[{0}].[tmp_be_xx_{1}_{2}]", tableMapping.Schema, tableMapping.TableName, sqlConnection.ClientConnectionId.ToString());
-            else
-                tableName = string.Format("[{0}].[#tmp_be_xx_{1}]", tableMapping.Schema, tableMapping.TableName);
-            return tableName;
         }
 
         private static BulkQueryResult BulkQuery(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options)
