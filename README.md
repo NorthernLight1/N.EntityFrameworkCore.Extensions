@@ -132,4 +132,44 @@ The framework currently supports the following operations:
   {
       transaction.Rollback();
   }
-```  
+```
+## Documentation
+| Name  | Description |
+| ------------- | ------------- |
+| **BulkDelete** |
+| BulkDelete<T>(items)  | Bulk delete entities in your database.  |
+| BulkDelete<T>(items, options)  | Bulk delete entities in your database.   |
+| BulkDeleteAsync(items)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, options)  | Bulk delete entities asynchronously in your database.  |
+| BulkDeleteAsync(items, options, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
+| **BulkInsert** |
+| BulkInsert<T>(items)  | Bulk insert entities in your database.  |
+| BulkInsert<T>(items, options)  | Bulk insert entities in your database.   |
+| BulkInsertAsync(items)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, cancellationToken)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, options)  | Bulk insert entities asynchronously in your database.  |
+| BulkInsertAsync(items, options, cancellationToken)  | Bulk insert entities asynchronously in your database.  |
+| **BulkMerge** |
+| BulkMerge<T>(items)  | Bulk merge entities in your database.  |
+| BulkMerge<T>(items, options)  | Bulk merge entities in your database.   |
+| BulkMergeAsync(items)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, options)  | Bulk merge entities asynchronously in your database.  |
+| BulkMergeAsync(items, options, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
+| **BulkSync** |
+| BulkSync<T>(items)  | Bulk sync entities in your database.  |
+| BulkSync<T>(items, options)  | Bulk sync entities in your database.   |
+| BulkSyncAsync(items)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, cancellationToken)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, options)  | Bulk sync entities asynchronously in your database.  |
+| BulkSyncAsync(items, options, cancellationToken)  | Bulk sync entities asynchronously in your database.  |
+| **BulkUpdate** |  
+| BulkUpdate<T>(items)  | Bulk update entities in your database.  |
+| BulkUpdate<T>(items, options)  | Bulk update entities in your database.   |
+| BulkUpdateAsync(items)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, cancellationToken)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, options)  | Bulk update entities asynchronously in your database.  |
+| BulkUpdateAsync(items, options, cancellationToken)  | Bulk update entities asynchronously in your database.  |
+  
+  
