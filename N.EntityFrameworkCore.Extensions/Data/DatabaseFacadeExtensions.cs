@@ -34,7 +34,7 @@ namespace N.EntityFrameworkCore.Extensions
             bool truncateTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
             if (truncateTable)
             {
-                SqlUtil.TruncateTable(tableName, dbConnection, null);
+                database.ExecuteSqlRaw(string.Format("TRUNCATE TABLE {0}", tableName));
             }
         }
         public static bool TableExists(this DatabaseFacade database, string tableName)
