@@ -9,7 +9,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     public enum PopulateDataMode
     {
         Normal,
-        Tpc,
         Tph
     }
     [TestClass]
@@ -84,7 +83,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                         id++;
                     }
 
-                    Debug.WriteLine("Last Id for Article is {0}", id);
+                    Debug.WriteLine("Last Id for Product is {0}", id);
                     dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutputIdentity = false });
                 }
                 else if (mode == PopulateDataMode.Tph)
@@ -100,7 +99,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                             FirstName = string.Format("John_{0}", i),
                             LastName = string.Format("Smith_{0}", i),
                             Email = string.Format("john.smith{0}@domain.com", i),
-                            Phone = "404-555-1111"
+                            Phone = "404-555-1111",
+                            AddedDate = DateTime.UtcNow
                         });
                     }
                     for (int i = 2000; i < 3000; i++)

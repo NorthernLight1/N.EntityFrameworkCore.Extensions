@@ -118,6 +118,7 @@ The framework currently supports the following operations:
   //This will change all products priced at $5.35 to $5.75 
   dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
 ```
+## Options
   **Transaction** 
   
   When using any of the following bulk data operations (BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery), if an external transaction exists, then it will be utilized.
@@ -187,7 +188,10 @@ The framework currently supports the following operations:
 | UpdateFromQueryAsync(updateExpression, cancellationToken) | Updates all rows from the database using a LINQ query without loading in context using asynchronous task  |
 | **Fetch** |
 | Fetch(fetchAction) | Fetch rows in batches from the database using a LINQ query |
+| Fetch(fetchAction, options) | Fetch rows in batches from the database using a LINQ query |
 | FetchAsync(fetchAction)  | Fetch rows asynchronously in batches from the database using a LINQ query |
+| FetchAsync(fetchAction, options)  | Fetch rows asynchronously in batches from the database using a LINQ query |
 | FetchAsync(fetchAction, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
+| FetchAsync(fetchAction, options, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
   
   

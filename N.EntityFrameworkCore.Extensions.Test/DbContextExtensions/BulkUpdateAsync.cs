@@ -34,7 +34,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         [TestMethod]
         public async Task With_Default_Options_Tph()
         {
-            var dbContext = SetupDbContext(true);
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tph);
             var customers = dbContext.TphPeople.Where(o => o.LastName != "BulkUpdateTest").OfType<TphCustomer>().ToList();
             var vendors = dbContext.TphPeople.OfType<TphVendor>().ToList();
             foreach (var customer in customers)
