@@ -46,7 +46,7 @@ namespace N.EntityFrameworkCore.Extensions
                     if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
                         throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
-                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, keyColumnNames);
+                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, keyColumnNames, null, cancellationToken);
                     await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, 
                         false, cancellationToken);
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
@@ -144,7 +144,7 @@ namespace N.EntityFrameworkCore.Extensions
                     IEnumerable<string> columnsToInsert = CommonUtil.FormatColumns(columnNames);
                     columnNames = columnNames.Union(storeGeneratedColumnNames);
 
-                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, columnNames, Common.Constants.InternalId_ColumnName);
+                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, columnNames, Common.Constants.InternalId_ColumnName, cancellationToken);
                     var bulkInsertResult = await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, columnNames, SqlBulkCopyOptions.KeepIdentity, true, cancellationToken);
 
                     List<string> columnsToOutput = new List<string> { "$Action", string.Format("{0}.{1}", "s", Constants.InternalId_ColumnName) };
@@ -277,7 +277,7 @@ namespace N.EntityFrameworkCore.Extensions
                     if (storeGeneratedColumnNames.Length == 0 && options.MergeOnCondition == null)
                         throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
 
-                    context.Database.CloneTable(destinationTableName, stagingTableName, null, Common.Constants.InternalId_ColumnName);
+                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, Common.Constants.InternalId_ColumnName, cancellationToken);
                     var bulkInsertResult = await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, true, cancellationToken);
 
                     IEnumerable<string> columnsToInsert = CommonUtil.FormatColumns(columnNames.Where(o => !options.GetIgnoreColumnsOnInsert().Contains(o)));
@@ -384,8 +384,8 @@ namespace N.EntityFrameworkCore.Extensions
                     if (storeGeneratedColumnNames.Length == 0 && options.UpdateOnCondition == null)
                         throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
 
-                    context.Database.CloneTable(destinationTableName, stagingTableName, null);
-                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
+                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, null, cancellationToken);
+                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, false, cancellationToken);
 
                     IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumnsOnUpdate.GetObjectProperties().Contains(o)));
 
