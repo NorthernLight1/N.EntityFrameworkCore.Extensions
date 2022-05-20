@@ -14,8 +14,7 @@ namespace N.EntityFrameworkCore.Extensions
     {
         public static SqlQuery FromSqlQuery(this DatabaseFacade database, string sqlText, params object[] parameters)
         {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return new SqlQuery(dbConnection, sqlText, parameters);
+            return new SqlQuery(database, sqlText, parameters);
         }
         public static int ClearTable(this DatabaseFacade database, string tableName)
         {
@@ -34,7 +33,6 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
             bool truncateTable = !ifExists || (ifExists && database.TableExists(tableName)) ? true : false;
             if (truncateTable)
             {
@@ -44,6 +42,22 @@ namespace N.EntityFrameworkCore.Extensions
         public static bool TableExists(this DatabaseFacade database, string tableName)
         {
             return Convert.ToBoolean(database.ExecuteScalar(string.Format("SELECT CASE WHEN OBJECT_ID(N'{0}', N'U') IS NOT NULL THEN 1 ELSE 0 END", tableName)));
+        }
+        internal static int ExecuteSql(this DatabaseFacade database, string sql, int? commandTimeout = null)
+        {
+            return database.ExecuteSql(sql, null, commandTimeout);
+        }
+        internal static int ExecuteSql(this DatabaseFacade database, string sql, object[] parameters = null, int? commandTimeout = null)
+        {
+            int value = -1;
+            int? origCommandTimeout = database.GetCommandTimeout();
+            database.SetCommandTimeout(commandTimeout);
+            if (parameters != null)
+                value = database.ExecuteSqlRaw(sql, parameters);
+            else
+                value = database.ExecuteSqlRaw(sql);
+            database.SetCommandTimeout(origCommandTimeout);
+            return value;
         }
         internal static object ExecuteScalar(this DatabaseFacade database, string query, object[] parameters = null, int? commandTimeout = null)
         {
@@ -63,6 +77,11 @@ namespace N.EntityFrameworkCore.Extensions
                 value = sqlCommand.ExecuteScalar();
             }
             return value;
+        }
+        internal static int ToggleIdentityInsert(this DatabaseFacade database, bool enable, string tableName)
+        {
+            string boolString = enable ? "ON" : "OFF";
+            return database.ExecuteSqlRaw(string.Format("SET IDENTITY_INSERT {0} {1}", tableName, boolString));
         }
     }
 }

@@ -63,7 +63,8 @@ namespace N.EntityFrameworkCore.Extensions
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
                         CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
-                    rowsAffected = SqlUtil.ExecuteSql(deleteSql, dbConnection, transaction, options.CommandTimeout);
+                    rowsAffected = context.Database.ExecuteSql(deleteSql, options.CommandTimeout);
+
                     context.Database.DropTable(stagingTableName);
                     dbTransactionContext.Commit();
                 }
@@ -183,10 +184,10 @@ namespace N.EntityFrameworkCore.Extensions
                         columnsToOutput.Count > 0 ? " OUTPUT " + SqlUtil.ConvertToColumnString(columnsToOutput) : "");
 
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
-                        SqlUtil.ToggleIdentityInsert(true, destinationTableName, dbConnection, transaction);
+                        context.Database.ToggleIdentityInsert(true, destinationTableName);
                     var bulkQueryResult = context.BulkQuery(insertSqlText, dbConnection, transaction, options);
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
-                        SqlUtil.ToggleIdentityInsert(false, destinationTableName, dbConnection, transaction);
+                        context.Database.ToggleIdentityInsert(false, destinationTableName);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
                     if (options.AutoMapOutputIdentity)
@@ -410,7 +411,7 @@ namespace N.EntityFrameworkCore.Extensions
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
                         updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, storeGeneratedColumnNames, "s", "t"));
 
-                    rowsUpdated = SqlUtil.ExecuteSql(updateSql, dbConnection, transaction, options.CommandTimeout);
+                    rowsUpdated = context.Database.ExecuteSql(updateSql, options.CommandTimeout);
                     context.Database.DropTable(stagingTableName);
 
                     //ClearEntityStateToUnchanged(context, entities);
@@ -479,13 +480,12 @@ namespace N.EntityFrameworkCore.Extensions
             int rowAffected = 0;
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
-                var dbConnection = dbTransactionContext.Connection;
-                var dbTransaction = dbTransactionContext.CurrentTransaction;
+                var dbContext = dbTransactionContext.DbContext;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected =  dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
 
                     dbTransactionContext.Commit();
                 }
@@ -503,22 +503,20 @@ namespace N.EntityFrameworkCore.Extensions
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
                 var dbContext = dbTransactionContext.DbContext;
-                var dbConnection = dbTransactionContext.Connection;
-                var dbTransaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     if (dbContext.Database.TableExists(tableName))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
-                        SqlUtil.ToggleIdentityInsert(true, tableName, dbConnection, dbTransaction);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
-                        SqlUtil.ToggleIdentityInsert(false, tableName, dbConnection, dbTransaction);
+                        dbContext.Database.ToggleIdentityInsert(true, tableName);
+                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        dbContext.Database.ToggleIdentityInsert(false, tableName);
                     }
                     else
                     {
                         sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
-                        rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
                     }
 
                     dbTransactionContext.Commit();
@@ -536,14 +534,13 @@ namespace N.EntityFrameworkCore.Extensions
             int rowAffected = 0;
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
             {
-                var dbConnection = dbTransactionContext.Connection;
-                var dbTransaction = dbTransactionContext.CurrentTransaction;
+                var dbContext = dbTransactionContext.DbContext;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                     sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                    rowAffected = SqlUtil.ExecuteSql(sqlQuery.Sql, dbConnection, dbTransaction, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
                     dbTransactionContext.Commit();
                 }
                 catch (Exception ex)

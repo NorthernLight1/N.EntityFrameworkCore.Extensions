@@ -165,10 +165,10 @@ namespace N.EntityFrameworkCore.Extensions
                         columnsToOutput.Count > 0 ? " OUTPUT " + SqlUtil.ConvertToColumnString(columnsToOutput) : "");
 
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
-                        SqlUtil.ToggleIdentityInsert(true, destinationTableName, dbConnection, transaction);
+                        context.Database.ToggleIdentityInsert(true, destinationTableName);
                     var bulkQueryResult = await context.BulkQueryAsync(insertSqlText, dbConnection, transaction, options, cancellationToken);
                     if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
-                        SqlUtil.ToggleIdentityInsert(false, destinationTableName, dbConnection, transaction);
+                        context.Database.ToggleIdentityInsert(false, destinationTableName);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
                     if (options.AutoMapOutputIdentity)
@@ -485,9 +485,9 @@ namespace N.EntityFrameworkCore.Extensions
                     if (dbContext.Database.TableExists(tableName))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
-                        SqlUtil.ToggleIdentityInsert(true, tableName, dbConnection, dbTransaction);
+                        dbContext.Database.ToggleIdentityInsert(true, tableName);
                         rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
-                        SqlUtil.ToggleIdentityInsert(false, tableName, dbConnection, dbTransaction);
+                        dbContext.Database.ToggleIdentityInsert(false, tableName);
                     }
                     else
                     {
