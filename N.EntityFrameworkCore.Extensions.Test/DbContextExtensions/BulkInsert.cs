@@ -123,7 +123,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                 orders.Add(new Order { Id = i, ExternalId = i.ToString(), Price = 1.57M, Active = true });
             }
             int oldTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
-            int rowsInserted = dbContext.BulkInsert(orders, options => { options.UsePermanentTable = true; options.IgnoreColumns = o => new { o.ExternalId }; });
+            int rowsInserted = dbContext.BulkInsert(orders, options => { options.UsePermanentTable = true; options.IgnoreColumns = o => new { o.ExternalId };});
             int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
 
             Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");

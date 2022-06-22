@@ -29,7 +29,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
             Assert.IsTrue(rowsUpdated == orders.Count, "The number of rows updated must match the count of entities that were retrieved");
             Assert.IsTrue(newOrders == rowsUpdated, "The count of new orders must be equal the number of rows updated in the database.");
-            //Assert.IsTrue(entitiesWithChanges == 0, "There should be no pending Order entities with changes after BulkInsert completes");
         }
         [TestMethod]
         public async Task With_Default_Options_Tph()
@@ -52,6 +51,44 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newCustomers == rowsUpdated, "The count of new customers must be equal the number of rows updated in the database.");
         }
         [TestMethod]
+        public async Task With_Options_IgnoreColumns_PropertyExpression()
+        {
+            var dbContext = SetupDbContext(true);
+            var orders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).OrderBy(o => o.Id).ToList();
+            foreach (var order in orders)
+            {
+                order.Price = 2.35M;
+                order.ExternalId = null;
+            }
+            var oldTotal = dbContext.Orders.Where(o => o.Price == 2.35M && o.ExternalId != null).Count();
+            int rowsUpdated = await dbContext.BulkUpdateAsync(orders, options => { options.IgnoreColumns = o => o.ExternalId; });
+            var newTotal1 = dbContext.Orders.Where(o => o.Price == 2.35M && o.ExternalId != null).Count();
+            var newTotal2 = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).Count();
+
+            Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(newTotal1 == rowsUpdated + oldTotal, "The count of new orders must be equal the number of rows updated in the database.");
+            Assert.IsTrue(newTotal2 == 0, "There should be not records with condition (Price = $1.25)");
+        }
+        [TestMethod]
+        public async Task With_Options_IgnoreColumns_NewExpression()
+        {
+            var dbContext = SetupDbContext(true);
+            var orders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).OrderBy(o => o.Id).ToList();
+            foreach (var order in orders)
+            {
+                order.Price = 2.35M;
+                order.ExternalId = null;
+            }
+            var oldTotal = dbContext.Orders.Where(o => o.Price == 2.35M && o.ExternalId != null).Count();
+            int rowsUpdated = await dbContext.BulkUpdateAsync(orders, options => { options.IgnoreColumns = o => new { o.ExternalId }; });
+            var newTotal1 = dbContext.Orders.Where(o => o.Price == 2.35M && o.ExternalId != null).Count();
+            var newTotal2 = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).Count();
+
+            Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(newTotal1 == rowsUpdated + oldTotal, "The count of new orders must be equal the number of rows updated in the database.");
+            Assert.IsTrue(newTotal2 == 0, "There should be not records with condition (Price = $1.25)");
+        }
+        [TestMethod]
         public async Task With_Options_UpdateOnCondition()
         {
             var dbContext = SetupDbContext(true);
@@ -68,7 +105,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
             Assert.IsTrue(rowsUpdated == ordersWithExternalId, "The number of rows updated must match the count of entities that were retrieved");
             Assert.IsTrue(newTotal == rowsUpdated + oldTotal, "The count of new orders must be equal the number of rows updated in the database.");
-            //Assert.IsTrue(entitiesWithChanges == 0, "There should be no pending Order entities with changes after BulkInsert completes");
         }
         [TestMethod]
         public async Task With_Transaction()

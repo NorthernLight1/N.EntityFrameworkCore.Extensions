@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
     [TestClass]
-    public class TruncateTable :DatabaseExtensionsBase
+    public class TruncateTable : DatabaseExtensionsBase
     {
         [TestMethod]
         public void With_Orders_Table()

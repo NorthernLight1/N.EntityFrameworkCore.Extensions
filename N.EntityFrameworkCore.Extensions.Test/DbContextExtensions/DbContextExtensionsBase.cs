@@ -17,8 +17,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         [TestInitialize]
         public void Init()
         {
-            TestDbContext testDbContext = new TestDbContext();
-            testDbContext.Database.EnsureCreated();
+            TestDbContext dbContext = new TestDbContext();
+            dbContext.Database.EnsureCreated();
         }
         protected TestDbContext SetupDbContext(bool populateData, PopulateDataMode mode = PopulateDataMode.Normal)
         {
