@@ -2,6 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using N.EntityFrameworkCore.Extensions.Util;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -9,17 +14,15 @@ namespace N.EntityFrameworkCore.Extensions
     {
         public static SqlQuery FromSqlQuery(this DatabaseFacade database, string sqlText, params object[] parameters)
         {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return new SqlQuery(dbConnection, sqlText, parameters);
+            return new SqlQuery(database, sqlText, parameters);
         }
         public static int ClearTable(this DatabaseFacade database, string tableName)
         {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            return SqlUtil.ClearTable(tableName, dbConnection, null);
+            return database.ExecuteSqlRaw(string.Format("DELETE FROM {0}", tableName));
         }
-        internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, string[] columnNames, string internalIdColumnName = null)
+        internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
         {
-            string columns = columnNames != null && columnNames.Length > 0 ? string.Join(",", columnNames) : "*";
+            string columns = columnNames != null && columnNames.Count() > 0 ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
             columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
             return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, sourceTable));
         }
@@ -30,18 +33,55 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
-            var dbConnection = database.GetDbConnection() as SqlConnection;
-            bool truncateTable = !ifExists || (ifExists && SqlUtil.TableExists(tableName, dbConnection, null)) ? true : false;
+            bool truncateTable = !ifExists || (ifExists && database.TableExists(tableName)) ? true : false;
             if (truncateTable)
             {
-                SqlUtil.TruncateTable(tableName, dbConnection, null);
+                database.ExecuteSqlRaw(string.Format("TRUNCATE TABLE {0}", tableName));
             }
         }
         public static bool TableExists(this DatabaseFacade database, string tableName)
         {
-            var dbTransaction = database.CurrentTransaction != null ? database.CurrentTransaction.GetDbTransaction() as SqlTransaction : null;
+            return Convert.ToBoolean(database.ExecuteScalar(string.Format("SELECT CASE WHEN OBJECT_ID(N'{0}', N'U') IS NOT NULL THEN 1 ELSE 0 END", tableName)));
+        }
+        internal static int ExecuteSql(this DatabaseFacade database, string sql, int? commandTimeout = null)
+        {
+            return database.ExecuteSql(sql, null, commandTimeout);
+        }
+        internal static int ExecuteSql(this DatabaseFacade database, string sql, object[] parameters = null, int? commandTimeout = null)
+        {
+            int value = -1;
+            int? origCommandTimeout = database.GetCommandTimeout();
+            database.SetCommandTimeout(commandTimeout);
+            if (parameters != null)
+                value = database.ExecuteSqlRaw(sql, parameters);
+            else
+                value = database.ExecuteSqlRaw(sql);
+            database.SetCommandTimeout(origCommandTimeout);
+            return value;
+        }
+        internal static object ExecuteScalar(this DatabaseFacade database, string query, object[] parameters = null, int? commandTimeout = null)
+        {
+            object value;
             var dbConnection = database.GetDbConnection() as SqlConnection;
-            return SqlUtil.TableExists(tableName, dbConnection, dbTransaction);
+            using (var sqlCommand = dbConnection.CreateCommand())
+            {
+                sqlCommand.CommandText = query;
+                if (database.CurrentTransaction != null)
+                    sqlCommand.Transaction = database.CurrentTransaction.GetDbTransaction() as SqlTransaction;
+                if (dbConnection.State == ConnectionState.Closed)
+                    dbConnection.Open();
+                if (commandTimeout.HasValue)
+                    sqlCommand.CommandTimeout = commandTimeout.Value;
+                if (parameters != null)
+                    sqlCommand.Parameters.AddRange(parameters);
+                value = sqlCommand.ExecuteScalar();
+            }
+            return value;
+        }
+        internal static int ToggleIdentityInsert(this DatabaseFacade database, bool enable, string tableName)
+        {
+            string boolString = enable ? "ON" : "OFF";
+            return database.ExecuteSqlRaw(string.Format("SET IDENTITY_INSERT {0} {1}", tableName, boolString));
         }
     }
 }

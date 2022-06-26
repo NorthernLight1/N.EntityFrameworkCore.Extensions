@@ -31,7 +31,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
             Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
-            Assert.IsTrue(newTotal == 0, "Delete() Failed: must be 0 to indicate all records were delted");
+            Assert.IsTrue(newTotal == 0, "Delete() Failed: must be 0 to indicate all records were deleted");
         }
         [TestMethod]
         public void With_Decimal_Using_IEnumerable()
@@ -60,6 +60,18 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
             Assert.IsTrue(rowsDeleted == rowsToDelete, "The number of rows deleted must match the count of the rows that matched in the database");
             Assert.IsTrue(oldTotal - newTotal == rowsDeleted, "The rows deleted must match the new count minues the old count");
+        }
+        [TestMethod]
+        public void With_Delete_All()
+        {
+            var dbContext = SetupDbContext(true);
+            int oldTotal = dbContext.Orders.Count();
+            int rowsDeleted = dbContext.Orders.DeleteFromQuery();
+            int newTotal = dbContext.Orders.Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
+            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
         }
         [TestMethod]
         public void With_Different_Values()

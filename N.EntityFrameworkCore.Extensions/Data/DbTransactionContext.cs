@@ -15,7 +15,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         public SqlConnection Connection { get; internal set; }
         public SqlTransaction CurrentTransaction => dbContextTransaction.GetDbTransaction() as SqlTransaction;
-
+        public DbContext DbContext => context;
 
 
         public DbTransactionContext(DbContext context, bool openConnection = true)

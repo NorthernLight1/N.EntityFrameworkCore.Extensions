@@ -13,6 +13,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
         protected TestDbContext SetupDbContext(bool populateData)
         {
             TestDbContext dbContext = new TestDbContext();
+			dbContext.Database.EnsureCreated();
             dbContext.Orders.Truncate();
             if (populateData)
             {

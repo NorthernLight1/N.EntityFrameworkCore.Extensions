@@ -84,7 +84,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         [TestMethod]
         public void With_Options_AutoMapIdentity()
         {
-
             var dbContext = SetupDbContext(false);
             var orders = new List<Order>();
             for (int i = 0; i < 5000; i++)
@@ -113,6 +112,38 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             Assert.IsTrue(rowsAdded == orders.Count, "The number of rows inserted must match the count of order list");
             Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
+        }
+        [TestMethod]
+        public void With_Options_IgnoreColumns()
+        {
+            var dbContext = SetupDbContext(false);
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, ExternalId = i.ToString(), Price = 1.57M, Active = true });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
+            int rowsInserted = dbContext.BulkInsert(orders, options => { options.UsePermanentTable = true; options.IgnoreColumns = o => new { o.ExternalId };});
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
+
+            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public void With_Options_InputColumns()
+        {
+            var dbContext = SetupDbContext(false);
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, ExternalId = i.ToString(), Price = 1.57M, Active = true });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price == 1.57M && o.ExternalId == null && o.Active == true).Count();
+            int rowsInserted = dbContext.BulkInsert(orders, options => { options.UsePermanentTable = true; options.InputColumns = o => new { o.Price, o.Active, o.AddedDateTime }; });
+            int newTotal = dbContext.Orders.Where(o => o.Price == 1.57M && o.ExternalId == null && o.Active == true).Count();
+
+            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
         public void With_Options_KeepIdentity()

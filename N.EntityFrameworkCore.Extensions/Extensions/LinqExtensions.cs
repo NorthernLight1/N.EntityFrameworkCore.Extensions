@@ -99,10 +99,24 @@ namespace N.EntityFrameworkCore.Extensions
 
             throw new NotImplementedException("Unhandled data type.");
         }
-
         public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
         {
-            return expression == null ? new List<string>() : expression.Body.Type.GetProperties().Select(o => o.Name).ToList();
+            if (expression == null)
+            {
+                return new List<string>();
+            }
+            else if (expression.Body is MemberExpression propertyExpression)
+            {
+                return new List<string>() { propertyExpression.Member.Name };
+            }
+            else if (expression.Body is NewExpression newExpression)
+            {
+                return newExpression.Members.Select(o => o.Name).ToList();
+            }
+            else
+            {
+                throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
+            }
         }
         internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {

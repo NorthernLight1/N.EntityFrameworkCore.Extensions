@@ -23,7 +23,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         [TestMethod]
         public async Task With_Default_Options_Tph()
         {
-            var dbContext = SetupDbContext(true);
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tph);
             var customers = dbContext.TphPeople.OfType<TphCustomer>().ToList();
             int rowsDeleted = await dbContext.BulkDeleteAsync(customers);
             var newCustomers = dbContext.TphPeople.OfType<TphCustomer>().Count();
