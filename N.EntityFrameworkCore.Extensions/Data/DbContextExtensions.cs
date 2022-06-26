@@ -83,18 +83,24 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new Exception("You must have a primary key on this table to use this function.");
             }
         }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions> optionsAction) where T : class, new()
+        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
         {
             Fetch(querable, action, optionsAction.Build());
         }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options) where T : class, new()
+        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options) where T : class, new()
         {
             var dbContext = querable.GetDbContext();
-            var dbConnection = dbContext.GetSqlConnection();
-            //Open datbase connection
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-            var command = new SqlCommand(querable.ToQueryString(), dbConnection);
+            var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+            if (options.InputColumns != null || options.IgnoreColumns != null)
+            {
+                var tableMapping = dbContext.GetTableMapping(typeof(T));
+                IEnumerable<string> columnNames = options.InputColumns != null ? options.InputColumns.GetObjectProperties() : tableMapping.GetColumns(true);
+                IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
+                sqlQuery.SelectColumns(columnsToFetch);
+            }
+            var command = dbContext.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sqlQuery.Sql;
+            command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
             var reader = command.ExecuteReader();
 
             List<PropertyInfo> propertySetters = new List<PropertyInfo>();
@@ -405,7 +411,7 @@ namespace N.EntityFrameworkCore.Extensions
                     context.Database.CloneTable(destinationTableName, stagingTableName, null);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
 
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumnsOnUpdate.GetObjectProperties().Contains(o)));
+                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
 
                     string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",

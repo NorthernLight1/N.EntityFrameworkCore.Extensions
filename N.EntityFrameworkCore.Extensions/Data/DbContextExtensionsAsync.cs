@@ -63,18 +63,24 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
         {
             await FetchAsync(querable, action, optionsAction.Build(), cancellationToken);
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions options, CancellationToken cancellationToken = default) where T : class, new()
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
         {
             var dbContext = querable.GetDbContext();
-            var dbConnection = dbContext.GetSqlConnection();
-            //Open datbase connection
-            if (dbConnection.State == ConnectionState.Closed)
-                dbConnection.Open();
-            var command = new SqlCommand(querable.ToQueryString(), dbConnection);
+            var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+            if (options.InputColumns != null || options.IgnoreColumns != null)
+            {
+                var tableMapping = dbContext.GetTableMapping(typeof(T));
+                IEnumerable<string> columnNames = options.InputColumns != null ? options.InputColumns.GetObjectProperties() : tableMapping.GetColumns(true);
+                IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
+                sqlQuery.SelectColumns(columnsToFetch);
+            }
+            var command = dbContext.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sqlQuery.Sql;
+            command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
             var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             List<PropertyInfo> propertySetters = new List<PropertyInfo>();
@@ -387,7 +393,7 @@ namespace N.EntityFrameworkCore.Extensions
                     await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, null, cancellationToken);
                     await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, false, cancellationToken);
 
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumnsOnUpdate.GetObjectProperties().Contains(o)));
+                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
 
                     string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",

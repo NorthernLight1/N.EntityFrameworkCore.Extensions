@@ -9,7 +9,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
 {
     class SqlBuilder
     {
-        private static IEnumerable<string> keywords = new string[] { "DECLARE", "SELECT", "FROM", "WHERE" };
+        private static IEnumerable<string> keywords = new string[] { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
         public string Sql
         {
             get { return this.ToString(); }
@@ -30,10 +30,11 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             for (int i = 0; i < sqlText.Length;)
             {
                 //Find new Sql clause
-                int maxLenToSearch = sqlText.Length - i >= 7 ? 7 : sqlText.Length - i;
+                int maxLenToSearch = sqlText.Length - i >= 10 ? 10 : sqlText.Length - i;
                 string keyword = StartsWithString(sqlText.Substring(i, maxLenToSearch), keywords, StringComparison.OrdinalIgnoreCase);
+                bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText.Substring(i-2,2) == "\r\n") : true;
                 //Process Sql clause
-                if (keyword != null && curClause != keyword)
+                if (keyword != null && curClause != keyword && isWordStart)
                 {
                     string inputText = sqlText.Substring(curClauseIndex, i - curClauseIndex);
                     if (!string.IsNullOrEmpty(curClause))
@@ -65,6 +66,10 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             }
             if (!string.IsNullOrEmpty(curClause))
                 Clauses.Add(SqlClause.Parse(curClause, sqlText.Substring(curClauseIndex)));
+        }
+        public string Count()
+        {
+            return string.Format("SELECT COUNT(*) FROM ({0}) s", string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString())));
         }
         public override string ToString()
         {
@@ -125,6 +130,15 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             Clauses.Insert(0, new SqlClause { Name = "INSERT", InputText = insertValueExpression });
             sqlSelectClause.InputText = columnsToInsert;
             
+        }
+        internal void SelectColumns(IEnumerable<string> columns)
+        {
+            var tableAlias = GetTableAlias();
+            var sqlClause = Clauses.FirstOrDefault();
+            if (sqlClause.Name == "SELECT")
+            {
+                sqlClause.InputText = string.Join(",", columns.Select(c => string.Format("{0}.{1}", tableAlias, c)));
+            }
         }
         private void Validate()
         {
