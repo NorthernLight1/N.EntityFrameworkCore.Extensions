@@ -146,9 +146,9 @@ namespace N.EntityFrameworkCore.Extensions
 
                     IEnumerable<string> columnNames = options.InputColumns != null ? options.InputColumns.GetObjectProperties() : tableMapping.GetColumns(options.KeepIdentity);
                     columnNames = columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o));
-                    string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
+                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
                     IEnumerable<string> columnsToInsert = CommonUtil.FormatColumns(columnNames);
-                    columnNames = columnNames.Union(storeGeneratedColumnNames);
+                    columnNames = columnNames.Union(primaryKeyColumnNames);
 
                     await context.Database.CloneTableAsync(destinationTableName, stagingTableName, columnNames, Common.Constants.InternalId_ColumnName, cancellationToken);
                     var bulkInsertResult = await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, columnNames, SqlBulkCopyOptions.KeepIdentity, true, cancellationToken);
@@ -157,23 +157,23 @@ namespace N.EntityFrameworkCore.Extensions
                     List<PropertyInfo> propertySetters = new List<PropertyInfo>();
                     Type entityType = typeof(T);
 
-                    foreach (var storeGeneratedColumnName in storeGeneratedColumnNames)
+                    foreach (var primaryKeyColumnName in primaryKeyColumnNames)
                     {
-                        columnsToOutput.Add(string.Format("inserted.[{0}]", storeGeneratedColumnName));
-                        propertySetters.Add(entityType.GetProperty(storeGeneratedColumnName));
+                        columnsToOutput.Add(string.Format("inserted.[{0}]", primaryKeyColumnName));
+                        propertySetters.Add(entityType.GetProperty(primaryKeyColumnName));
                     }
 
                     string insertSqlText = string.Format("MERGE {0} t USING {1} s ON {2} WHEN NOT MATCHED THEN INSERT ({3}) VALUES ({3}){4};",
                         destinationTableName,
                         stagingTableName,
-                        options.InsertIfNotExists ? CommonUtil<T>.GetJoinConditionSql(options.InsertOnCondition, storeGeneratedColumnNames, "t", "s") : "1=2",
+                        options.InsertIfNotExists ? CommonUtil<T>.GetJoinConditionSql(options.InsertOnCondition, primaryKeyColumnNames, "t", "s") : "1=2",
                         SqlUtil.ConvertToColumnString(columnsToInsert),
                         columnsToOutput.Count > 0 ? " OUTPUT " + SqlUtil.ConvertToColumnString(columnsToOutput) : "");
 
-                    if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
+                    if (options.KeepIdentity && primaryKeyColumnNames.Length > 0)
                         context.Database.ToggleIdentityInsert(true, destinationTableName);
                     var bulkQueryResult = await context.BulkQueryAsync(insertSqlText, dbConnection, transaction, options, cancellationToken);
-                    if (options.KeepIdentity && storeGeneratedColumnNames.Length > 0)
+                    if (options.KeepIdentity && primaryKeyColumnNames.Length > 0)
                         context.Database.ToggleIdentityInsert(false, destinationTableName);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
@@ -198,7 +198,7 @@ namespace N.EntityFrameworkCore.Extensions
                     dbTransactionContext.Commit();
                     return rowsAffected;
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     dbTransactionContext.Rollback();
                     throw;
@@ -278,9 +278,9 @@ namespace N.EntityFrameworkCore.Extensions
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
-                    string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
+                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
-                    if (storeGeneratedColumnNames.Length == 0 && options.MergeOnCondition == null)
+                    if (primaryKeyColumnNames.Length == 0 && options.MergeOnCondition == null)
                         throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
 
                     await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, Common.Constants.InternalId_ColumnName, cancellationToken);
@@ -292,15 +292,15 @@ namespace N.EntityFrameworkCore.Extensions
                     List<PropertyInfo> propertySetters = new List<PropertyInfo>();
                     Type entityType = typeof(T);
 
-                    foreach (var storeGeneratedColumnName in storeGeneratedColumnNames)
+                    foreach (var primaryKeyColumnName in primaryKeyColumnNames)
                     {
-                        columnsToOutput.Add(string.Format("inserted.[{0}]", storeGeneratedColumnName));
-                        columnsToOutput.Add(string.Format("deleted.[{0}]", storeGeneratedColumnName));
-                        propertySetters.Add(entityType.GetProperty(storeGeneratedColumnName));
+                        columnsToOutput.Add(string.Format("inserted.[{0}]", primaryKeyColumnName));
+                        columnsToOutput.Add(string.Format("deleted.[{0}]", primaryKeyColumnName));
+                        propertySetters.Add(entityType.GetProperty(primaryKeyColumnName));
                     }
 
                     string mergeSqlText = string.Format("MERGE {0} t USING {1} s ON ({2}) WHEN NOT MATCHED BY TARGET THEN INSERT ({3}) VALUES ({3}) WHEN MATCHED THEN UPDATE SET {4}{5}OUTPUT {6};",
-                        destinationTableName, stagingTableName, CommonUtil<T>.GetJoinConditionSql(options.MergeOnCondition, storeGeneratedColumnNames, "s", "t"),
+                        destinationTableName, stagingTableName, CommonUtil<T>.GetJoinConditionSql(options.MergeOnCondition, primaryKeyColumnNames, "s", "t"),
                         SqlUtil.ConvertToColumnString(columnsToInsert),
                         SqlUtil.ConvertToColumnString(columnstoUpdate),
                         options.DeleteIfNotMatched ? " WHEN NOT MATCHED BY SOURCE THEN DELETE " : " ",
@@ -318,12 +318,12 @@ namespace N.EntityFrameworkCore.Extensions
                         if (action != SqlMergeAction.Delete)
                         {
                             int entityId = (int)result[1];
-                            id = (storeGeneratedColumnNames.Length > 0 ? Convert.ToString(result[2]) : "PrimaryKeyMissing");
+                            id = (primaryKeyColumnNames.Length > 0 ? Convert.ToString(result[2]) : "PrimaryKeyMissing");
                             entity = bulkInsertResult.EntityMap[entityId];
                             if (options.AutoMapOutputIdentity && entity != null)
                             {
 
-                                for (int i = 2; i < 2 + storeGeneratedColumnNames.Length; i++)
+                                for (int i = 2; i < 2 + primaryKeyColumnNames.Length; i++)
                                 {
                                     propertySetters[0].SetValue(entity, result[i]);
                                 }
@@ -331,7 +331,7 @@ namespace N.EntityFrameworkCore.Extensions
                         }
                         else
                         {
-                            id = Convert.ToString(result[2 + storeGeneratedColumnNames.Length]);
+                            id = Convert.ToString(result[2 + primaryKeyColumnNames.Length]);
                         }
                         outputRows.Add(new BulkMergeOutputRow<T>(action, id));
 
@@ -385,9 +385,9 @@ namespace N.EntityFrameworkCore.Extensions
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
-                    string[] storeGeneratedColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
+                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
-                    if (storeGeneratedColumnNames.Length == 0 && options.UpdateOnCondition == null)
+                    if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
                         throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
 
                     await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, null, cancellationToken);
@@ -397,7 +397,7 @@ namespace N.EntityFrameworkCore.Extensions
 
                     string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                     string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, storeGeneratedColumnNames, "s", "t"));
+                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
 
                     rowsUpdated = await context.Database.ExecuteSqlRawAsync(updateSql, cancellationToken);
                     dbContext.Database.DropTable(stagingTableName);
@@ -468,10 +468,10 @@ namespace N.EntityFrameworkCore.Extensions
 
                     dbTransactionContext.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     dbTransactionContext.Rollback();
-                    throw ex;
+                    throw;
                 }
             }
             return rowAffected;
@@ -503,10 +503,10 @@ namespace N.EntityFrameworkCore.Extensions
 
                     dbTransactionContext.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     dbTransactionContext.Rollback();
-                    throw ex;
+                    throw;
                 }
             }
             return rowAffected;
@@ -528,10 +528,10 @@ namespace N.EntityFrameworkCore.Extensions
                     rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                     dbTransactionContext.Commit();
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     dbTransactionContext.Rollback();
-                    throw ex;
+                    throw;
                 }
             }
             return rowAffected;
