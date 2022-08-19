@@ -3,7 +3,7 @@ N.EntityFrameworkCore.Extensions
 
 [![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions)
 
-N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v5.0.1+
+N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v6.0.8+
 
 The framework currently supports the following operations:
 
