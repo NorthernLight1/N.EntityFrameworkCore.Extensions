@@ -221,8 +221,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
             foreach (var property in dataReader.TableMapping.Properties)
             {
-                if (inputColumns == null || (inputColumns != null && inputColumns.Contains(property.Name)))
-                    sqlBulkCopy.ColumnMappings.Add(property.Name, property.Name);
+                var columnName = property.GetColumnName(dataReader.TableMapping.StoreObjectIdentifier);
+                if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
+                    sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
             }
             if (useInteralId)
             {
@@ -277,7 +278,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
+                    string[] columnNames = tableMapping.GetColumns().ToArray();
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
                     if (primaryKeyColumnNames.Length == 0 && options.MergeOnCondition == null)
@@ -384,7 +385,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] columnNames = tableMapping.GetNonValueGeneratedColumns().ToArray();
+                    string[] columnNames = tableMapping.GetColumns().ToArray();
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
 
                     if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
