@@ -159,6 +159,48 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
         }
         [TestMethod]
+        public async Task With_Key()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).ToList();
+            int productsToAdd = 5000;
+            var productsToUpdate = products.ToList();
+            foreach (var product in products)
+            {
+                product.Price = Convert.ToDecimal(product.Id) + .25M;
+            }
+            for (int i = 0; i < productsToAdd; i++)
+            {
+                products.Add(new Product { Id = (20000 + i).ToString(), Price = 3.55M });
+            }
+            var result = await dbContext.BulkMergeAsync(products);
+            var newProducts = dbContext.Products.OrderBy(o => o.Id).ToList();
+            bool areAddedOrdersMerged = true;
+            bool areUpdatedOrdersMerged = true;
+            foreach (var newProduct in newProducts.Where(o => productsToUpdate.Select(o => o.Id).Contains(o.Id)))
+            {
+                if (newProduct.Price != Convert.ToDecimal(newProduct.Id) + .25M)
+                {
+                    areUpdatedOrdersMerged = false;
+                    break;
+                }
+            }
+            foreach (var newProduct in newProducts.Where(o => Convert.ToInt32(o.Id) >= 20000).OrderBy(o => o.Id))
+            {
+                if (newProduct.Price != 3.55M)
+                {
+                    areAddedOrdersMerged = false;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(result.RowsAffected == products.Count(), "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(result.RowsUpdated == productsToUpdate.Count, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == productsToAdd, "The number of rows added must match");
+            Assert.IsTrue(areAddedOrdersMerged, "The orders that were added did not merge correctly");
+            Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
+        }
+        [TestMethod]
         public async Task With_Transaction()
         {
             var dbContext = SetupDbContext(true);
