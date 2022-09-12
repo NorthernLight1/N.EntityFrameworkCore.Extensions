@@ -11,6 +11,23 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     public class BulkInsert : DbContextExtensionsBase
     {
         [TestMethod]
+        public void With_Complex_Key()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = new List<ProductWithComplexKey>();
+            for (int i = 50000; i < 60000; i++)
+            {
+                var key = i.ToString();
+                products.Add(new ProductWithComplexKey { Price = 1.57M });
+            }
+            int oldTotal = dbContext.ProductsWithComplexKey.Where(o => o.Price <= 10).Count();
+            int rowsInserted = dbContext.BulkInsert(products);
+            int newTotal = dbContext.ProductsWithComplexKey.Where(o => o.Price <= 10).Count();
+
+            Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
         public void With_Default_Options()
         {
             var dbContext = SetupDbContext(false);
