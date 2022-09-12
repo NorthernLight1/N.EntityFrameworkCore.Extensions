@@ -3,12 +3,10 @@
     public class BulkMergeOutputRow<T>
     {
         public string Action { get; set; }
-        public string Id { get; set; }
 
-        public BulkMergeOutputRow(string action, string id)
+        public BulkMergeOutputRow(string action)
         {
             this.Action = action;
-            this.Id = id;
         }
     }
 }

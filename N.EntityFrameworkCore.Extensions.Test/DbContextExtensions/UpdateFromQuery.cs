@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -89,6 +90,22 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int matchCount = dbContext.Orders.Where(o => o.Price == 25.30M).Count();
 
             Assert.AreEqual("25,30", Convert.ToString(25.30M));
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
+            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+            Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
+        public void With_Long_List()
+        {
+            var dbContext = SetupDbContext(true);
+            var ids = new List<long>() { 1, 2, 3, 4, 5, 6, 7, 8 };
+            var orders = dbContext.Orders.Where(o => ids.Contains(o.Id));
+            int oldTotal = orders.Count();
+            int rowUpdated = orders.UpdateFromQuery(o => new Order { Price = 25.25M });
+            int newTotal = orders.Where(o => o.Price != 25.25M).Count();
+            int matchCount = dbContext.Orders.Where(o => ids.Contains(o.Id) && o.Price == 25.25M).Count();
+
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
             Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
