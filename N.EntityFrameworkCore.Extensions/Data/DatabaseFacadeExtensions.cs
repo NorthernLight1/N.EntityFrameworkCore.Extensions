@@ -2,10 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
 using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions
@@ -25,6 +27,13 @@ namespace N.EntityFrameworkCore.Extensions
             string columns = columnNames != null && columnNames.Count() > 0 ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
             columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
             return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, sourceTable));
+        }
+        internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
+        {
+            var dbConnection = database.GetDbConnection(connectionBehavior);
+            if (dbConnection.State != ConnectionState.Open)
+                dbConnection.Open();
+            return dbConnection.CreateCommand();
         }
         public  static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
@@ -82,6 +91,10 @@ namespace N.EntityFrameworkCore.Extensions
         {
             string boolString = enable ? "ON" : "OFF";
             return database.ExecuteSqlRaw(string.Format("SET IDENTITY_INSERT {0} {1}", tableName, boolString));
+        }
+        internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
+        {
+            return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)database.GetDbConnection()).Clone() as DbConnection : database.GetDbConnection();
         }
     }
 }
