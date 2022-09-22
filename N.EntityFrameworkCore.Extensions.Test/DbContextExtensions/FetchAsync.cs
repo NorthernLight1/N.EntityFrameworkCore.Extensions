@@ -8,6 +8,58 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     [TestClass]
     public class FetchAsync : DbContextExtensionsBase
     {
+                [TestMethod]
+        public async Task With_BulkInsert()
+        {
+            var dbContext = SetupDbContext(true);
+            DateTime dateTime = dbContext.Orders.Max(o => o.AddedDateTime).AddDays(-30);
+            var orders = dbContext.Orders.Where(o => o.AddedDateTime <= dateTime);
+            int totalOrdersToFetch = orders.Count();
+            int totalOrdersFetched = 0;
+            int batchSize = 5000;
+            await orders.FetchAsync(async result =>
+            {
+                totalOrdersFetched += result.Results.Count();
+                var ordersFetched = result.Results;
+                foreach (var orderFetched in ordersFetched)
+                {
+                    orderFetched.Price = 75;
+                }
+                await dbContext.BulkInsertAsync(ordersFetched);
+            }, options => { options.BatchSize = batchSize; });
+
+            int totalOrder = orders.Count();
+            int totalOrderInserted = orders.Where(o => o.Price == 75).Count();
+            Assert.IsTrue(totalOrdersToFetch == totalOrdersFetched, "The total number of rows fetched must match the number of rows to fetch");
+            Assert.IsTrue(totalOrderInserted == totalOrdersFetched, "The total number of rows updated must match the number of rows that were fetched");
+            Assert.IsTrue(totalOrder - totalOrdersToFetch == totalOrderInserted, "The total number of rows must match the number of rows that were updated");
+        }
+        [TestMethod]
+        public async Task With_BulkUpdate()
+        {
+            var dbContext = SetupDbContext(true);
+            DateTime dateTime = dbContext.Orders.Max(o => o.AddedDateTime).AddDays(-30);
+            var orders = dbContext.Orders.Where(o => o.AddedDateTime <= dateTime);
+            int totalOrdersToFetch = orders.Count();
+            int totalOrdersFetched = 0;
+            int batchSize = 5000;
+            await orders.FetchAsync(async result =>
+            {
+                totalOrdersFetched += result.Results.Count();
+                var ordersFetched = result.Results;
+                foreach (var orderFetched in ordersFetched)
+                {
+                    orderFetched.Price = 75;
+                }
+                await dbContext.BulkUpdateAsync(ordersFetched);
+            }, options => { options.BatchSize = batchSize; });
+
+            int totalOrder = orders.Count();
+            int totalOrderUpdated = orders.Where(o => o.Price == 75).Count();
+            Assert.IsTrue(totalOrdersToFetch == totalOrdersFetched, "The total number of rows fetched must match the number of rows to fetch");
+            Assert.IsTrue(totalOrderUpdated == totalOrdersFetched, "The total number of rows updated must match the number of rows that were fetched");
+            Assert.IsTrue(totalOrder == totalOrderUpdated, "The total number of rows must match the number of rows that were updated");
+        }
         [TestMethod]
         public async Task With_DateTime()
         {
@@ -20,7 +72,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int expectedTotalCount = orders.Count();
             int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount / (decimal)batchSize);
 
-            await orders.FetchAsync(result =>
+            await orders.FetchAsync(async result =>
             {
                 batchCount++;
                 totalCount += result.Results.Count();
@@ -42,7 +94,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int expectedTotalCount = orders.Count();
             int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount / (decimal)batchSize);
 
-            await orders.FetchAsync(result =>
+            await orders.FetchAsync(async result =>
             {
                 batchCount++;
                 totalCount += result.Results.Count();
@@ -64,7 +116,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int expectedTotalCount = orders.Count();
             int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount / (decimal)batchSize);
 
-            await orders.FetchAsync(result =>
+            await orders.FetchAsync(async result =>
             {
                 batchCount++;
                 totalCount += result.Results.Count();
@@ -88,7 +140,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int expectedTotalCount = orders.Count();
             int expectedBatchCount = (int)Math.Ceiling(expectedTotalCount / (decimal)batchSize);
 
-            await orders.FetchAsync(result =>
+            await orders.FetchAsync(async result =>
             {
                 batchCount++;
                 totalCount += result.Results.Count();
