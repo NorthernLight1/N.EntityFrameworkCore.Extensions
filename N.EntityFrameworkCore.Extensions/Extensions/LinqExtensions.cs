@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -112,6 +113,10 @@ namespace N.EntityFrameworkCore.Extensions
             else if (expression.Body is NewExpression newExpression)
             {
                 return newExpression.Members.Select(o => o.Name).ToList();
+            }
+            else if ((expression.Body is UnaryExpression unaryExpression) && (unaryExpression.Operand.GetPrivateFieldValue("Member") is PropertyInfo propertyInfo))
+            {
+                return new List<string>() { propertyInfo.Name };
             }
             else
             {

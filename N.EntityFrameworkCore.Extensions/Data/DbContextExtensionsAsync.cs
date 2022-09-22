@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using N.EntityFrameworkCore.Extensions.Common;
+using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
@@ -63,11 +64,11 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>,Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
         {
             await FetchAsync(querable, action, optionsAction.Build(), cancellationToken);
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
+        public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>,Task> action, FetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
         {
             var dbContext = querable.GetDbContext();
             var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
@@ -78,49 +79,51 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
                 sqlQuery.SelectColumns(columnsToFetch);
             }
-            var command = dbContext.Database.GetDbConnection().CreateCommand();
-            command.CommandText = sqlQuery.Sql;
-            command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-            var reader = await command.ExecuteReaderAsync(cancellationToken);
+            using (var command = dbContext.Database.CreateCommand(ConnectionBehavior.New))
+            {
+                command.CommandText = sqlQuery.Sql;
+                command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
+                var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            List<PropertyInfo> propertySetters = new List<PropertyInfo>();
-            var entityType = typeof(T);
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
-            }
-            //Read data
-            int batch = 1;
-            int count = 0;
-            int totalCount = 0;
-            var entities = new List<T>();
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                var entity = new T();
+                List<PropertyInfo> propertySetters = new List<PropertyInfo>();
+                var entityType = typeof(T);
                 for (int i = 0; i < reader.FieldCount; i++)
                 {
-                    var value = reader.GetValue(i);
-                    if (value == DBNull.Value)
-                        value = null;
-                    propertySetters[i].SetValue(entity, value);
+                    propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
                 }
-                entities.Add(entity);
-                count++;
-                totalCount++;
-                if (count == options.BatchSize)
+                //Read data
+                int batch = 1;
+                int count = 0;
+                int totalCount = 0;
+                var entities = new List<T>();
+                while (await reader.ReadAsync(cancellationToken))
                 {
-                    action(new FetchResult<T> { Results = entities, Batch = batch });
-                    entities.Clear();
-                    count = 0;
-                    batch++;
+                    var entity = new T();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var value = reader.GetValue(i);
+                        if (value == DBNull.Value)
+                            value = null;
+                        propertySetters[i].SetValue(entity, value);
+                    }
+                    entities.Add(entity);
+                    count++;
+                    totalCount++;
+                    if (count == options.BatchSize)
+                    {
+                        await action(new FetchResult<T> { Results = entities, Batch = batch });
+                        entities.Clear();
+                        count = 0;
+                        batch++;
+                    }
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
-                cancellationToken.ThrowIfCancellationRequested();
-            }
 
-            if (entities.Count > 0)
-                action(new FetchResult<T> { Results = entities, Batch = batch });
-            //close the DataReader
-            await reader.CloseAsync();
+                if (entities.Count > 0)
+                    await action(new FetchResult<T> { Results = entities, Batch = batch });
+                //close the DataReader
+                await reader.CloseAsync();
+            }
         }
         public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
@@ -146,7 +149,7 @@ namespace N.EntityFrameworkCore.Extensions
 
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
                     IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(options.KeepIdentity), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
-                    IEnumerable<string> autoGeneratedColumnNames = options.AutoMapOutputIdentity ? tableMapping.GetAutoGeneratedColumns() : new string[] { };
+                    IEnumerable<string> autoGeneratedColumnNames = options.AutoMapOutput ? tableMapping.GetAutoGeneratedColumns() : new string[] { };
                     IEnumerable<string> columnsToInsert = CommonUtil.FormatColumns(columnNames);
                     if (options.InsertIfNotExists)
                     {
@@ -180,7 +183,7 @@ namespace N.EntityFrameworkCore.Extensions
                         context.Database.ToggleIdentityInsert(false, destinationTableName);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
-                    if (options.AutoMapOutputIdentity)
+                    if (options.AutoMapOutput)
                     {
                         if (rowsAffected == entities.Count())
                         {
@@ -284,7 +287,7 @@ namespace N.EntityFrameworkCore.Extensions
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] columnNames = tableMapping.GetColumns().ToArray();
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    IEnumerable<string> autoGeneratedColumnNames = tableMapping.GetAutoGeneratedColumns();
+                    IEnumerable<string> autoGeneratedColumnNames = options.AutoMapOutput ? tableMapping.GetAutoGeneratedColumns() : new string[] { };
 
                     if (primaryKeyColumnNames.Length == 0 && options.MergeOnCondition == null)
                         throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
@@ -316,29 +319,32 @@ namespace N.EntityFrameworkCore.Extensions
                     var bulkQueryResult = await context.BulkQueryAsync(mergeSqlText, dbConnection, transaction, options, cancellationToken);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
-                    foreach (var result in bulkQueryResult.Results)
+                    if (options.AutoMapOutput)
                     {
-                        object entity = null;
-                        string action = (string)result[0];
-                        if (action != SqlMergeAction.Delete)
+                        foreach (var result in bulkQueryResult.Results)
                         {
-                            int entityId = (int)result[1];
-                            entity = bulkInsertResult.EntityMap[entityId];
-                            if (options.AutoMapOutputIdentity && entity != null)
+                            object entity = null;
+                            string action = (string)result[0];
+                            if (action != SqlMergeAction.Delete)
                             {
-
-                                for (int i = 2; i < 2 + autoGeneratedColumnNames.Count(); i++)
+                                int entityId = (int)result[1];
+                                entity = bulkInsertResult.EntityMap[entityId];
+                                if (entity != null)
                                 {
-                                    propertySetters[i-2].SetValue(entity, result[i]);
+
+                                    for (int i = 2; i < 2 + autoGeneratedColumnNames.Count(); i++)
+                                    {
+                                        propertySetters[i - 2].SetValue(entity, result[i]);
+                                    }
                                 }
                             }
-                        }
-                        outputRows.Add(new BulkMergeOutputRow<T>(action));
+                            outputRows.Add(new BulkMergeOutputRow<T>(action));
 
-                        if (action == SqlMergeAction.Insert) rowsInserted++;
-                        else if (action == SqlMergeAction.Update) rowsUpdated++;
-                        else if (action == SqlMergeAction.Delete) rowsDeleted++;
-                        cancellationToken.ThrowIfCancellationRequested();
+                            if (action == SqlMergeAction.Insert) rowsInserted++;
+                            else if (action == SqlMergeAction.Update) rowsUpdated++;
+                            else if (action == SqlMergeAction.Delete) rowsDeleted++;
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
                     }
                     context.Database.DropTable(stagingTableName);
 
@@ -384,8 +390,8 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] columnNames = tableMapping.GetColumns().ToArray();
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
+                    IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
 
                     if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
                         throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
