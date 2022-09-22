@@ -18,6 +18,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace N.EntityFrameworkCore.Extensions
@@ -45,7 +46,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
@@ -157,7 +158,7 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 try
                 {
@@ -236,14 +237,21 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId);
 
-            var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions, transaction)
+            var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions | options.BulkCopyOptions, transaction)
             {
                 DestinationTableName = tableName,
-                BatchSize = options.BatchSize
+                BatchSize = options.BatchSize,
+                NotifyAfter = options.NotifyAfter,
+                EnableStreaming = options.EnableStreaming,
             };
-            if (options.CommandTimeout.HasValue)
+            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.HasValue ? options.CommandTimeout.Value : sqlBulkCopy.BulkCopyTimeout;
+            if (options.SqlRowsCopied != null)
             {
-                sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
+                sqlBulkCopy.SqlRowsCopied += options.SqlRowsCopied;
+            }
+            foreach (SqlBulkCopyColumnOrderHint columnOrderHint in options.ColumnOrderHints)
+            {
+                sqlBulkCopy.ColumnOrderHints.Add(columnOrderHint);
             }
             foreach (var property in dataReader.TableMapping.Properties)
             {
@@ -296,7 +304,7 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsUpdated = 0;
             int rowsDeleted = 0;
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
@@ -398,7 +406,7 @@ namespace N.EntityFrameworkCore.Extensions
             var outputRows = new List<BulkMergeOutputRow<T>>();
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
@@ -488,14 +496,14 @@ namespace N.EntityFrameworkCore.Extensions
         public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
-                    rowAffected =  dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected =  dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
 
                     dbTransactionContext.Commit();
                 }
@@ -510,7 +518,7 @@ namespace N.EntityFrameworkCore.Extensions
         public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
@@ -520,13 +528,13 @@ namespace N.EntityFrameworkCore.Extensions
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                         dbContext.Database.ToggleIdentityInsert(true, tableName);
-                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                         dbContext.Database.ToggleIdentityInsert(false, tableName);
                     }
                     else
                     {
                         sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
-                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
+                        rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                     }
 
                     dbTransactionContext.Commit();
@@ -542,7 +550,7 @@ namespace N.EntityFrameworkCore.Extensions
         public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
         {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext()))
+            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
@@ -550,7 +558,7 @@ namespace N.EntityFrameworkCore.Extensions
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                     sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), commandTimeout);
+                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                     dbTransactionContext.Commit();
                 }
                 catch (Exception)

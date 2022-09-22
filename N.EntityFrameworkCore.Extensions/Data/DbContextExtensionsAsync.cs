@@ -33,7 +33,7 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
@@ -138,7 +138,7 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 try
                 {
@@ -277,7 +277,7 @@ namespace N.EntityFrameworkCore.Extensions
             int rowsUpdated = 0;
             int rowsDeleted = 0;
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
@@ -381,7 +381,7 @@ namespace N.EntityFrameworkCore.Extensions
             var outputRows = new List<BulkMergeOutputRow<T>>();
             var tableMapping = context.GetTableMapping(typeof(T));
 
-            using (var dbTransactionContext = new DbTransactionContext(context))
+            using (var dbTransactionContext = new DbTransactionContext(context, options))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 var dbConnection = dbTransactionContext.Connection;
@@ -462,7 +462,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
-            using (var dbTransactionContext = new DbTransactionContext(dbContext))
+            using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;
@@ -487,7 +487,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
-            using (var dbTransactionContext = new DbTransactionContext(dbContext))
+            using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;
@@ -522,7 +522,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
-            using (var dbTransactionContext = new DbTransactionContext(dbContext))
+            using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var dbTransaction = dbTransactionContext.CurrentTransaction;

@@ -10,20 +10,26 @@ namespace N.EntityFrameworkCore.Extensions
     {
         private bool closeConnection;
         private bool ownsTransaction;
+        private int? defaultCommandTimeout;
         private DbContext context;
-        private IDbContextTransaction dbContextTransaction;
+        private IDbContextTransaction transaction;
 
         public SqlConnection Connection { get; internal set; }
-        public SqlTransaction CurrentTransaction => dbContextTransaction.GetDbTransaction() as SqlTransaction;
+        public SqlTransaction CurrentTransaction => transaction.GetDbTransaction() as SqlTransaction;
         public DbContext DbContext => context;
 
+        public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, openConnection)
+        {
 
-        public DbTransactionContext(DbContext context, bool openConnection = true)
+        }
+        public DbTransactionContext(DbContext context, int? commandTimeout = null, bool openConnection = true)
         {
             this.context = context;
             this.ownsTransaction = context.Database.CurrentTransaction == null;
-            this.dbContextTransaction = context.Database.CurrentTransaction ?? context.Database.BeginTransaction();
+            this.transaction = context.Database.CurrentTransaction ?? context.Database.BeginTransaction();
             this.Connection = context.GetSqlConnection();
+            this.defaultCommandTimeout = context.Database.GetCommandTimeout();
+            context.Database.SetCommandTimeout(commandTimeout);
 
             if (openConnection)
             {
@@ -37,6 +43,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         public void Dispose()
         {
+            context.Database.SetCommandTimeout(defaultCommandTimeout);
             if (closeConnection)
             {
                 this.Connection.Close();
@@ -45,12 +52,12 @@ namespace N.EntityFrameworkCore.Extensions
 
         internal void Commit()
         {
-            if (this.ownsTransaction)
-                dbContextTransaction.Commit();
+            if (this.ownsTransaction && this.transaction != null)
+                transaction.Commit();
         }
         internal void Rollback()
         {
-            dbContextTransaction.Rollback();
+            transaction.Rollback();
         }
     }
 }
