@@ -2,16 +2,15 @@
 
 [![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions) [![downloads](https://img.shields.io/nuget/dt/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions)
 
-N.EntityFrameworkCore.Extensions adds Bulk data support to EntityFrameworkCore v6.0.8+
+
+## Bulk data support  data support for EntityFrameworkCore v6.0.8+
 
 The framework currently supports the following operations:
 
-  BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, Fetch
-  
-  Inheritance models supported: Table-Per-Hierarchy
-  
-  Supports: transaction, synchronous & asynchronous execution
-  
+Entity Framework Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
+
+Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hierarchy)
+
   ### Installation
 
   The latest stable version is available on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions).
@@ -37,6 +36,11 @@ The framework currently supports the following operations:
   var dbcontext = new MyDbContext();  
   var orders = dbcontext.Orders.Where(o => o.TotalPrice < 5.35M);  
   dbcontext.BulkDelete(orders);
+  ```
+  **BulkFetch() - Retrieves entities that are contained in a list**  
+  ```
+  var ids = new List<int> { 10001, 10002, 10003, 10004, 10005 };
+  var products = dbcontext.Products.BulkFetch(ids, options => { options.JoinOnCondition = (s, t) => s.Id == t.Id; }).ToList();
   ```
   **BulkUpdate() - Performs a update operation with a large number of entities**  
   ```
@@ -145,6 +149,11 @@ The framework currently supports the following operations:
 | BulkDeleteAsync(items, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
 | BulkDeleteAsync(items, options)  | Bulk delete entities asynchronously in your database.  |
 | BulkDeleteAsync(items, options, cancellationToken)  | Bulk delete entities asynchronously in your database.  |
+| **BulkFetch** |
+| BulkFetch<T>(items)  | Retrieve entities that are contained in the items list.  |
+| BulkFetch<T>(items, options)  | Retrieve entities that are contained in the items list.  |
+| BulkFetchAsync<T>(items)  | Retrieve entities that are contained in the items list.  |
+| BulkFetchAsync<T>(items, options)  | Retrieve entities that are contained in the items list.  | 
 | **BulkInsert** |
 | BulkInsert<T>(items)  | Bulk insert entities in your database.  |
 | BulkInsert<T>(items, options)  | Bulk insert entities in your database.   |
@@ -192,5 +201,4 @@ The framework currently supports the following operations:
 | FetchAsync(fetchAction, options)  | Fetch rows asynchronously in batches from the database using a LINQ query |
 | FetchAsync(fetchAction, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
 | FetchAsync(fetchAction, options, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
-  
   

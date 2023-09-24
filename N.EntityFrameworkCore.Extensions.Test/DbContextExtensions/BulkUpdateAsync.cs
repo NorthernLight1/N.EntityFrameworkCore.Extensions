@@ -12,6 +12,23 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     public class BulkUpdateAsync : DbContextExtensionsBase
     {
         [TestMethod]
+        public async Task With_ComplexKey()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.ProductsWithComplexKey.Where(o => o.Price == 1.25M).ToList();
+            foreach (var product in products)
+            {
+                product.Price = 2.35M;
+            }
+            var oldTotal = dbContext.ProductsWithComplexKey.Where(o => o.Price == 2.35M).Count();
+            int rowsUpdated = await dbContext.BulkUpdateAsync(products);
+            var newTotal = dbContext.ProductsWithComplexKey.Where(o => o.Price == 2.35M).Count();
+
+            Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(rowsUpdated == products.Count, "The number of rows updated must match the count of entities that were retrieved");
+            Assert.IsTrue(newTotal == rowsUpdated + oldTotal, "The count of new orders must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
         public async Task With_Default_Options()
         {
             var dbContext = SetupDbContext(true);

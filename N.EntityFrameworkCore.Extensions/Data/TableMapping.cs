@@ -12,7 +12,6 @@ namespace N.EntityFrameworkCore.Extensions
         public DbContext DbContext { get; private set; }
         public IEntityType EntityType { get; set; }
         public IProperty[] Properties { get; }
-        public List<ColumnMetaData> Columns { get; set; }
         public string Schema { get; }
         public string TableName { get; }
         public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema());
@@ -46,22 +45,6 @@ namespace N.EntityFrameworkCore.Extensions
             return EntityType.GetProperties().Where(o => o.ValueGenerated != ValueGenerated.Never)
                 .Select(o => o.GetColumnName(this.StoreObjectIdentifier));
         }
-    }
-    public class ColumnMetaData
-    {
-        public EFColumn2 Column { get; internal set; }
-        public EFColumnProperty Property { get; internal set; }
-    }
-
-    public class EFColumn2
-    {
-        public bool IsStoreGeneratedIdentity { get; internal set; }
-        public string Name { get; internal set; }
-    }
-
-    public class EFColumnProperty
-    {
-        public string Name { get; internal set; }
     }
 }
 
