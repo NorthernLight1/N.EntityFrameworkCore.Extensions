@@ -1,5 +1,7 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
+using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -94,6 +96,35 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
             Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+            Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
+        public async Task With_Enum_Value()
+        {
+            var dbContext = SetupDbContext(true);
+            int oldTotal = dbContext.Products.Count(a => a.StatusEnum == null && a.OutOfStock);
+            int rowUpdated = await dbContext.Products.Where(a => a.StatusEnum == null && a.OutOfStock)
+                .UpdateFromQueryAsync(a => new Product { StatusEnum = ProductStatus.OutOfStock });
+            int newTotal = dbContext.Products.Count(o => o.StatusEnum == null && o.OutOfStock);
+            int newTotal2 = dbContext.Products.Count(o => o.StatusEnum == ProductStatus.OutOfStock && o.OutOfStock);
+
+            Assert.IsTrue(oldTotal > 0, "There must be articles in database that match this condition (OutOfStock == true)");
+            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (OutOfStock == false)");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+            Assert.IsTrue(newTotal2 == oldTotal, "All rows must have been updated");
+        }
+        [TestMethod]
+        public async Task With_Guid_Value()
+        {
+            var dbContext = SetupDbContext(true);
+            var guid = Guid.NewGuid();
+            var orders = dbContext.Orders.Where(o => o.Price < 10M);
+            int oldTotal = await orders.CountAsync();
+            int rowUpdated = await orders.UpdateFromQueryAsync(o => new Order { GlobalId = guid });
+            int matchCount = await dbContext.Orders.Where(o => o.GlobalId == guid).CountAsync();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Price < $10)");
+            Assert.IsTrue(rowUpdated == oldTotal, $"The number of rows update must match the count of rows that match the condition (GlobalId = '{guid}')");
             Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
         }
         [TestMethod]

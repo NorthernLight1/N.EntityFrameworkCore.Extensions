@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
+using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -85,6 +86,19 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
                     Debug.WriteLine("Last Id for Product is {0}", id);
                     dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutput = false });
+                    
+                    //ProductWithComplexKey
+                    var productsWithComplexKey = new List<ProductWithComplexKey>();
+                    id = 1;
+
+                    for (int i = 0; i < 2050; i++)
+                    {
+                        productsWithComplexKey.Add(new ProductWithComplexKey { Price = 1.25M });
+                        id++;
+                    }
+
+                    Debug.WriteLine("Last Id for ProductsWithComplexKey is {0}", id);
+                    dbContext.BulkInsert(productsWithComplexKey, new BulkInsertOptions<ProductWithComplexKey>() { KeepIdentity = false, AutoMapOutput = false });
                 }
                 else if (mode == PopulateDataMode.Tph)
                 {

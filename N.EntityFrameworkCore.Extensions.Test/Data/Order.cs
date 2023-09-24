@@ -8,6 +8,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         [Key]
         public long Id { get; set; }
         public string ExternalId { get; set; }
+        public Guid? GlobalId { get; set; }
         public decimal Price { get; set; }
         public DateTime AddedDateTime { get; set; }
         public DateTime? ModifiedDateTime { get; set; }

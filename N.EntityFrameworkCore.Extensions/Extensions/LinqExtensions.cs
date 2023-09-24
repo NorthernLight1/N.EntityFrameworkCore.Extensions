@@ -91,11 +91,16 @@ namespace N.EntityFrameworkCore.Extensions
                 return "NULL";
             if (value is string str)
                 return "'" + str.Replace("'", "''") + "'";
+            if (value is Guid guid)
+                return $"'{guid}'";
             if (value is bool b)
                 return b ? "1" : "0";
             if (value is DateTime dt)
                 return "'" + dt.ToString("yyyy-MM-ddTHH:mm:ss.fff") + "'"; // Convert to ISO-8601
-            if (!value.GetType().IsClass)
+            var valueType = value.GetType();
+            if (valueType.IsEnum)
+                return Convert.ToString((int)value);
+            if (!valueType.IsClass)
                 return Convert.ToString(value, CultureInfo.InvariantCulture);
 
             throw new NotImplementedException("Unhandled data type.");

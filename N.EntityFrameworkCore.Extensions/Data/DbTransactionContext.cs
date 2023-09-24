@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using N.EntityFrameworkCore.Extensions.Enums;
 using System;
 
 
@@ -15,22 +16,17 @@ namespace N.EntityFrameworkCore.Extensions
         private IDbContextTransaction transaction;
 
         public SqlConnection Connection { get; internal set; }
-        public SqlTransaction CurrentTransaction => transaction.GetDbTransaction() as SqlTransaction;
+        public SqlTransaction CurrentTransaction { get; private set; }
         public DbContext DbContext => context;
 
-        public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, openConnection)
+        public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
         {
 
         }
-        public DbTransactionContext(DbContext context, int? commandTimeout = null, bool openConnection = true)
+        public DbTransactionContext(DbContext context, int? commandTimeout = null, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default, bool openConnection = true)
         {
             this.context = context;
-            this.ownsTransaction = context.Database.CurrentTransaction == null;
-            this.transaction = context.Database.CurrentTransaction ?? context.Database.BeginTransaction();
-            this.Connection = context.GetSqlConnection();
-            this.defaultCommandTimeout = context.Database.GetCommandTimeout();
-            context.Database.SetCommandTimeout(commandTimeout);
-
+            this.Connection = context.GetSqlConnection(connectionBehavior);
             if (openConnection)
             {
                 if (this.Connection.State == System.Data.ConnectionState.Closed)
@@ -39,6 +35,20 @@ namespace N.EntityFrameworkCore.Extensions
                     this.closeConnection = true;
                 }
             }
+            if (connectionBehavior == ConnectionBehavior.Default)
+            {
+                this.ownsTransaction = context.Database.CurrentTransaction == null;
+                this.transaction = context.Database.CurrentTransaction; //?? context.Database.BeginTransaction();
+                this.defaultCommandTimeout = context.Database.GetCommandTimeout();
+                if(this.transaction != null)
+                    this.CurrentTransaction = transaction.GetDbTransaction() as SqlTransaction;
+            }
+            else
+            {
+                //this.CurrentTransaction = this.Connection.BeginTransaction();
+            }
+            
+            context.Database.SetCommandTimeout(commandTimeout);
         }
 
         public void Dispose()
@@ -57,7 +67,8 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal void Rollback()
         {
-            transaction.Rollback();
+            if(this.transaction != null)
+                transaction.Rollback();
         }
     }
 }
