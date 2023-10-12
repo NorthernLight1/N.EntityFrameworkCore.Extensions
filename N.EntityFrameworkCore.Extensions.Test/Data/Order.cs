@@ -12,6 +12,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         public decimal Price { get; set; }
         public DateTime AddedDateTime { get; set; }
         public DateTime? ModifiedDateTime { get; set; }
+        public DateTime DbAddedDateTime { get; set; }
         public bool? Trigger { get; set; }
         public bool Active { get; set; }
         public Order()

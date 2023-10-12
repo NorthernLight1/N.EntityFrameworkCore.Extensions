@@ -27,6 +27,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
             modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key1").HasDefaultValueSql("newsequentialid()");
             modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key2").HasDefaultValueSql("newsequentialid()");
             modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key3").HasDefaultValueSql("newsequentialid()");
+            modelBuilder.Entity<Order>().Property<DateTime>("DbAddedDateTime").HasDefaultValueSql("getdate()");
         }
     }
 }
