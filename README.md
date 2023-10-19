@@ -24,40 +24,40 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
    
   **BulkInsert() - Performs an insert operation with a large number of entities**  
    ```
-  var dbcontext = new MyDbContext();  
+  var dbContext = new MyDbContext();  
   var orders = new List<Order>();  
   for(int i=0; i<10000; i++)  
   {  
       orders.Add(new Order { OrderDate = DateTime.UtcNow, TotalPrice = 2.99 });  
   }  
-  dbcontext.BulkInsert(orders);  
+  dbContext.BulkInsert(orders);  
  ```
   **BulkDelete() - Performs a delete operation with a large number of entities**  
   ```
-  var dbcontext = new MyDbContext();  
-  var orders = dbcontext.Orders.Where(o => o.TotalPrice < 5.35M);  
-  dbcontext.BulkDelete(orders);
+  var dbContext = new MyDbContext();  
+  var orders = dbContext.Orders.Where(o => o.TotalPrice < 5.35M);  
+  dbContext.BulkDelete(orders);
   ```
   **BulkFetch() - Retrieves entities that are contained in a list**  
   ```
   var ids = new List<int> { 10001, 10002, 10003, 10004, 10005 };
-  var products = dbcontext.Products.BulkFetch(ids, options => { options.JoinOnCondition = (s, t) => s.Id == t.Id; }).ToList();
+  var products = dbContext.Products.BulkFetch(ids, options => { options.JoinOnCondition = (s, t) => s.Id == t.Id; }).ToList();
   ```
   **BulkUpdate() - Performs an update operation with a large number of entities**  
   ```
-  var dbcontext = new MyDbContext();  
-  var products = dbcontext.Products.Where(o => o.Price < 5.35M);
+  var dbContext = new MyDbContext();  
+  var products = dbContext.Products.Where(o => o.Price < 5.35M);
   foreach(var product in products)
   {
       order.Price = 6M;
   }
-  dbcontext.BulkUpdate(products);
+  dbContext.BulkUpdate(products);
   ```
   **BulkMerge() - Performs a merge operation with a large number of entities**
   ```
-  var dbcontext = new MyDbContext();
+  var dbContext = new MyDbContext();
   var products = new List<Product>();
-  var existingProducts = dbcontext.Products.Where(o => o.Price < 5.35M);
+  var existingProducts = dbContext.Products.Where(o => o.Price < 5.35M);
   foreach(var product in existingProducts)
   {
       product.Price = 6M;
@@ -65,7 +65,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   products.AddRange(existingProducts);
   products.Add(new Product { Name="Hat", Price=10.25M });
   products.Add(new Product { Name="Shirt", Price=20.95M });
-  dbcontext.BulkMerge(products);
+  dbContext.BulkMerge(products);
   ```
   **BulkSaveChanges() - Saves all changes using bulk operations**  
    ```
@@ -82,9 +82,9 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
    
    By default any entities that do not exists in the source list will be deleted, but this can be disabled in the options.
   ```
-  var dbcontext = new MyDbContext();
+  var dbContext = new MyDbContext();
   var products = new List<Product>();
-  var existingProducts = dbcontext.Products.Where(o => o.Id <= 1000);
+  var existingProducts = dbContext.Products.Where(o => o.Id <= 1000);
   foreach(var product in existingProducts)
   {
       product.Price = 6M;
@@ -93,12 +93,12 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   products.Add(new Product { Name="Hat", Price=10.25M });
   products.Add(new Product { Name="Shirt", Price=20.95M });
   //All existing products with Id > 1000 will be deleted
-  dbcontext.BulkSync(products);
+  dbContext.BulkSync(products);
   ```
   **Fetch() - Retrieves data in batches.**  
   ```
-  var dbcontext = new MyDbContext();  
-  var query = dbcontext.Products.Where(o => o.Price < 5.35M);
+  var dbContext = new MyDbContext();  
+  var query = dbContext.Products.Where(o => o.Price < 5.35M);
   query.Fetch(result =>
     {
       batchCount++;
@@ -106,32 +106,32 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
     }, 
     new FetchOptions { BatchSize = 1000 }
   );
-  dbcontext.BulkUpdate(products);
+  dbContext.BulkUpdate(products);
   ```
   **DeleteFromQuery() - Deletes records from the database using a LINQ query without loading data into DbContext**  
    ``` 
-  var dbcontext = new MyDbContext(); 
+  var dbContext = new MyDbContext(); 
   
   //This will delete all products  
-  dbcontext.Products.DeleteFromQuery() 
+  dbContext.Products.DeleteFromQuery() 
   
   //This will delete all products that are under $5.35  
-  dbcontext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery()  
+  dbContext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery()  
 ```
   **InsertFromQuery() - Inserts records from the database using a LINQ query without loading data into DbContext**  
    ``` 
-  var dbcontext = new MyDbContext(); 
+  var dbContext = new MyDbContext(); 
   
   //This will take all products priced under $10 from the Products table and 
   //insert it into the ProductsUnderTen table
-  dbcontext.Products.Where(x => x.Price < 10M).InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
+  dbContext.Products.Where(x => x.Price < 10M).InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
 ```
   **UpdateFromQuery() - Updates records from the database using a LINQ query without loading data into DbContext**  
    ``` 
-  var dbcontext = new MyDbContext(); 
+  var dbContext = new MyDbContext(); 
   
   //This will change all products priced at $5.35 to $5.75 
-  dbcontext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
+  dbContext.Products.Where(x => x.Price == 5.35M).UpdateFromQuery(o => new Product { Price = 5.75M }) 
 ```
 ## Options
   **Transaction** 
@@ -139,11 +139,11 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   When using any of the following bulk data operations (BulkDelete, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery), if an external transaction exists, then it will be utilized.
    
    ``` 
-  var dbcontext = new MyDbContext(); 
+  var dbContext = new MyDbContext(); 
   var transaction = context.Database.BeginTransaction();
   try
   {
-      dbcontext.BulkInsert(orders);
+      dbContext.BulkInsert(orders);
       transaction.Commit();
   }
   catch
