@@ -1,4 +1,5 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore.Metadata;
 using N.EntityFrameworkCore.Extensions.Enums;
 using System;
 using System.Collections.Generic;
@@ -18,6 +19,7 @@ namespace N.EntityFrameworkCore.Extensions
         public bool UsePermanentTable { get; set; }
         public int? CommandTimeout { get; set; }
         internal ConnectionBehavior ConnectionBehavior { get; set; }
+        internal IEntityType EntityType { get; set; }
 
 
         public SqlRowsCopiedEventHandler SqlRowsCopied { get; internal set; }
