@@ -8,7 +8,7 @@ N.EntityFrameworkCore.Extensions
 
 The framework currently supports the following operations:
 
-Entity Framework Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
+Entity Framework Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
 
 Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hierarchy)
 
@@ -22,7 +22,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   
  ## Usage
    
-  **BulkInsert() - Performs a insert operation with a large number of entities**  
+  **BulkInsert() - Performs an insert operation with a large number of entities**  
    ```
   var dbcontext = new MyDbContext();  
   var orders = new List<Order>();  
@@ -43,7 +43,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   var ids = new List<int> { 10001, 10002, 10003, 10004, 10005 };
   var products = dbcontext.Products.BulkFetch(ids, options => { options.JoinOnCondition = (s, t) => s.Id == t.Id; }).ToList();
   ```
-  **BulkUpdate() - Performs a update operation with a large number of entities**  
+  **BulkUpdate() - Performs an update operation with a large number of entities**  
   ```
   var dbcontext = new MyDbContext();  
   var products = dbcontext.Products.Where(o => o.Price < 5.35M);
@@ -67,6 +67,17 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   products.Add(new Product { Name="Shirt", Price=20.95M });
   dbcontext.BulkMerge(products);
   ```
+  **BulkSaveChanges() - Saves all changes using bulk operations**  
+   ```
+  var dbContext = new MyDbContext();  
+  var orders = new List<Order>();  
+  for(int i=0; i<10000; i++)  
+  {  
+      orders.Add(new Order { Id=-i,OrderDate = DateTime.UtcNow, TotalPrice = 2.99 });  
+  }
+  dbContext.Orders.AddRange(orders);
+  dbContext.BulkSaveChanges();  
+ ```
    **BulkSync() - Performs a sync operation with a large number of entities.** 
    
    By default any entities that do not exists in the source list will be deleted, but this can be disabled in the options.
@@ -97,7 +108,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   );
   dbcontext.BulkUpdate(products);
   ```
-  **DeleteFromQuery() - Deletes records from the database using a LINQ query without loading data in the context**  
+  **DeleteFromQuery() - Deletes records from the database using a LINQ query without loading data into DbContext**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
@@ -107,7 +118,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   //This will delete all products that are under $5.35  
   dbcontext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery()  
 ```
-  **InsertFromQuery() - Inserts records from the database using a LINQ query without loading data in the context**  
+  **InsertFromQuery() - Inserts records from the database using a LINQ query without loading data into DbContext**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
@@ -115,7 +126,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
   //insert it into the ProductsUnderTen table
   dbcontext.Products.Where(x => x.Price < 10M).InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
 ```
-  **UpdateFromQuery() - Updates records from the database using a LINQ query without loading data in the context**  
+  **UpdateFromQuery() - Updates records from the database using a LINQ query without loading data into DbContext**  
    ``` 
   var dbcontext = new MyDbContext(); 
   
@@ -125,7 +136,7 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
 ## Options
   **Transaction** 
   
-  When using any of the following bulk data operations (BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery), if an external transaction exists, then it will be utilized.
+  When using any of the following bulk data operations (BulkDelete, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, DeleteFromQuery, InsertFromQuery), if an external transaction exists, then it will be utilized.
    
    ``` 
   var dbcontext = new MyDbContext(); 
@@ -169,6 +180,11 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hie
 | BulkMergeAsync(items, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
 | BulkMergeAsync(items, options)  | Bulk merge entities asynchronously in your database.  |
 | BulkMergeAsync(items, options, cancellationToken)  | Bulk merge entities asynchronously in your database.  |
+| **BulkSaveChanges** |
+| BulkSaveChanges<T>()  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
+| BulkSaveChanges<T>( acceptAllChangesOnSave)  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
+| BulkSaveChangesAsync<T>()  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
+| BulkSaveChangesAsync<T>( acceptAllChangesOnSave)  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
 | **BulkSync** |
 | BulkSync<T>(items)  | Bulk sync entities in your database.  |
 | BulkSync<T>(items, options)  | Bulk sync entities in your database.   |
