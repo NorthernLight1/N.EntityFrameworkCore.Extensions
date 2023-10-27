@@ -14,6 +14,8 @@ namespace N.EntityFrameworkCore.Extensions
         public IProperty[] Properties { get; }
         public string Schema { get; }
         public string TableName { get; }
+
+        public bool HasIdentityColumn => EntityType.FindPrimaryKey().Properties.Any(o => o.ValueGenerated != ValueGenerated.Never);
         public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema());
         public string FullQualifedTableName
         {

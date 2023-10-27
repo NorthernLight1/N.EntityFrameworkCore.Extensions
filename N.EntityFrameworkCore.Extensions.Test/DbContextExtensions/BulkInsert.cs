@@ -61,7 +61,44 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
-        public void With_Default_Options_Tph()
+        public void With_Inheritance_Tpc()
+        {
+            var dbContext = SetupDbContext(false);
+            var customers = new List<TpcCustomer>();
+            var vendors = new List<TpcVendor>();
+            for (int i = 0; i < 20000; i++)
+            {
+                customers.Add(new TpcCustomer
+                {
+                    Id = i,
+                    FirstName = string.Format("John_{0}", i),
+                    LastName = string.Format("Smith_{0}", i),
+                    Email = string.Format("john.smith{0}@domain.com", i),
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            for (int i = 20000; i < 30000; i++)
+            {
+                vendors.Add(new TpcVendor
+                {
+                    Id = i,
+                    FirstName = string.Format("Mike_{0}", i),
+                    LastName = string.Format("Smith_{0}", i),
+                    Email = string.Format("mike.smith{0}@domain.com", i),
+                    Url = string.Format("http://domain.com/mike.smith{0}", i)
+                });
+            }
+            int oldTotal = dbContext.TpcPeople.Count();
+            int customerRowsInserted = dbContext.BulkInsert(customers);
+            int vendorRowsInserted = dbContext.BulkInsert(vendors);
+            int rowsInserted = customerRowsInserted + vendorRowsInserted;
+            int newTotal = dbContext.TpcPeople.Count();
+
+            Assert.IsTrue(rowsInserted == customers.Count + vendors.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public void With_Inheritance_Tph()
         {
             var dbContext = SetupDbContext(false);
             var customers = new List<TphCustomer>();

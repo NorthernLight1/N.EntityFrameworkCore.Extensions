@@ -284,10 +284,10 @@ namespace N.EntityFrameworkCore.Extensions
                         SqlUtil.ConvertToColumnString(columnsToInsert),
                         columnsToOutput.Count > 0 ? " OUTPUT " + SqlUtil.ConvertToColumnString(columnsToOutput) : "");
 
-                    if (options.KeepIdentity && primaryKeyColumnNames.Length > 0)
+                    if (options.KeepIdentity && tableMapping.HasIdentityColumn)
                         context.Database.ToggleIdentityInsert(true, destinationTableName);
                     var bulkQueryResult = context.BulkQuery(insertSqlText, dbConnection, transaction, options);
-                    if (options.KeepIdentity && primaryKeyColumnNames.Length > 0)
+                    if (options.KeepIdentity && tableMapping.HasIdentityColumn)
                         context.Database.ToggleIdentityInsert(false, destinationTableName);
                     rowsAffected = bulkQueryResult.RowsAffected;
 
