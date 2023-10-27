@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
 using N.EntityFrameworkCore.Extensions.Common;
 using System;
@@ -192,9 +193,14 @@ namespace N.EntityFrameworkCore.Extensions
             }
             else
             {
-                return selectors[i](this.TableMapping.DbContext.Entry(enumerator.Current));
+                return selectors[i](FindEntry(enumerator.Current));
             }
-            
+
+        }
+
+        private EntityEntry FindEntry(object entity)
+        {
+            return entity is InternalEntityEntry ? ((InternalEntityEntry)entity).ToEntityEntry() : this.TableMapping.DbContext.Entry(entity);
         }
 
         public int GetValues(object[] values)

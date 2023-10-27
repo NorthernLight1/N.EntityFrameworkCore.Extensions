@@ -24,5 +24,9 @@ namespace N.EntityFrameworkCore.Extensions
             this.AutoMapOutput = true;
             this.InsertIfNotExists = false;
         }
+        internal BulkInsertOptions(BulkOptions options)
+        {
+            this.EntityType = options.EntityType;
+        }
     }
 }
