@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.Options;
+using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -43,8 +45,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             statement.CreatePart(SqlKeyword.Not);
             statement.CreatePart(SqlKeyword.Matched);
             statement.CreatePart(SqlKeyword.Then);
-            statement.CreatePart(SqlKeyword.Insert, SqlExpression.Columns(insertColumns));
-            statement.CreatePart(SqlKeyword.Values, SqlExpression.Columns(insertColumns));
+            statement.WriteInsert(insertColumns);
             statement.CreatePart(SqlKeyword.Output, SqlExpression.Columns(outputColumns));
             return statement;
         }

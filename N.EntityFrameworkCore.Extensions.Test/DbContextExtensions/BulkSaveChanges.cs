@@ -197,6 +197,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int expectedRowsUpdated = customersToUpdate.Count();
             foreach (var customerToUpdate in customersToUpdate)
             {
+                customerToUpdate.Email = "name@domain.com";
                 customerToUpdate.FirstName = "CustomerUpdated";
             }
             //Add New Customers

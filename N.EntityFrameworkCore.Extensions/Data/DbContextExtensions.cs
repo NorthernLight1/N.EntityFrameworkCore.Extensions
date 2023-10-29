@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -16,6 +17,7 @@ using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
@@ -55,11 +57,11 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
-                int rowsAffected;
+                int rowsAffected = 0;
                 try
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
+                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.EntityTypes.First().GetTableName());
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
 
@@ -68,8 +70,9 @@ namespace N.EntityFrameworkCore.Extensions
 
                     context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
-                        CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
+                    CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
                     rowsAffected = context.Database.ExecuteSql(deleteSql, options.CommandTimeout);
 
                     context.Database.DropTable(stagingTableName);
@@ -570,20 +573,25 @@ namespace N.EntityFrameworkCore.Extensions
                     string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
                     IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
+                    IEnumerable<string> tableNames = tableMapping.GetSchemaQualifiedTableNames();
 
                     if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
                         throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
 
-                    context.Database.CloneTable(destinationTableName, stagingTableName, null);
-                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
+                    IEnumerable<string> columnsToInsert = columnNames.Union(primaryKeyColumnNames);
+                    context.Database.CloneTable(tableMapping.GetSchemaQualifiedTableNames(), stagingTableName, tableMapping.GetQualifiedColumnNames(columnsToInsert));
+                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity);
 
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
+                    foreach(var entityType in tableMapping.EntityTypes)
+                    {
+                        IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(tableMapping.GetColumnNames(entityType)
+                            .Intersect(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o))));
+                        string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
+                        string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
+                            updateSetExpression, stagingTableName, entityType.GetTableName(), CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
+                        rowsUpdated = context.Database.ExecuteSql(updateSql, options.CommandTimeout);
+                    }
 
-                    string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-                    string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
-
-                    rowsUpdated = context.Database.ExecuteSql(updateSql, options.CommandTimeout);
                     context.Database.DropTable(stagingTableName);
 
                     //ClearEntityStateToUnchanged(context, entities);
