@@ -11,7 +11,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     {
         Normal,
         Tpc,
-        Tph
+        Tph,
+        Tpt
     }
     [TestClass]
     public class DbContextExtensionsBase
@@ -29,7 +30,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             dbContext.Products.Truncate();
             dbContext.Database.ClearTable("TpcCustomer");
             dbContext.Database.ClearTable("TpcVendor");
-            dbContext.Database.ClearTable("TphPeople");
+            dbContext.TphPeople.Truncate();
             dbContext.Database.ClearTable("TptPeople");
             dbContext.Database.ClearTable("TptCustomer");
             dbContext.Database.ClearTable("TptVendor");
@@ -143,7 +144,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     //TPC Customers & Vendors
                     var tpcCustomers = new List<TpcCustomer>();
                     var tpcVendors = new List<TpcVendor>();
-                    for (int i = 0; i < 2000; i++)
+                    for (int i = 1; i <= 2000; i++)
                     {
                         tpcCustomers.Add(new TpcCustomer
                         {
@@ -155,7 +156,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                             AddedDate = DateTime.UtcNow
                         });
                     }
-                    for (int i = 2000; i < 3000; i++)
+                    for (int i = 2001; i < 3000; i++)
                     {
                         tpcVendors.Add(new TpcVendor
                         {
@@ -169,6 +170,38 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     }
                     dbContext.BulkInsert(tpcCustomers, new BulkInsertOptions<TpcCustomer>() { KeepIdentity = true });
                     dbContext.BulkInsert(tpcVendors, new BulkInsertOptions<TpcVendor>() { KeepIdentity = true });
+                }
+                else if (mode == PopulateDataMode.Tpt)
+                {
+                    //Customers & Vendors
+                    var tptCustomers = new List<TptCustomer>();
+                    var tptVendors = new List<TptVendor>();
+                    for (int i = 1; i <= 2000; i++)
+                    {
+                        tptCustomers.Add(new TptCustomer
+                        {
+                            Id = i,
+                            FirstName = string.Format("John_{0}", i),
+                            LastName = string.Format("Smith_{0}", i),
+                            Email = string.Format("john.smith{0}@domain.com", i),
+                            Phone = "404-555-1111",
+                            AddedDate = DateTime.UtcNow
+                        });
+                    }
+                    for (int i = 2001; i < 3000; i++)
+                    {
+                        tptVendors.Add(new TptVendor
+                        {
+                            Id = i,
+                            FirstName = string.Format("Mike_{0}", i),
+                            LastName = string.Format("Smith_{0}", i),
+                            Phone = "404-555-2222",
+                            Email = string.Format("mike.smith{0}@domain.com", i),
+                            Url = string.Format("http://domain.com/mike.smith{0}", i)
+                        });
+                    }
+                    dbContext.BulkInsert(tptCustomers, new BulkInsertOptions<TptCustomer>() { KeepIdentity = true });
+                    dbContext.BulkInsert(tptVendors, new BulkInsertOptions<TptVendor>() { KeepIdentity = true });
                 }
             }
             return dbContext;
