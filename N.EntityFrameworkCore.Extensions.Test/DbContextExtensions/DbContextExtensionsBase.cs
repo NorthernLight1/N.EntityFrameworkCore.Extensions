@@ -30,6 +30,9 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             dbContext.Database.ClearTable("TpcCustomer");
             dbContext.Database.ClearTable("TpcVendor");
             dbContext.Database.ClearTable("TphPeople");
+            dbContext.Database.ClearTable("TptPeople");
+            dbContext.Database.ClearTable("TptCustomer");
+            dbContext.Database.ClearTable("TptVendor");
             dbContext.Database.DropTable("OrdersUnderTen", true);
             dbContext.Database.DropTable("OrdersLast30Days", true);
             if (populateData)
