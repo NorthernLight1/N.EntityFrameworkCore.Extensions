@@ -211,7 +211,7 @@ namespace N.EntityFrameworkCore.Extensions
                 }
             }
         }
-        private async static Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        internal async static Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
             IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false, CancellationToken cancellationToken = default)
         {
             var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId);
@@ -413,47 +413,22 @@ namespace N.EntityFrameworkCore.Extensions
         public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options, CancellationToken cancellationToken = default)
         {
             int rowsUpdated = 0;
-            var outputRows = new List<BulkMergeOutputRow<T>>();
-            var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
-
-            using (var dbTransactionContext = new DbTransactionContext(context, options))
+            using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
-                var dbContext = dbTransactionContext.DbContext;
-                var dbConnection = dbTransactionContext.Connection;
-                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
-
-                    if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
-                        throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
-
-                    await context.Database.CloneTableAsync(destinationTableName, stagingTableName, null, null, cancellationToken);
-                    await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity, false, cancellationToken);
-
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
-
-                    string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-                    string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
-
-                    rowsUpdated = await context.Database.ExecuteSqlRawAsync(updateSql, cancellationToken);
-                    dbContext.Database.DropTable(stagingTableName);
-
-                    //ClearEntityStateToUnchanged(context, entities);
-                    dbTransactionContext.Commit();
+                    bulkOperation.ValidateBulkUpdate(options.UpdateOnCondition);
+                    await bulkOperation.BulkInsertStagingDataAsync(entities);
+                    rowsUpdated = await bulkOperation.ExecuteUpdateAsync(entities, options.UpdateOnCondition);
+                    bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    dbTransactionContext.Rollback();
+                    bulkOperation.DbTransactionContext.Rollback();
                     throw;
                 }
-
-                return rowsUpdated;
             }
+            return rowsUpdated;
         }
         private async static Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
         {
