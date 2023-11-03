@@ -227,7 +227,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
             foreach (var property in dataReader.TableMapping.Properties)
             {
-                var columnName = property.GetColumnName(dataReader.TableMapping.StoreObjectIdentifier);
+                var columnName = property.GetColumnName();
                 if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
                     sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
             }

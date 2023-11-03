@@ -374,7 +374,6 @@ namespace N.EntityFrameworkCore.Extensions
                 foreach (var property in dataReader.TableMapping.Properties)
                 {
                     var columnName = property.GetColumnName();
-                    //var columnName = property.GetColumnName(dataReader.TableMapping.StoreObjectIdentifier);
                     if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
                         sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
                 }
@@ -575,51 +574,6 @@ namespace N.EntityFrameworkCore.Extensions
                 }
             }
             return rowsUpdated;
-            //var outputRows = new List<BulkMergeOutputRow<T>>();
-            //var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
-
-            //using (var dbTransactionContext = new DbTransactionContext(context, options))
-            //{
-            //    var dbConnection = dbTransactionContext.Connection;
-            //    var transaction = dbTransactionContext.CurrentTransaction;
-            //    try
-            //    {
-            //        string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-            //        string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-            //        string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-            //        IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
-            //        IEnumerable<string> tableNames = tableMapping.GetSchemaQualifiedTableNames();
-
-            //        if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
-            //            throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
-
-            //        IEnumerable<string> columnsToInsert = columnNames.Union(primaryKeyColumnNames);
-            //        context.Database.CloneTable(tableMapping.GetSchemaQualifiedTableNames(), stagingTableName, tableMapping.GetQualifiedColumnNames(columnsToInsert));
-            //        BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity);
-
-            //        foreach(var entityType in tableMapping.EntityTypes)
-            //        {
-            //            IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(tableMapping.GetColumnNames(entityType)
-            //                .Intersect(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o))));
-            //            string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-            //            string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-            //                updateSetExpression, stagingTableName, entityType.GetTableName(), CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
-            //            rowsUpdated = context.Database.ExecuteSql(updateSql, options.CommandTimeout);
-            //        }
-
-            //        context.Database.DropTable(stagingTableName);
-
-            //        //ClearEntityStateToUnchanged(context, entities);
-            //        dbTransactionContext.Commit();
-            //    }
-            //    catch (Exception)
-            //    {
-            //        dbTransactionContext.Rollback();
-            //        throw;
-            //    }
-
-            //return rowsUpdated;
-            //}
         }
 
         private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
