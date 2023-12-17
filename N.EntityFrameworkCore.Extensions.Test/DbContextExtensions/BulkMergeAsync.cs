@@ -53,7 +53,37 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
         }
         [TestMethod]
-        public async Task With_Default_Options_Tph()
+        public async Task With_Inheritance_Tpc()
+        {
+            var dbContext = SetupDbContext(true);
+            var customers = dbContext.TpcPeople.Where(o => o.Id <= 1000).OfType<TpcCustomer>().ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkMerge_Tpc_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TpcCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkMerge_Tpc_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = await dbContext.BulkMergeAsync(customers, options => { options.MergeOnCondition = (s, t) => s.Id == t.Id; });
+            int customersAdded = dbContext.TpcPeople.Where(o => o.FirstName == "BulkMerge_Tpc_Add").OfType<TpcCustomer>().Count();
+            int customersUpdated = dbContext.TpcPeople.Where(o => o.FirstName == "BulkMerge_Tpc_Update").OfType<TpcCustomer>().Count();
+
+            Assert.IsTrue(result.RowsAffected == customers.Count, "The number of rows inserted must match the count of customer list");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(customersToAdd == customersAdded, "The custmoers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+        }
+        [TestMethod]
+        public async Task With_Inheritance_Tph()
         {
             var dbContext = SetupDbContext(true);
             var customers = dbContext.TphPeople.Where(o => o.Id <= 1000).OfType<TphCustomer>().ToList();

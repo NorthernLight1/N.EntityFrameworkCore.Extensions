@@ -3,13 +3,13 @@
 [![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions) [![downloads](https://img.shields.io/nuget/dt/N.EntityFrameworkCore.Extensions)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions)
 
 
-## Bulk data support  data support for EntityFrameworkCore v6.0.8+
+## Bulk data support  data support for EntityFrameworkCore v7.0.13+
 
 The framework currently supports the following operations:
 
 Entity Framework Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
 
-Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Hierarchy)
+Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Concrete, Table-Per-Hierarchy)
 
   ### Installation
 

@@ -10,6 +10,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     public enum PopulateDataMode
     {
         Normal,
+        Tpc,
         Tph
     }
     [TestClass]
@@ -26,7 +27,12 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             TestDbContext dbContext = new TestDbContext();
             dbContext.Orders.Truncate();
             dbContext.Products.Truncate();
+            dbContext.Database.ClearTable("TpcCustomer");
+            dbContext.Database.ClearTable("TpcVendor");
             dbContext.Database.ClearTable("TphPeople");
+            dbContext.Database.ClearTable("TptPeople");
+            dbContext.Database.ClearTable("TptCustomer");
+            dbContext.Database.ClearTable("TptVendor");
             dbContext.Database.DropTable("OrdersUnderTen", true);
             dbContext.Database.DropTable("OrdersLast30Days", true);
             if (populateData)
@@ -131,6 +137,38 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     }
                     dbContext.BulkInsert(tphCustomers, new BulkInsertOptions<TphCustomer>() { KeepIdentity = true });
                     dbContext.BulkInsert(tphVendors, new BulkInsertOptions<TphVendor>() { KeepIdentity = true });
+                }
+                else if (mode == PopulateDataMode.Tpc)
+                {
+                    //TPC Customers & Vendors
+                    var tpcCustomers = new List<TpcCustomer>();
+                    var tpcVendors = new List<TpcVendor>();
+                    for (int i = 0; i < 2000; i++)
+                    {
+                        tpcCustomers.Add(new TpcCustomer
+                        {
+                            Id = i,
+                            FirstName = string.Format("John_{0}", i),
+                            LastName = string.Format("Smith_{0}", i),
+                            Email = string.Format("john.smith{0}@domain.com", i),
+                            Phone = "404-555-1111",
+                            AddedDate = DateTime.UtcNow
+                        });
+                    }
+                    for (int i = 2000; i < 3000; i++)
+                    {
+                        tpcVendors.Add(new TpcVendor
+                        {
+                            Id = i,
+                            FirstName = string.Format("Mike_{0}", i),
+                            LastName = string.Format("Smith_{0}", i),
+                            Phone = "404-555-2222",
+                            Email = string.Format("mike.smith{0}@domain.com", i),
+                            Url = string.Format("http://domain.com/mike.smith{0}", i)
+                        });
+                    }
+                    dbContext.BulkInsert(tpcCustomers, new BulkInsertOptions<TpcCustomer>() { KeepIdentity = true });
+                    dbContext.BulkInsert(tpcVendors, new BulkInsertOptions<TpcVendor>() { KeepIdentity = true });
                 }
             }
             return dbContext;
