@@ -43,11 +43,12 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                         {
                             var declareParts = inputText.Substring(0, inputText.IndexOf(";")).Trim().Split(" ");
                             int sizeStartIndex = declareParts[1].IndexOf("(");
+                            int sizeLength = declareParts[1].IndexOf(")") - (sizeStartIndex+1);
                             string dbTypeString = sizeStartIndex != -1 ? declareParts[1].Substring(0, sizeStartIndex) : declareParts[1];
                             SqlDbType dbType = (SqlDbType)Enum.Parse(typeof(SqlDbType), dbTypeString, true);
                             int size = sizeStartIndex != -1 ? 
-                                Convert.ToInt32(declareParts[1].Substring(sizeStartIndex).Replace(")", "")) : 0;
-                            string value = declareParts[3][0] == '\'' ? declareParts[3].Substring(1, declareParts[3].Length - 2) : declareParts[3];
+                                Convert.ToInt32(declareParts[1].Substring(sizeStartIndex+1, sizeLength)) : 0;
+                            string value = GetDeclareValue(declareParts[3]);
                             Parameters.Add(new SqlParameter(declareParts[0], dbType, size) { Value = value });
                         }
                         else
@@ -67,6 +68,23 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             if (!string.IsNullOrEmpty(curClause))
                 Clauses.Add(SqlClause.Parse(curClause, sqlText.Substring(curClauseIndex)));
         }
+
+        private string GetDeclareValue(string value)
+        {
+            if(value.StartsWith("'"))
+            {
+                return value.Substring(1, value.Length - 2);
+            }
+            else if (value.StartsWith("N'"))
+            {
+                return value.Substring(2, value.Length - 3);
+            }
+            else
+            {
+                return value;
+            }
+        }
+
         public string Count()
         {
             return string.Format("SELECT COUNT(*) FROM ({0}) s", string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString())));
