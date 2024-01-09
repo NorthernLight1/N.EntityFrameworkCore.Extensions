@@ -285,5 +285,39 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(rowsInserted == expectedRowsInserted, "The number of rows inserted must match the count of order list");
             Assert.IsTrue(newTotal - oldTotal == expectedRowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
+        [TestMethod]
+        public async Task With_ValueGenerated_Default()
+        {
+            var dbContext = SetupDbContext(false);
+            var nowDateTime = DateTime.Now;
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+            int rowsInserted = await dbContext.BulkInsertAsync(orders);
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.DbAddedDateTime > nowDateTime).Count();
+
+            Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public async Task With_ValueGenerated_Computed()
+        {
+            var dbContext = SetupDbContext(false);
+            var nowDateTime = DateTime.Now;
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+            int rowsInserted = await dbContext.BulkInsertAsync(orders);
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.DbModifiedDateTime > nowDateTime).Count();
+
+            Assert.IsTrue(rowsInserted == orders.Count(), "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
     }
 }

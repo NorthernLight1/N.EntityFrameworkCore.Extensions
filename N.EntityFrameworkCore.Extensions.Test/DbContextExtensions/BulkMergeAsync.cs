@@ -260,5 +260,40 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(ordersAdded == 0, "The number of rows added must equal 0 since transaction was rollbacked");
             Assert.IsTrue(ordersUpdated == 0, "The number of rows updated must equal 0 since transaction was rollbacked");
         }
+        [TestMethod]
+        public async Task With_ValueGenerated_Default()
+        {
+            var dbContext = SetupDbContext(false);
+            var nowDateTime = DateTime.Now;
+            var orders = new List<Order>();
+            for (int i = 0; i < 1000; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.DbAddedDateTime > nowDateTime).Count();
+            var mergeResult = await dbContext.BulkMergeAsync(orders);
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 1.57M
+                && o.DbAddedDateTime > nowDateTime).Count();
+
+            Assert.IsTrue(mergeResult.RowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == mergeResult.RowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public async Task With_ValueGenerated_Computed()
+        {
+            var dbContext = SetupDbContext(false);
+            var nowDateTime = DateTime.Now;
+            var orders = new List<Order>();
+            for (int i = 0; i < 20000; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime });
+            }
+            int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
+            var result = await dbContext.BulkMergeAsync(orders);
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.DbModifiedDateTime > nowDateTime).Count();
+
+            Assert.IsTrue(result.RowsInserted == orders.Count(), "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == result.RowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
     }
 }
