@@ -32,6 +32,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
             modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key2").HasDefaultValueSql("newsequentialid()");
             modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key3").HasDefaultValueSql("newsequentialid()");
             modelBuilder.Entity<Order>().Property<DateTime>("DbAddedDateTime").HasDefaultValueSql("getdate()");
+            modelBuilder.Entity<Order>().Property<DateTime>("DbModifiedDateTime").HasComputedColumnSql("getdate()");
             modelBuilder.Entity<TpcPerson>().UseTpcMappingStrategy();
             modelBuilder.Entity<TpcCustomer>().ToTable("TpcCustomer");
             modelBuilder.Entity<TpcVendor>().ToTable("TpcVendor");
