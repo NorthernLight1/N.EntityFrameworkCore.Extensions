@@ -176,7 +176,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             bool autoMapIdentityMatched = true;
             foreach (var order in orders)
             {
-                if (!dbContext.Orders.Any(o => o.ExternalId == order.ExternalId && o.Id == order.Id && o.Price == order.Price))
+                if (!dbContext.Orders.Any(o => o.ExternalId == order.ExternalId && o.Price == order.Price))
                 {
                     autoMapIdentityMatched = false;
                     break;

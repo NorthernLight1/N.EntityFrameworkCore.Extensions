@@ -11,7 +11,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     [TestClass]
     public class BulkUpdateAsync : DbContextExtensionsBase
     {
-        [TestMethod]
+        [TestMethod()]
         public async Task With_ComplexKey()
         {
             var dbContext = SetupDbContext(true);

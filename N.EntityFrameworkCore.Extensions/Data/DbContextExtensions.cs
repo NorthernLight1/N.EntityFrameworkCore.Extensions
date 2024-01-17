@@ -409,6 +409,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
+                    bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
                     var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
                     bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
                         true, true, options.DeleteIfNotMatched);
@@ -761,7 +762,6 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dbConnection = context.Database.GetDbConnection();
             return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
-            //return context.Database.GetDbConnection() as SqlConnection;
         }
 
         //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
