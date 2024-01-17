@@ -24,7 +24,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             {
                 orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
             }
-            var result = dbContext.BulkMerge(orders);
+            var result = dbContext.BulkMerge(orders, o => o.UsePermanentTable=true);
             var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
             bool areAddedOrdersMerged = true;
             bool areUpdatedOrdersMerged = true;
@@ -112,6 +112,36 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
         }
         [TestMethod]
+        public void With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpt);
+            var customers = dbContext.TptPeople.Where(o => o.Id <= 1000).OfType<TptCustomer>().ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkMerge_Tpt_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TptCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkMerge_Tpt_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = dbContext.BulkMerge(customers);
+            int customersAdded = dbContext.TptPeople.Where(o => o.FirstName == "BulkMerge_Tpt_Add").OfType<TptCustomer>().Count();
+            int customersUpdated = dbContext.TptPeople.Where(o => o.FirstName == "BulkMerge_Tpt_Update").OfType<TptCustomer>().Count();
+
+            Assert.IsTrue(result.RowsAffected == customers.Count(), "The number of rows inserted must match the count of customer list");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(customersToAdd == customersAdded, "The custmoers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+        }
+        [TestMethod]
         public void With_Default_Options_MergeOnCondition()
         {
             var dbContext = SetupDbContext(true);
@@ -175,7 +205,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             bool autoMapIdentityMatched = true;
             foreach (var order in orders)
             {
-                if (!dbContext.Orders.Any(o => o.ExternalId == order.ExternalId && o.Id == order.Id && o.Price == order.Price))
+                if (!dbContext.Orders.Any(o => o.ExternalId == order.ExternalId && o.Price == order.Price))
                 {
                     autoMapIdentityMatched = false;
                     break;

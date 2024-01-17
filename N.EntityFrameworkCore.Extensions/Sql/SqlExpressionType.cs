@@ -4,6 +4,7 @@
     {
         String,
         Table,
-        Columns
+        Columns,
+        Set
     }
 }
