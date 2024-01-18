@@ -54,6 +54,111 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
         }
         [TestMethod]
+        public void With_Inheritance_Tpc()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpc);
+            var customers = dbContext.TpcPeople.Where(o => o.Id <= 1000).OfType<TpcCustomer>().ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            int customersToDelete = dbContext.TpcPeople.OfType<TpcCustomer>().Count() - customersToUpdate;
+
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkSync_Tpc_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TpcCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkSync_Tpc_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = dbContext.BulkSync(customers, options => { options.MergeOnCondition = (s, t) => s.Id == t.Id; });
+            int customersAdded = dbContext.TpcPeople.Where(o => o.FirstName == "BulkSync_Tpc_Add").OfType<TpcCustomer>().Count();
+            int customersUpdated = dbContext.TpcPeople.Where(o => o.FirstName == "BulkSync_Tpc_Update").OfType<TpcCustomer>().Count();
+            int newCustomerTotal = dbContext.TpcPeople.OfType<TpcCustomer>().Count();
+
+            Assert.IsTrue(result.RowsAffected == customersAdded + customersToUpdate + customersToDelete, "The number of rows affected must match the sum of customers added, updated and deleted.");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(result.RowsDeleted == customersToDelete, "The number of rows deleted must match the difference from the total existing orders to the new orders to add/update");
+            Assert.IsTrue(customersToAdd == customersAdded, "The custmoers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+            Assert.IsTrue(newCustomerTotal == customersToAdd + customersToUpdate, "The count of customers in the database should match the sum of customers added and updated.");
+        }
+        [TestMethod]
+        public void With_Inheritance_Tph()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tph);
+            var customers = dbContext.TphCustomers.Where(o => o.Id <= 1000).ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            int customersToDelete = dbContext.TphPeople.Count() - customersToUpdate;
+
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkSync_Tph_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TphCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkSync_Tph_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = dbContext.BulkSync(customers, options => { options.UsePermanentTable = true; options.MergeOnCondition = (s, t) => s.Id == t.Id; });
+            int customersAdded = dbContext.TphCustomers.Where(o => o.FirstName == "BulkSync_Tph_Add").Count();
+            int customersUpdated = dbContext.TphCustomers.Where(o => o.FirstName == "BulkSync_Tph_Update").Count();
+            int newCustomerTotal = dbContext.TphCustomers.Count();
+
+            Assert.IsTrue(result.RowsAffected == customersAdded + customersToUpdate + customersToDelete, "The number of rows affected must match the sum of customers added, updated and deleted.");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(result.RowsDeleted == customersToDelete, "The number of rows deleted must match the difference from the total existing orders to the new orders to add/update");
+            Assert.IsTrue(customersToAdd == customersAdded, "The customers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+            Assert.IsTrue(newCustomerTotal == customersToAdd + customersToUpdate, "The count of customers in the database should match the sum of customers added and updated.");
+        }
+        [TestMethod]
+        public void With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpt);
+            var customers = dbContext.TptPeople.Where(o => o.Id <= 1000).OfType<TptCustomer>().ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            int customersToDelete = dbContext.TptCustomers.Count() - customersToUpdate;
+
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkSync_Tpt_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TptCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkSync_Tpt_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = dbContext.BulkSync(customers, options => { options.MergeOnCondition = (s, t) => s.Id == t.Id; });
+            int customersAdded = dbContext.TptPeople.Where(o => o.FirstName == "BulkSync_Tpt_Add").OfType<TptCustomer>().Count();
+            int customersUpdated = dbContext.TptPeople.Where(o => o.FirstName == "BulkSync_Tpt_Update").OfType<TptCustomer>().Count();
+            int newCustomerTotal = dbContext.TptPeople.OfType<TptCustomer>().Count();
+
+            Assert.IsTrue(result.RowsAffected == customersAdded + customersToUpdate + customersToDelete, "The number of rows affected must match the sum of customers added, updated and deleted.");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(result.RowsDeleted == customersToDelete, "The number of rows deleted must match the difference from the total existing orders to the new orders to add/update");
+            Assert.IsTrue(customersToAdd == customersAdded, "The custmoers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+            Assert.IsTrue(newCustomerTotal == customersToAdd + customersToUpdate, "The count of customers in the database should match the sum of customers added and updated.");
+        }
+        [TestMethod]
         public void With_Options_AutoMapIdentity()
         {
             var dbContext = SetupDbContext(true);

@@ -156,7 +156,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                             AddedDate = DateTime.UtcNow
                         });
                     }
-                    for (int i = 2001; i < 3000; i++)
+                    for (int i = 2001; i <= 3000; i++)
                     {
                         tpcVendors.Add(new TpcVendor
                         {

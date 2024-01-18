@@ -113,6 +113,36 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
         }
         [TestMethod]
+        public async Task With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpt);
+            var customers = dbContext.TptPeople.Where(o => o.Id <= 1000).OfType<TptCustomer>().ToList();
+            int customersToAdd = 5000;
+            int customersToUpdate = customers.Count;
+            foreach (var customer in customers)
+            {
+                customer.FirstName = "BulkMergeAsync_Tpt_Update";
+            }
+            for (int i = 0; i < customersToAdd; i++)
+            {
+                customers.Add(new TptCustomer
+                {
+                    Id = 10000 + i,
+                    FirstName = "BulkMergeAsync_Tpt_Add",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            var result = await dbContext.BulkMergeAsync(customers);
+            int customersAdded = dbContext.TptPeople.Where(o => o.FirstName == "BulkMergeAsync_Tpt_Add").OfType<TptCustomer>().Count();
+            int customersUpdated = dbContext.TptPeople.Where(o => o.FirstName == "BulkMergeAsync_Tpt_Update").OfType<TptCustomer>().Count();
+
+            Assert.IsTrue(result.RowsAffected == customers.Count(), "The number of rows inserted must match the count of customer list");
+            Assert.IsTrue(result.RowsUpdated == customersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == customersToAdd, "The number of rows added must match");
+            Assert.IsTrue(customersToAdd == customersAdded, "The custmoers that were added did not merge correctly");
+            Assert.IsTrue(customersToUpdate == customersUpdated, "The customers that were updated did not merge correctly");
+        }
+        [TestMethod]
         public async Task With_Default_Options_MergeOnCondition()
         {
             var dbContext = SetupDbContext(true);
