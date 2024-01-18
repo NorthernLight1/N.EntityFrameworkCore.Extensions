@@ -121,6 +121,44 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
+        public async Task With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(false);
+            var customers = new List<TptCustomer>();
+            var vendors = new List<TptVendor>();
+            for (int i = 0; i < 20000; i++)
+            {
+                customers.Add(new TptCustomer
+                {
+                    Id = i,
+                    FirstName = string.Format("John_{0}", i),
+                    LastName = string.Format("Smith_{0}", i),
+                    Email = string.Format("john.smith{0}@domain.com", i),
+                    Phone = "777-555-1234",
+                    AddedDate = DateTime.UtcNow
+                });
+            }
+            for (int i = 20000; i < 30000; i++)
+            {
+                vendors.Add(new TptVendor
+                {
+                    Id = i,
+                    FirstName = string.Format("Mike_{0}", i),
+                    LastName = string.Format("Smith_{0}", i),
+                    Email = string.Format("mike.smith{0}@domain.com", i),
+                    Url = string.Format("http://domain.com/mike.smith{0}", i)
+                });
+            }
+            int oldTotal = dbContext.TptPeople.Count();
+            int customerRowsInserted = await dbContext.BulkInsertAsync(customers, o => o.UsePermanentTable = true);
+            int vendorRowsInserted = await dbContext.BulkInsertAsync(vendors);
+            int rowsInserted = customerRowsInserted + vendorRowsInserted;
+            int newTotal = dbContext.TptPeople.Count();
+
+            Assert.IsTrue(rowsInserted == customers.Count + vendors.Count, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
         public async Task Without_Identity_Column()
         {
             var dbContext = SetupDbContext(true);
