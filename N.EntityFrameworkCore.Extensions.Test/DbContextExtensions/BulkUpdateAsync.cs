@@ -11,7 +11,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     [TestClass]
     public class BulkUpdateAsync : DbContextExtensionsBase
     {
-        [TestMethod]
+        [TestMethod()]
         public async Task With_ComplexKey()
         {
             var dbContext = SetupDbContext(true);
@@ -83,6 +83,23 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int entitiesWithChanges = dbContext.ChangeTracker.Entries().Where(t => t.State == EntityState.Modified).Count();
 
             Assert.IsTrue(vendors.Count > 0 && vendors.Count != customers.Count, "There should be vendor records in the database");
+            Assert.IsTrue(customers.Count > 0, "There must be customers in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(rowsUpdated == customers.Count, "The number of rows updated must match the count of entities that were retrieved");
+            Assert.IsTrue(newCustomers == rowsUpdated, "The count of new customers must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
+        public async Task With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpt);
+            var customers = dbContext.TptCustomers.Where(o => o.LastName != "BulkUpdateTest").ToList();
+            foreach (var customer in customers)
+            {
+                customer.FirstName = string.Format("Id={0}", customer.Id);
+                customer.LastName = "BulkUpdateTest";
+            }
+            int rowsUpdated = await dbContext.BulkUpdateAsync(customers);
+            var newCustomers = await dbContext.TptCustomers.Where(o => o.LastName == "BulkUpdateTest").CountAsync();
+
             Assert.IsTrue(customers.Count > 0, "There must be customers in database that match this condition (Price = $1.25)");
             Assert.IsTrue(rowsUpdated == customers.Count, "The number of rows updated must match the count of entities that were retrieved");
             Assert.IsTrue(newCustomers == rowsUpdated, "The count of new customers must be equal the number of rows updated in the database.");

@@ -19,9 +19,14 @@ namespace N.EntityFrameworkCore.Extensions.Util
                 tableName = string.Format("[{0}].[#tmp_be_xx_{1}]", tableMapping.Schema, tableMapping.TableName);
             return tableName;
         }
+        private static string FormatColumn(string column)
+        {
+            var parts = column.Split('.');
+            return string.Join(".", parts.Select(p => p.StartsWith("$") || (p.StartsWith("[") && p.EndsWith("]")) ? p : $"[{p}]"));
+        }
         internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
         {
-            return columns.Select(s => s.StartsWith("[") && s.EndsWith("]") ? s : string.Format("[{0}]", s));
+            return columns.Select(s => FormatColumn(s));
         }
         internal static IEnumerable<string> FormatColumns(string tableAlias, IEnumerable<string> columns)
         {

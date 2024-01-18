@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -16,6 +17,7 @@ using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
@@ -55,11 +57,11 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 var dbConnection = dbTransactionContext.Connection;
                 var transaction = dbTransactionContext.CurrentTransaction;
-                int rowsAffected;
+                int rowsAffected = 0;
                 try
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
+                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.EntityTypes.First().GetTableName());
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
 
@@ -68,8 +70,9 @@ namespace N.EntityFrameworkCore.Extensions
 
                     context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
-                        CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
+                    CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
                     rowsAffected = context.Database.ExecuteSql(deleteSql, options.CommandTimeout);
 
                     context.Database.DropTable(stagingTableName);
@@ -244,84 +247,26 @@ namespace N.EntityFrameworkCore.Extensions
         public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
         {
             int rowsAffected = 0;
-            var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
-
-            using (var dbTransactionContext = new DbTransactionContext(context, options))
+            using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
                 try
                 {
-                    var dbConnection = dbTransactionContext.Connection;
-                    var transaction = dbTransactionContext.CurrentTransaction;
-                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    //string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-
-                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(options.KeepIdentity), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
-                    
-                    if (options.InsertIfNotExists)
-                    {
-                        columnNames = columnNames.Union(primaryKeyColumnNames);
-                    }
-                    
-                    context.Database.CloneTable(tableMapping.GetSchemaQualifiedTableNames(), stagingTableName, tableMapping.GetQualifiedColumnNames(columnNames), Common.Constants.InternalId_ColumnName);
-                    var bulkInsertResult = BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, columnNames, SqlBulkCopyOptions.KeepIdentity, true);
-
-                    foreach(var entityType in tableMapping.EntityTypes)
-                    {
-                        var columnsToInsert = tableMapping.GetColumnNames(entityType).Intersect(columnNames);
-                        List<string> columnsToOutput = new List<string>();
-                        var entityProperties = new List<IProperty>();
-                        if (options.AutoMapOutput)
-                        {
-                            columnsToOutput.AddRange(new List<string>() { "$Action", string.Format("[{0}].[{1}]", "s", Constants.InternalId_ColumnName) });
-                            var autoGeneratedColumnNames = tableMapping.GetAutoGeneratedColumns(entityType);
-                            foreach (var autoGeneratedColumnName in autoGeneratedColumnNames)
-                            {
-                                columnsToOutput.Add(string.Format("[inserted].[{0}]", autoGeneratedColumnName));
-                                entityProperties.Add(tableMapping.EntityType.GetProperty(autoGeneratedColumnName));
-                            }
-                        }
-
-                        bool toggleIdentityInsert = options.KeepIdentity && tableMapping.HasIdentityColumn;
-                        string joinOnCondition = options.InsertIfNotExists ? CommonUtil<T>.GetJoinConditionSql(options.InsertOnCondition, primaryKeyColumnNames, "t", "s") : "1=2";
-                        var mergeStatement = SqlStatement.CreateMergeInsert(stagingTableName, entityType.GetTableName(), joinOnCondition, columnsToInsert, columnsToOutput);
-
-                        if (options.AutoMapOutput)
-                        {
-                            var bulkQueryResult = context.BulkQuery(mergeStatement.Sql, dbConnection, transaction, options);
-                            //Should this be the sum of all tables
-                            rowsAffected = bulkQueryResult.RowsAffected;
-                            if (rowsAffected == entities.Count())
-                            {
-                                foreach (var result in bulkQueryResult.Results)
-                                {
-                                    int entityId = (int)result[1];
-                                    var entity = bulkInsertResult.EntityMap[entityId];
-                                    var entityValues = result.Skip(2).ToArray();
-                                    context.SetStoreGeneratedValues(entity, entityProperties, entityValues);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            rowsAffected = context.Database.ExecuteSql(mergeStatement.Sql, options.CommandTimeout);
-                        }
-                    }
-                    context.Database.DropTable(stagingTableName);
-
-                    //ClearEntityStateToUnchanged(context, entities);
-                    dbTransactionContext.Commit();
-                    return rowsAffected;
+                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, options.KeepIdentity, true);
+                    var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition, 
+                        options.AutoMapOutput, options.InsertIfNotExists);
+                    rowsAffected = bulkMergeResult.RowsAffected;
+                    bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    dbTransactionContext.Rollback();
+                    bulkOperation.DbTransactionContext.Rollback();
                     throw;
                 }
             }
+            return rowsAffected;
         }
 
-        internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, List<IProperty> properties, object[] values)
+        internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
         {
             int index = 0;
             var updateEntry = entity as InternalEntityEntry;
@@ -335,7 +280,16 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 foreach(var property in properties)
                 {
-                    updateEntry.SetStoreGeneratedValue(property, values[index]);
+                    if (property.IsPrimaryKey() && updateEntry.EntityState != EntityState.Detached)
+                        continue;
+                    try
+                    {
+                        updateEntry.SetStoreGeneratedValue(property, values[index]);
+                    }
+                    catch(Exception)
+                    {
+                        int i = 5;
+                    }
                     index++;
                 }
                 if(updateEntry.EntityState == EntityState.Detached)
@@ -347,7 +301,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        private static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
             IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
         {
             using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId))
@@ -372,7 +326,6 @@ namespace N.EntityFrameworkCore.Extensions
                 foreach (var property in dataReader.TableMapping.Properties)
                 {
                     var columnName = property.GetColumnName();
-                    //var columnName = property.GetColumnName(dataReader.TableMapping.StoreObjectIdentifier);
                     if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
                         sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
                 }
@@ -451,101 +404,24 @@ namespace N.EntityFrameworkCore.Extensions
         }
         private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
         {
-            int rowsAffected = 0;
-            var outputRows = new List<BulkMergeOutputRow<T>>();
-            var tableMapping = context.GetTableMapping(typeof(T));
-            int rowsInserted = 0;
-            int rowsUpdated = 0;
-            int rowsDeleted = 0;
-
-            using (var dbTransactionContext = new DbTransactionContext(context, options))
+            BulkMergeResult<T> bulkMergeResult;
+            using (var bulkOperation = new BulkOperation<T>(context, options))
             {
-                var dbConnection = dbTransactionContext.Connection;
-                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] stagingColumnNames = tableMapping.GetColumns(true).ToArray();
-                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    IEnumerable<string> autoGeneratedColumnNames = options.AutoMapOutput ? tableMapping.GetAutoGeneratedColumns() : new string[] { };
-
-                    if (primaryKeyColumnNames.Length == 0 && options.MergeOnCondition == null)
-                        throw new InvalidDataException("BulkMerge requires that the entity have a primary key or the Options.MergeOnCondition must be set.");
-
-                    context.Database.CloneTable(destinationTableName, stagingTableName, stagingColumnNames, Common.Constants.InternalId_ColumnName);
-                    var bulkInsertResult = BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, stagingColumnNames, SqlBulkCopyOptions.KeepIdentity, true);
-
-                    string[] columnNames = tableMapping.GetColumns().ToArray();
-                    IEnumerable<string> columnsToInsert = CommonUtil.FormatColumns(columnNames.Where(o => !options.GetIgnoreColumnsOnInsert().Contains(o)));
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.GetIgnoreColumnsOnUpdate().Contains(o))).Select(o => string.Format("t.{0}=s.{0}", o));
-                    List<string> columnsToOutput = new List<string> { "$Action", string.Format("{0}.{1}", "s", Constants.InternalId_ColumnName) };
-                    List<PropertyInfo> propertySetters = new List<PropertyInfo>();
-                    Type entityType = typeof(T);
-
-                    foreach (var autoGeneratedColumnName in autoGeneratedColumnNames)
-                    {
-                        columnsToOutput.Add(string.Format("inserted.[{0}]", autoGeneratedColumnName));
-                        columnsToOutput.Add(string.Format("deleted.[{0}]", autoGeneratedColumnName));
-                        propertySetters.Add(entityType.GetProperty(autoGeneratedColumnName));
-                    }
-
-                    string mergeSqlText = string.Format("MERGE {0} t USING {1} s ON ({2}) WHEN NOT MATCHED BY TARGET THEN INSERT ({3}) VALUES ({3}) WHEN MATCHED THEN UPDATE SET {4}{5}OUTPUT {6};",
-                        destinationTableName, stagingTableName, CommonUtil<T>.GetJoinConditionSql(options.MergeOnCondition, primaryKeyColumnNames, "s", "t"),
-                        SqlUtil.ConvertToColumnString(columnsToInsert),
-                        SqlUtil.ConvertToColumnString(columnstoUpdate),
-                        options.DeleteIfNotMatched ? " WHEN NOT MATCHED BY SOURCE THEN DELETE " : " ",
-                        SqlUtil.ConvertToColumnString(columnsToOutput)
-                        );
-
-                    var bulkQueryResult = context.BulkQuery(mergeSqlText, dbConnection, transaction, options);
-                    rowsAffected = bulkQueryResult.RowsAffected;
-
-                    if (options.AutoMapOutput)
-                    {
-                        foreach (var result in bulkQueryResult.Results)
-                        {
-                            object entity = null;
-                            string action = (string)result[0];
-                            if (action != SqlMergeAction.Delete)
-                            {
-                                int entityId = (int)result[1];
-                                entity = bulkInsertResult.EntityMap[entityId];
-                                if (entity != null)
-                                {
-                                    for (int i = 2; i < 2 + autoGeneratedColumnNames.Count(); i += 2)
-                                    {
-                                        propertySetters[i - 2].SetValue(entity, result[i]);
-                                    }
-                                }
-                            }
-                            outputRows.Add(new BulkMergeOutputRow<T>(action));
-
-                            if (action == SqlMergeAction.Insert) rowsInserted++;
-                            else if (action == SqlMergeAction.Update) rowsUpdated++;
-                            else if (action == SqlMergeAction.Delete) rowsDeleted++;
-                        }
-                    }
-                    context.Database.DropTable(stagingTableName);
-
-                    //ClearEntityStateToUnchanged(context, entities);
-                    dbTransactionContext.Commit();
+                    bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
+                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
+                    bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
+                        true, true, options.DeleteIfNotMatched);
+                    bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    dbTransactionContext.Rollback();
+                    bulkOperation.DbTransactionContext.Rollback();
                     throw;
                 }
-
-                return new BulkMergeResult<T>
-                {
-                    Output = outputRows,
-                    RowsAffected = rowsAffected,
-                    RowsDeleted = rowsDeleted,
-                    RowsInserted = rowsInserted,
-                    RowsUpdated = rowsUpdated,
-                };
             }
+            return bulkMergeResult;
         }
         public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities)
         {
@@ -558,46 +434,22 @@ namespace N.EntityFrameworkCore.Extensions
         public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
         {
             int rowsUpdated = 0;
-            var outputRows = new List<BulkMergeOutputRow<T>>();
-            var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
-
-            using (var dbTransactionContext = new DbTransactionContext(context, options))
+            using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
-                var dbConnection = dbTransactionContext.Connection;
-                var transaction = dbTransactionContext.CurrentTransaction;
                 try
                 {
-                    string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
-                    string[] primaryKeyColumnNames = tableMapping.GetPrimaryKeyColumns().ToArray();
-                    IEnumerable<string> columnNames = CommonUtil.FilterColumns(tableMapping.GetColumns(), primaryKeyColumnNames, options.InputColumns, options.IgnoreColumns);
-
-                    if (primaryKeyColumnNames.Length == 0 && options.UpdateOnCondition == null)
-                        throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
-
-                    context.Database.CloneTable(destinationTableName, stagingTableName, null);
-                    BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, null, SqlBulkCopyOptions.KeepIdentity);
-
-                    IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
-
-                    string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-                    string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                        updateSetExpression, stagingTableName, destinationTableName, CommonUtil<T>.GetJoinConditionSql(options.UpdateOnCondition, primaryKeyColumnNames, "s", "t"));
-
-                    rowsUpdated = context.Database.ExecuteSql(updateSql, options.CommandTimeout);
-                    context.Database.DropTable(stagingTableName);
-
-                    //ClearEntityStateToUnchanged(context, entities);
-                    dbTransactionContext.Commit();
+                    bulkOperation.ValidateBulkUpdate(options.UpdateOnCondition);
+                    bulkOperation.BulkInsertStagingData(entities);
+                    rowsUpdated = bulkOperation.ExecuteUpdate(entities, options.UpdateOnCondition);
+                    bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)
                 {
-                    dbTransactionContext.Rollback();
+                    bulkOperation.DbTransactionContext.Rollback();
                     throw;
                 }
-
-                return rowsUpdated;
             }
+            return rowsUpdated;
         }
 
         private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
@@ -610,7 +462,7 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        private static BulkQueryResult BulkQuery(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options)
+        internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options)
         {
             var results = new List<object[]>();
             var columns = new List<string>();
@@ -910,7 +762,6 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dbConnection = context.Database.GetDbConnection();
             return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
-            //return context.Database.GetDbConnection() as SqlConnection;
         }
 
         //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)

@@ -21,7 +21,6 @@ namespace N.EntityFrameworkCore.Extensions
         internal ConnectionBehavior ConnectionBehavior { get; set; }
         internal IEntityType EntityType { get; set; }
 
-
         public SqlRowsCopiedEventHandler SqlRowsCopied { get; internal set; }
 
         public BulkOptions()

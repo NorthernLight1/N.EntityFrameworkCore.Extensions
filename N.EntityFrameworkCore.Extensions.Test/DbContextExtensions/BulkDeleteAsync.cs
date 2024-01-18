@@ -21,12 +21,36 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal == 0, "Must be 0 to indicate all records were deleted");
         }
         [TestMethod]
-        public async Task With_Default_Options_Tph()
+        public async Task With_Inheritance_Tpc()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpc);
+            var customers = dbContext.TpcPeople.OfType<TpcCustomer>().ToList();
+            int rowsDeleted = await dbContext.BulkDeleteAsync(customers);
+            var newCustomers = dbContext.TpcPeople.OfType<TpcCustomer>().Count();
+
+            Assert.IsTrue(customers.Count > 0, "There must be tphCustomer records in database");
+            Assert.IsTrue(rowsDeleted == customers.Count, "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(newCustomers == 0, "Must be 0 to indicate all records were deleted");
+        }
+        [TestMethod]
+        public async Task With_Inheritance_Tph()
         {
             var dbContext = SetupDbContext(true, PopulateDataMode.Tph);
             var customers = dbContext.TphPeople.OfType<TphCustomer>().ToList();
             int rowsDeleted = await dbContext.BulkDeleteAsync(customers);
             var newCustomers = dbContext.TphPeople.OfType<TphCustomer>().Count();
+
+            Assert.IsTrue(customers.Count > 0, "There must be tphCustomer records in database");
+            Assert.IsTrue(rowsDeleted == customers.Count, "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(newCustomers == 0, "Must be 0 to indicate all records were deleted");
+        }
+        [TestMethod]
+        public async Task With_Inheritance_Tpt()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Tpt);
+            var customers = dbContext.TptCustomers.ToList();
+            int rowsDeleted = await dbContext.BulkDeleteAsync(customers);
+            var newCustomers = dbContext.TptCustomers.Count();
 
             Assert.IsTrue(customers.Count > 0, "There must be tphCustomer records in database");
             Assert.IsTrue(rowsDeleted == customers.Count, "The number of rows deleted must match the count of existing rows in database");

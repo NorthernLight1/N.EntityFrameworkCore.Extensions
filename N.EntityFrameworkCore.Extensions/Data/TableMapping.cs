@@ -74,6 +74,12 @@ namespace N.EntityFrameworkCore.Extensions
                 .Select(o => o.GetColumnName(this.StoreObjectIdentifier));
         }
 
+        internal IEnumerable<IProperty> GetEntityProperties(IEntityType entityType = null, ValueGenerated? valueGenerated = null)
+        {
+            entityType = entityType ?? this.EntityType;
+            return entityType.GetProperties().Where(o => valueGenerated == null || o.ValueGenerated == valueGenerated).AsEnumerable();
+        }
+
         internal IEnumerable<string> GetSchemaQualifiedTableNames()
         {
             return EntityTypes
