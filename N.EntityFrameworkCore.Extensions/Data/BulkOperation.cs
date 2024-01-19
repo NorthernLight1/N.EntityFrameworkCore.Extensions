@@ -173,7 +173,7 @@ namespace N.EntityFrameworkCore.Extensions
             if (PrimaryKeyColumnNames.Length == 0 && mergeOnCondition == null)
                 throw new InvalidDataException("BulkMerge requires that Options.MergeOnCondition be set");
         }
-        internal void ValidateBulkUpdate<T>(Expression<Func<T, T, bool>> updateOnCondition)
+        internal void ValidateBulkUpdate(Expression<Func<T, T, bool>> updateOnCondition)
         {
             if (PrimaryKeyColumnNames.Length == 0 && updateOnCondition == null)
                 throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");

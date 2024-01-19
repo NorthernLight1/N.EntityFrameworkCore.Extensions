@@ -124,7 +124,7 @@ namespace N.EntityFrameworkCore.Extensions
 
                     dbTransactionContext.Commit();
                 }
-                catch (Exception ex)
+                catch
                 {
                     dbTransactionContext.Rollback();
                     throw;
@@ -282,14 +282,8 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     if (property.IsPrimaryKey() && updateEntry.EntityState != EntityState.Detached)
                         continue;
-                    try
-                    {
-                        updateEntry.SetStoreGeneratedValue(property, values[index]);
-                    }
-                    catch(Exception)
-                    {
-                        int i = 5;
-                    }
+
+                    updateEntry.SetStoreGeneratedValue(property, values[index]);
                     index++;
                 }
                 if(updateEntry.EntityState == EntityState.Detached)
