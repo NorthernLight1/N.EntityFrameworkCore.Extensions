@@ -280,10 +280,18 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 foreach(var property in properties)
                 {
-                    if (property.IsPrimaryKey() && updateEntry.EntityState != EntityState.Detached)
-                        continue;
-
-                    updateEntry.SetStoreGeneratedValue(property, values[index]);
+                    if (!property.IsPrimaryKey() ||
+                        (property.IsPrimaryKey() && updateEntry.EntityState == EntityState.Detached))
+                    {
+                        try
+                        {
+                            updateEntry.SetStoreGeneratedValue(property, values[index]);
+                        }
+                        catch
+                        {
+                            throw;
+                        }
+                    }
                     index++;
                 }
                 if(updateEntry.EntityState == EntityState.Detached)
@@ -456,11 +464,10 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options)
+        internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
         {
             var results = new List<object[]>();
             var columns = new List<string>();
-            //var command = new SqlCommand(sqlText, dbConnection, transaction);
             var command = context.Database.CreateCommand();
             command.CommandText = sqlText;
             if (options.CommandTimeout.HasValue)
@@ -633,7 +640,6 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
-            var dbConnection = dbContext.GetSqlConnection();
             dbContext.Database.TruncateTable(tableMapping.FullQualifedTableName);
         }
         private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class

@@ -90,7 +90,7 @@ namespace N.EntityFrameworkCore.Extensions
                     var propertiesForAdd = TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAdd);
                     var propertiesForUpdate = TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAddOrUpdate);
 
-                    var bulkQueryResult = Context.BulkQuery(mergeStatement.Sql, Connection, Transaction, Options);
+                    var bulkQueryResult = Context.BulkQuery(mergeStatement.Sql, Options);
                     rowsAffected[entityType] = bulkQueryResult.RowsAffected;
 
                     foreach (var result in bulkQueryResult.Results)
@@ -109,7 +109,7 @@ namespace N.EntityFrameworkCore.Extensions
                             if (action == SqlMergeAction.Insert)
                             {
                                 rowsInserted[entityType]++;
-                                if (propertiesForAdd.Count() > 0)
+                                if (propertiesForAdd.Any())
                                 {
                                     var entityValues = GetMergeOutputValues(columnsToOutput, result, propertiesForAdd);
                                     Context.SetStoreGeneratedValues(entity, propertiesForAdd, entityValues);
@@ -118,7 +118,7 @@ namespace N.EntityFrameworkCore.Extensions
                             else if (action == SqlMergeAction.Update)
                             {
                                 rowsUpdated[entityType]++;
-                                if (propertiesForUpdate.Count() > 0)
+                                if (propertiesForUpdate.Any())
                                 {
                                     var entityValues = GetMergeOutputValues(columnsToOutput, result, propertiesForUpdate);
                                     Context.SetStoreGeneratedValues(entity, propertiesForUpdate, entityValues);
