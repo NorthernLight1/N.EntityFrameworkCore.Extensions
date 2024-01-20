@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using N.EntityFrameworkCore.Extensions.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,9 +37,9 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public IEnumerable<string> GetQualifiedColumnNames(IEnumerable<string> columnNames, IEntityType entityType = null)
         {
-            return EntityType.GetProperties().Where(o => (entityType == null || o.DeclaringEntityType == entityType) 
+            return EntityType.GetProperties().Where(o => (entityType == null || o.GetDeclaringEntityType() == entityType) 
                 && columnNames == null || columnNames.Contains(o.GetColumnName()))
-                .Select(o => string.Format("[{0}].[{1}]", FindTableName(o.DeclaringEntityType, EntityType), o.GetColumnName()));
+                .Select(o => string.Format("[{0}].[{1}]", FindTableName(o.GetDeclaringEntityType(), EntityType), o.GetColumnName()));
         }
 
         private string FindTableName(IEntityType declaringEntityType, IEntityType entityType)
@@ -48,7 +49,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         public IEnumerable<string> GetColumnNames(IEntityType entityType)
         {
-            return entityType.GetProperties().Where(o => (o.DeclaringEntityType == entityType || o.DeclaringEntityType.IsAbstract() 
+            return entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract() 
                     || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
                 .Select(o => o.GetColumnName());
         }
@@ -72,6 +73,12 @@ namespace N.EntityFrameworkCore.Extensions
             entityType = entityType ?? this.EntityType;
             return entityType.GetProperties().Where(o => o.ValueGenerated != ValueGenerated.Never)
                 .Select(o => o.GetColumnName(this.StoreObjectIdentifier));
+        }
+
+        internal IEnumerable<IProperty> GetEntityProperties(IEntityType entityType = null, ValueGenerated? valueGenerated = null)
+        {
+            entityType = entityType ?? this.EntityType;
+            return entityType.GetProperties().Where(o => valueGenerated == null || o.ValueGenerated == valueGenerated).AsEnumerable();
         }
 
         internal IEnumerable<string> GetSchemaQualifiedTableNames()

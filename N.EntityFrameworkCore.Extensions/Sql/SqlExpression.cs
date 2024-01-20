@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,6 +45,11 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             return new SqlExpression(SqlExpressionType.Columns, columns);
         }
 
+        internal static SqlExpression Set(IEnumerable<string> columns)
+        {
+            return new SqlExpression(SqlExpressionType.Set, columns);
+        }
+
         internal static SqlExpression String(string joinOnCondition)
         {
             return new SqlExpression(SqlExpressionType.String, joinOnCondition);
@@ -60,7 +66,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             StringBuilder sbSql = new StringBuilder();
             if (ExpressionType == SqlExpressionType.Columns)
             {
-                sbSql.Append(string.Join(",", values.Select(c => c.StartsWith("$") || c.StartsWith("[") ? c : $"[{c}]")));
+                sbSql.Append(string.Join(",", CommonUtil.FormatColumns(values)));
             }
             else
             {

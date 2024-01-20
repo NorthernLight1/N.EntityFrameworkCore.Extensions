@@ -19,9 +19,13 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal async static Task<int> CloneTableAsync(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
         {
+            return await database.CloneTableAsync(new string[] { sourceTable }, destinationTable, columnNames, internalIdColumnName, cancellationToken);
+        }
+        internal async static Task<int> CloneTableAsync(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
+        {
             string columns = columnNames != null && columnNames.Count() > 0 ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
             columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
-            return await database.ExecuteSqlRawAsync(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, sourceTable), cancellationToken);
+            return await database.ExecuteSqlRawAsync(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)), cancellationToken);
         }
         public async static Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)
         {

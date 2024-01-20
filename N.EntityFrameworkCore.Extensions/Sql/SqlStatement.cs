@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.Options;
+using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Util;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -33,7 +35,13 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         {
             SqlParts.Add(new SqlPart(keyword, expression));
         }
-        internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string joinOnCondition, IEnumerable<string> insertColumns, IEnumerable<string> outputColumns)
+        //internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string mergeOnCondition,
+        //    IEnumerable<string> insertColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched = false)
+        //{
+
+        //}
+        internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition, 
+            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched=false)
         {
             var statement = new SqlStatement();
             statement.CreatePart(SqlKeyword.Merge, SqlExpression.Table(targetTableName, "t"));
@@ -43,8 +51,26 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             statement.CreatePart(SqlKeyword.Not);
             statement.CreatePart(SqlKeyword.Matched);
             statement.CreatePart(SqlKeyword.Then);
-            statement.CreatePart(SqlKeyword.Insert, SqlExpression.Columns(insertColumns));
-            statement.CreatePart(SqlKeyword.Values, SqlExpression.Columns(insertColumns));
+            statement.WriteInsert(insertColumns);
+            if(updateColumns.Any())
+            {
+                var updateSetColumns = updateColumns.Select(c => $"t.[{c}]=s.[{c}]");
+                statement.CreatePart(SqlKeyword.When);
+                statement.CreatePart(SqlKeyword.Matched);
+                statement.CreatePart(SqlKeyword.Then);
+                statement.CreatePart(SqlKeyword.Update);
+                statement.CreatePart(SqlKeyword.Set, SqlExpression.Set(updateSetColumns));
+            }
+            if(deleteIfNotMatched)
+            {
+                statement.CreatePart(SqlKeyword.When);
+                statement.CreatePart(SqlKeyword.Not);
+                statement.CreatePart(SqlKeyword.Matched);
+                statement.CreatePart(SqlKeyword.By);
+                statement.CreatePart(SqlKeyword.Source);
+                statement.CreatePart(SqlKeyword.Then);
+                statement.CreatePart(SqlKeyword.Delete);
+            }
             statement.CreatePart(SqlKeyword.Output, SqlExpression.Columns(outputColumns));
             return statement;
         }

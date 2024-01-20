@@ -19,7 +19,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int batchSize = 5000;
             await orders.FetchAsync(async result =>
             {
-                totalOrdersFetched += result.Results.Count();
+                totalOrdersFetched += result.Results.Count;
                 var ordersFetched = result.Results;
                 foreach (var orderFetched in ordersFetched)
                 {
@@ -45,7 +45,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int batchSize = 5000;
             await orders.FetchAsync(async result =>
             {
-                totalOrdersFetched += result.Results.Count();
+                totalOrdersFetched += result.Results.Count;
                 var ordersFetched = result.Results;
                 foreach (var orderFetched in ordersFetched)
                 {
@@ -74,9 +74,11 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             await orders.FetchAsync(async result =>
             {
-                batchCount++;
-                totalCount += result.Results.Count();
-                Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                await Task.Run(() => {
+                    batchCount++;
+                    totalCount += result.Results.Count;
+                    Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                });
             }, options => { options.BatchSize = batchSize; });
 
             Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");
@@ -96,9 +98,12 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             await orders.FetchAsync(async result =>
             {
-                batchCount++;
-                totalCount += result.Results.Count();
-                Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                await Task.Run(() =>
+                {
+                    batchCount++;
+                    totalCount += result.Results.Count();
+                    Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                });
             }, options => { options.BatchSize = batchSize; });
 
             Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");
@@ -118,11 +123,14 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             await orders.FetchAsync(async result =>
             {
-                batchCount++;
-                totalCount += result.Results.Count();
-                bool isAllExternalIdNull = !result.Results.Any(o => o.ExternalId != null);
-                Assert.IsTrue(isAllExternalIdNull, "All records should have ExternalId equal to NULL since it was not loaded.");
-                Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                await Task.Run(() =>
+                {
+                    batchCount++;
+                    totalCount += result.Results.Count;
+                    bool isAllExternalIdNull = !result.Results.Any(o => o.ExternalId != null);
+                    Assert.IsTrue(isAllExternalIdNull, "All records should have ExternalId equal to NULL since it was not loaded.");
+                    Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                });
             }, options => { options.BatchSize = batchSize; options.IgnoreColumns = s => new { s.ExternalId }; });
 
             Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");
@@ -142,11 +150,14 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             await orders.FetchAsync(async result =>
             {
-                batchCount++;
-                totalCount += result.Results.Count();
-                bool isAllExternalIdNull = !result.Results.Any(o => o.ExternalId != null);
-                Assert.IsTrue(isAllExternalIdNull, "All records should have ExternalId equal to NULL since it was not loaded.");
-                Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                await Task.Run(() =>
+                {
+                    batchCount++;
+                    totalCount += result.Results.Count();
+                    bool isAllExternalIdNull = !result.Results.Any(o => o.ExternalId != null);
+                    Assert.IsTrue(isAllExternalIdNull, "All records should have ExternalId equal to NULL since it was not loaded.");
+                    Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");
+                });
             }, options => { options.BatchSize = batchSize; options.InputColumns = s => new { s.Id, s.Price }; });
 
             Assert.IsTrue(expectedTotalCount > 0, "There must be orders in database that match this condition");

@@ -13,6 +13,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         Insert,
         Values,
         Update,
+        Set,
         Merge,
         Into,
         From,
@@ -24,6 +25,9 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         Matched,
         Not,
         Output,
-        As
+        As,
+        By,
+        Source,
+        Target
     }
 }

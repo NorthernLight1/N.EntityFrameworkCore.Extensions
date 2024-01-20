@@ -8,7 +8,7 @@ namespace N.EntityFrameworkCore.Extensions
     {
         public static object GetPrivateFieldValue(this object obj, string propName)
         {
-            if (obj == null) throw new ArgumentNullException("obj");
+            if (obj == null) throw new ArgumentNullException(nameof(obj));
             Type t = obj.GetType();
             FieldInfo fieldInfo = null;
             PropertyInfo propertyInfo = null;
