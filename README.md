@@ -220,11 +220,9 @@ Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
 | FetchAsync(fetchAction, options, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
   
 ## Donations
----------
 
 If you found this project helpful and you would like to support it, feel free to donate through paypal or bitcoin.
 
 | Paypal | Bitcoin |
 | ------ | ------- |
-| [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ) |  <center> [![](bitcoin.png)](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)<br />[1H5tqKZoWdqkR54PGe9w67EzBnLXHBFmt9](bitcoin:3ApywX5cqu9Nu2Qhz4pC1iVztBdoKVzWHu)</center> |
-bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z
+| [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ) |  <center> [![](bitcoin.png)](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)<br />[bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)</center> |
