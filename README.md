@@ -5,9 +5,11 @@
 
 ## Bulk data support  data support for EntityFrameworkCore v8.0.0+
 
-Entity Framework Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
+N.EntityFrameworkCore.Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
 
-Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Concrete, Table-Per-Hierarchy)
+Supports: Transaction, Synchronous & Asynchronous Execution
+
+Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
 
   ### Installation
 
@@ -216,3 +218,10 @@ Supports: Transaction, Asynchronous Execution, Inheritance Models (Table-Per-Con
 | FetchAsync(fetchAction, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
 | FetchAsync(fetchAction, options, cancellationToken) | Fetch rows asynchronously in batches from the database using a LINQ query  | 
   
+## Donations
+
+If you found this project helpful and you would like to support it, feel free to donate through paypal or bitcoin.
+
+| Paypal | Bitcoin |
+| ------ | ------- |
+| [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ) |  <center> [![](bitcoin.png)](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)<br />[bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)</center> |
