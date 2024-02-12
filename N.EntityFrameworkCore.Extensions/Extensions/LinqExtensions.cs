@@ -96,7 +96,9 @@ namespace N.EntityFrameworkCore.Extensions
             if (value is bool b)
                 return b ? "1" : "0";
             if (value is DateTime dt)
-                return "'" + dt.ToString("yyyy-MM-ddTHH:mm:ss.fff") + "'"; // Convert to ISO-8601
+                return "'" + dt.ToString("yyyy-MM-ddTHH:mm:ss.fffffff") + "'"; // Convert to ISO-8601
+            if (value is DateTimeOffset dto)
+                return "'" + dto.ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzzz") + "'"; // Convert to ISO-8601
             var valueType = value.GetType();
             if (valueType.IsEnum)
                 return Convert.ToString((int)value);
