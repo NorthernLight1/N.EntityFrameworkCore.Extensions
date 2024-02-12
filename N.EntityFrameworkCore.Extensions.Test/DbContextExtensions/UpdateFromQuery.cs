@@ -63,8 +63,38 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int newTotal = dbContext.Orders.Where(o => o.ModifiedDateTime == now).Count();
 
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Orders added in last 30 days)");
-            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (Orders added in last 30 days)");
-            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+            Assert.IsTrue(rowUpdated == newTotal, "The number of rows updated should equal the new count of rows that match the condition (Orders added in last 30 days)");
+            Assert.IsTrue(oldTotal == newTotal, "The count of rows matching the condition before and after the update should be equal. (Orders added in last 30 days)");
+        }
+        [TestMethod]
+        public void With_DateTimeOffset_Value()
+        {
+            var dbContext = SetupDbContext(true);
+            DateTime dateTime = dbContext.Orders.Max(o => o.AddedDateTime).AddDays(-30);
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+
+            int oldTotal = dbContext.Orders.Where(o => o.AddedDateTime >= dateTime).Count();
+            int rowUpdated = dbContext.Orders.Where(o => o.AddedDateTime >= dateTime).UpdateFromQuery(o => new Order { ModifiedDateTimeOffset = now });
+            int newTotal = dbContext.Orders.Where(o => o.ModifiedDateTimeOffset == now).Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Orders added in last 30 days)");
+            Assert.IsTrue(rowUpdated == newTotal, "The number of rows updated should equal the new count of rows that match the condition (Orders added in last 30 days)");
+            Assert.IsTrue(oldTotal == newTotal, "The count of rows matching the condition before and after the update should be equal. (Orders added in last 30 days)");
+        }
+        [TestMethod]
+        public void With_DateTimeOffset_No_UTC_Value()
+        {
+            var dbContext = SetupDbContext(true);
+            DateTime dateTime = dbContext.Orders.Max(o => o.AddedDateTime).AddDays(-30);
+            DateTimeOffset now = DateTimeOffset.Parse("2020-06-17T16:00:00+05:00");
+
+            int oldTotal = dbContext.Orders.Where(o => o.AddedDateTime >= dateTime).Count();
+            int rowUpdated = dbContext.Orders.Where(o => o.AddedDateTime >= dateTime).UpdateFromQuery(o => new Order { ModifiedDateTimeOffset = now });
+            int newTotal = dbContext.Orders.Where(o => o.ModifiedDateTimeOffset == now).Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (Orders added in last 30 days)");
+            Assert.IsTrue(rowUpdated == newTotal, "The number of rows updated should equal the new count of rows that match the condition (Orders added in last 30 days)");
+            Assert.IsTrue(oldTotal == newTotal, "The count of rows matching the condition before and after the update should be equal. (Orders added in last 30 days)");
         }
         [TestMethod]
         public void With_Decimal_Value()
