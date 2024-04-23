@@ -7,9 +7,11 @@
 
 N.EntityFrameworkCore.Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
 
-Supports: Transaction, Synchronous & Asynchronous Execution
+Supports: Transactions, Synchronous & Asynchronous Execution
 
 Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
+
+Supported Databases: SQL Server
 
   ### Installation
 
@@ -183,7 +185,7 @@ Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
 | BulkSaveChanges<T>()  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
 | BulkSaveChanges<T>( acceptAllChangesOnSave)  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
 | BulkSaveChangesAsync<T>()  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
-| BulkSaveChangesAsync<T>( acceptAllChangesOnSave)  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
+| BulkSaveChangesAsync<T>( acceptAllChangesOnSave, cancellationToken)  | Save changes using high-performance bulk operations. Should be used instead of SaveChanges(). |
 | **BulkSync** |
 | BulkSync<T>(items)  | Bulk sync entities in your database.  |
 | BulkSync<T>(items, options)  | Bulk sync entities in your database.   |
