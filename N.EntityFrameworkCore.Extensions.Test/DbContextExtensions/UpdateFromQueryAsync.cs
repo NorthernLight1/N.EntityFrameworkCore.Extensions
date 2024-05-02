@@ -200,6 +200,21 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
         }
         [TestMethod]
+        public async Task With_Schema()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Schema);
+            var products = dbContext.ProductsWithCustomSchema.Where(o => o.Price < 5M);
+            int oldTotal = products.Count();
+            int rowUpdated = await products.UpdateFromQueryAsync(o => new ProductWithCustomSchema { Price = 25.30M });
+            int newTotal = products.Count();
+            int matchCount = dbContext.ProductsWithCustomSchema.Where(o => o.Price == 25.30M).Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be products in database that match this condition (Price < 5)");
+            Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condtion (Price < 5)");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+            Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
         public async Task With_String_Containing_Apostrophe()
         {
             var dbContext = SetupDbContext(true);

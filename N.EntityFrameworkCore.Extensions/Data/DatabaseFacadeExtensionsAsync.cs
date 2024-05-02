@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Data;
+using System;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -69,6 +70,15 @@ namespace N.EntityFrameworkCore.Extensions
                 value = await sqlCommand.ExecuteScalarAsync(cancellationToken);
             }
             return value;
+        }
+        internal async static Task ToggleIdentityInsertAsync(this DatabaseFacade database, string tableName, bool enable)
+        {
+            bool hasIdentity = database.TableHasIdentity(tableName);
+            if (hasIdentity)
+            {
+                string boolString = enable ? "ON" : "OFF";
+                await database.ExecuteSqlAsync($"SET IDENTITY_INSERT {tableName} {boolString}", database.GetCommandTimeout());
+            }
         }
     }
 }

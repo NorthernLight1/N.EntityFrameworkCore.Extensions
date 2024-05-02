@@ -46,7 +46,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var deleteEntityType = TableMapping.EntityType == entityType & delete ? delete : false;
 
                 string mergeOnConditionSql = insertIfNotExists ? CommonUtil<T>.GetJoinConditionSql(mergeOnCondition, PrimaryKeyColumnNames, "t", "s") : "1=2";
-                var mergeStatement = SqlStatement.CreateMerge(StagingTableName, entityType.GetTableName(),
+                var mergeStatement = SqlStatement.CreateMerge(StagingTableName, entityType.GetSchemaQualifiedTableName(),
                     mergeOnConditionSql, columnsToInsert, columnsToUpdate, columnsToOutput, deleteEntityType);
 
                 if (autoMapOutput)
@@ -113,7 +113,8 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
                 string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                 string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                    updateSetExpression, StagingTableName, entityType.GetTableName(), CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
+                    updateSetExpression, StagingTableName, CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName()), 
+                    CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
                 rowsUpdated = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
             }
             return rowsUpdated;

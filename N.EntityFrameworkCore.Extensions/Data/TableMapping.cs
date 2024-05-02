@@ -84,7 +84,7 @@ namespace N.EntityFrameworkCore.Extensions
         internal IEnumerable<string> GetSchemaQualifiedTableNames()
         {
             return EntityTypes
-                .Select(o => o.GetSchemaQualifiedTableName()).Distinct();
+                .Select(o => $"[{o.GetSchema()??"dbo"}].[{o.GetTableName()}]").Distinct();
         }
     }
 }

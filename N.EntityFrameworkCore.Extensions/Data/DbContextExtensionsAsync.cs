@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
@@ -374,9 +375,9 @@ namespace N.EntityFrameworkCore.Extensions
                     if (dbContext.Database.TableExists(tableName))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
-                        dbContext.Database.ToggleIdentityInsert(true, tableName);
+                        await dbContext.Database.ToggleIdentityInsertAsync(tableName, true);
                         rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
-                        dbContext.Database.ToggleIdentityInsert(false, tableName);
+                        await dbContext.Database.ToggleIdentityInsertAsync(tableName, false);
                     }
                     else
                     {
