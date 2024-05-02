@@ -57,7 +57,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
 
         internal static SqlExpression Table(string tableName, string alias = null)
         {
-            return new SqlExpression(SqlExpressionType.Table, tableName, alias);
+            return new SqlExpression(SqlExpressionType.Table, Util.CommonUtil.FormatTableName(tableName), alias);
         }
 
         private string ToSql()

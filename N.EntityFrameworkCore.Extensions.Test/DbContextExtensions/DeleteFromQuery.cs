@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -87,6 +88,30 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition");
             Assert.IsTrue(rowsDeleted == rowsToDelete, "The number of rows deleted must match the count of the rows that matched in the database");
             Assert.IsTrue(oldTotal - newTotal == rowsDeleted, "The rows deleted must match the new count minues the old count");
+        }
+        [TestMethod]
+        public void With_Empty_List()
+        {
+            var dbContext = SetupDbContext(false);
+            int oldTotal = dbContext.Orders.Count();
+            int rowsDeleted = dbContext.Orders.DeleteFromQuery();
+            int newTotal = dbContext.Orders.Count();
+
+            Assert.IsTrue(oldTotal == 0, "There must be no orders in database that match this condition");
+            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
+        }
+        [TestMethod]
+        public void With_Schema()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Schema);
+            int oldTotal = dbContext.ProductsWithCustomSchema.Count();
+            int rowsDeleted = dbContext.ProductsWithCustomSchema.DeleteFromQuery();
+            int newTotal = dbContext.ProductsWithCustomSchema.Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be products in database that match this condition");
+            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
         }
         [TestMethod]
         public void With_Transaction()

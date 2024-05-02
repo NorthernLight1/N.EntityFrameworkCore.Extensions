@@ -12,7 +12,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
         Normal,
         Tpc,
         Tph,
-        Tpt
+        Tpt,
+        Schema
     }
     [TestClass]
     public class DbContextExtensionsBase
@@ -28,12 +29,14 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             TestDbContext dbContext = new TestDbContext();
             dbContext.Orders.Truncate();
             dbContext.Products.Truncate();
+            dbContext.ProductsWithCustomSchema.Truncate();
             dbContext.Database.ClearTable("TpcCustomer");
             dbContext.Database.ClearTable("TpcVendor");
             dbContext.TphPeople.Truncate();
             dbContext.Database.ClearTable("TptPeople");
             dbContext.Database.ClearTable("TptCustomer");
             dbContext.Database.ClearTable("TptVendor");
+            dbContext.Database.DropTable("ProductsUnderTen", true);
             dbContext.Database.DropTable("OrdersUnderTen", true);
             dbContext.Database.DropTable("OrdersLast30Days", true);
             if (populateData)
@@ -93,7 +96,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
                     Debug.WriteLine("Last Id for Product is {0}", id);
                     dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutput = false });
-                    
+
                     //ProductWithComplexKey
                     var productsWithComplexKey = new List<ProductWithComplexKey>();
                     id = 1;
@@ -202,6 +205,25 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     }
                     dbContext.BulkInsert(tptCustomers, new BulkInsertOptions<TptCustomer>() { KeepIdentity = true });
                     dbContext.BulkInsert(tptVendors, new BulkInsertOptions<TptVendor>() { KeepIdentity = true });
+                }
+                else if (mode == PopulateDataMode.Schema)
+                {
+                    //ProductWithCustomSchema
+                    var productsWithCustomSchema = new List<ProductWithCustomSchema>();
+                    int id = 1;
+
+                    for (int i = 0; i < 2050; i++)
+                    {
+                        productsWithCustomSchema.Add(new ProductWithCustomSchema { Id = id.ToString(), Price = 1.25M });
+                        id++;
+                    }
+                    for (int i = 2050; i < 5000; i++)
+                    {
+                        productsWithCustomSchema.Add(new ProductWithCustomSchema { Id = id.ToString(), Price = 6.75M });
+                        id++;
+                    }
+
+                    dbContext.BulkInsert(productsWithCustomSchema);
                 }
             }
             return dbContext;

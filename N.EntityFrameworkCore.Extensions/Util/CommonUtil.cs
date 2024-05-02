@@ -54,6 +54,16 @@ namespace N.EntityFrameworkCore.Extensions.Util
             }
             return filteredColumnNames;
         }
+
+        internal static string FormatTableName(string tableName)
+        {
+            return string.Join(".", tableName.Split('.').Select(s => $"[{RemoveQualifier(s)}]"));
+        }
+
+        private static string RemoveQualifier(string name)
+        {
+            return name.TrimStart('[').TrimEnd(']');
+        }
     }
     internal static class CommonUtil<T>
     {

@@ -73,7 +73,7 @@ namespace N.EntityFrameworkCore.Extensions
 
                     string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
                     CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
-                    rowsAffected = context.Database.ExecuteSql(deleteSql, options.CommandTimeout);
+                    rowsAffected = context.Database.ExecuteSqlInternal(deleteSql, options.CommandTimeout);
 
                     context.Database.DropTable(stagingTableName);
                     dbTransactionContext.Commit();
@@ -537,9 +537,9 @@ namespace N.EntityFrameworkCore.Extensions
                     if (dbContext.Database.TableExists(tableName))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
-                        dbContext.Database.ToggleIdentityInsert(true, tableName);
+                        dbContext.Database.ToggleIdentityInsert(tableName, true);
                         rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
-                        dbContext.Database.ToggleIdentityInsert(false, tableName);
+                        dbContext.Database.ToggleIdentityInsert(tableName, false);
                     }
                     else
                     {
@@ -725,8 +725,8 @@ namespace N.EntityFrameworkCore.Extensions
                 new EfExtensionsCommand
                 {
                     CommandType = EfExtensionsCommandType.ChangeTableName,
-                    OldValue = string.Format("[{0}]", tableMapping.TableName),
-                    NewValue = string.Format("[{0}].[{1}]", tableMapping.Schema, tableName),
+                    OldValue = tableMapping.FullQualifedTableName,
+                    NewValue = tableName,
                     Connection = dbContext.GetSqlConnection()
                 });
             return querable;

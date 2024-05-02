@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 using System;
 using System.Collections.Generic;
@@ -223,6 +224,41 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(rowsUpdated == expectedRowsUpdated, "The number of rows updated not not match what was expected.");
             Assert.IsTrue(rowsAdded == expectedRowsAdded, "The number of rows added not not match what was expected.");
             Assert.IsTrue(rowsAffected == expectedRowsAffected, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public async Task with_Schema()
+        {
+            var dbContext = SetupDbContext(true, PopulateDataMode.Schema);
+            var totalCount = await dbContext.ProductsWithCustomSchema.CountAsync();
+
+            //Add new products
+            var productsToAdd = new List<ProductWithCustomSchema>();
+            for (int i = 0; i < 2000; i++)
+            {
+                productsToAdd.Add(new ProductWithCustomSchema { Id = (-i).ToString(), Price = 10.57M });
+            }
+            dbContext.ProductsWithCustomSchema.AddRange(productsToAdd);
+
+            //Delete products
+            var productsToDelete = dbContext.ProductsWithCustomSchema.Where(o => o.Price <= 5).ToList();
+            dbContext.ProductsWithCustomSchema.RemoveRange(productsToDelete);
+
+            //Update existing products
+            var productsToUpdate = dbContext.ProductsWithCustomSchema.Where(o => o.Price > 5 && o.Price <= 10).ToList();
+            foreach (var productToUpdate in productsToUpdate)
+            {
+                productToUpdate.Price = 99M;
+            }
+
+            int rowsAffected = await dbContext.BulkSaveChangesAsync();
+            int productsAddedCount = await dbContext.ProductsWithCustomSchema.Where(o => o.Price == 10.57M).CountAsync();
+            int productsDeletedCount = await dbContext.ProductsWithCustomSchema.Where(o => o.Price <= 5).CountAsync();
+            int productsUpdatedCount = await dbContext.ProductsWithCustomSchema.Where(o => o.Price == 99M).CountAsync();
+
+            Assert.IsTrue(rowsAffected == productsToAdd.Count + productsToDelete.Count + productsToUpdate.Count, "The number of rows affected must equal the sum of entities added, deleted and updated");
+            Assert.IsTrue(productsAddedCount == productsToAdd.Count(), "The number of products to add did not match what was expected.");
+            Assert.IsTrue(productsDeletedCount == 0, "The number of products that was deleted did not match what was expected.");
+            Assert.IsTrue(productsUpdatedCount == productsToUpdate.Count(), "The number of products that was updated did not match what was expected.");
         }
     }
 }

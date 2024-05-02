@@ -82,7 +82,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var deleteEntityType = TableMapping.EntityType == entityType & delete ? delete : false;
 
                 string mergeOnConditionSql = insertIfNotExists ? CommonUtil<T>.GetJoinConditionSql(mergeOnCondition, PrimaryKeyColumnNames, "t", "s") : "1=2";
-                var mergeStatement = SqlStatement.CreateMerge(StagingTableName, entityType.GetTableName(),
+                var mergeStatement = SqlStatement.CreateMerge(StagingTableName, entityType.GetSchemaQualifiedTableName(),
                     mergeOnConditionSql, columnsToInsert, columnsToUpdate, columnsToOutput, deleteEntityType);
 
                 if (autoMapOutput)
@@ -129,7 +129,7 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 else
                 {
-                    rowsAffected[entityType] = Context.Database.ExecuteSql(mergeStatement.Sql, Options.CommandTimeout);
+                    rowsAffected[entityType] = Context.Database.ExecuteSqlInternal(mergeStatement.Sql, Options.CommandTimeout);
                 }
             }
             return new BulkMergeResult<T>
@@ -161,8 +161,9 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
                 string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                 string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                    updateSetExpression, StagingTableName, entityType.GetTableName(), CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
-                rowsUpdated = Context.Database.ExecuteSql(updateSql, Options.CommandTimeout);
+                    updateSetExpression, StagingTableName, CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName()), 
+                    CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
+                rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
             }
             return rowsUpdated;
         }
