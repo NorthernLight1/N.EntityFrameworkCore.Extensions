@@ -35,15 +35,28 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         {
             SqlParts.Add(new SqlPart(keyword, expression));
         }
+        internal void SetIdentityInsert(string tableName, bool enable)
+        {
+            this.CreatePart(SqlKeyword.Set);
+            this.CreatePart(SqlKeyword.Identity_Insert, SqlExpression.Table(tableName));
+            if (enable)
+                this.CreatePart(SqlKeyword.On);
+            else
+                this.CreatePart(SqlKeyword.Off);
+            this.CreatePart(SqlKeyword.Semicolon);
+        }
         //internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string mergeOnCondition,
         //    IEnumerable<string> insertColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched = false)
         //{
 
         //}
         internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition, 
-            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched=false)
+            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns, 
+            bool deleteIfNotMatched=false, bool hasIdentityColumn=false)
         {
             var statement = new SqlStatement();
+            if (hasIdentityColumn)
+                statement.SetIdentityInsert(targetTableName, true);
             statement.CreatePart(SqlKeyword.Merge, SqlExpression.Table(targetTableName, "t"));
             statement.CreatePart(SqlKeyword.Using, SqlExpression.Table(sourceTableName, "s"));
             statement.CreatePart(SqlKeyword.On, SqlExpression.String(joinOnCondition));
@@ -71,7 +84,12 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 statement.CreatePart(SqlKeyword.Then);
                 statement.CreatePart(SqlKeyword.Delete);
             }
-            statement.CreatePart(SqlKeyword.Output, SqlExpression.Columns(outputColumns));
+            if(outputColumns.Any())
+                statement.CreatePart(SqlKeyword.Output, SqlExpression.Columns(outputColumns));
+            statement.CreatePart(SqlKeyword.Semicolon);
+
+            if (hasIdentityColumn)
+                statement.SetIdentityInsert(targetTableName, false);
             return statement;
         }
 
@@ -80,9 +98,23 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             StringBuilder sbSql = new StringBuilder();
             foreach(var part in SqlParts)
             {
-                if (!part.IgnoreOutput)
+                if (part.Keyword == SqlKeyword.Semicolon)
                 {
-                    sbSql.Append(part.Keyword.ToString().ToUpper() + " ");
+                    int lastIndex = sbSql.Length - 1;
+                    if (lastIndex > -1 && sbSql[lastIndex] == ' ')
+                    {
+                        sbSql[lastIndex] = ';';
+                        sbSql.Append("\n");
+                    }
+                    else
+                    {
+                        sbSql.Append(";\n");
+                    }
+                }
+                else if (!part.IgnoreOutput)
+                {
+                    sbSql.Append(part.Keyword.ToString().ToUpper());
+                    sbSql.Append(" ");
                     bool useParenthese = part.Keyword == SqlKeyword.Insert || part.Keyword == SqlKeyword.Values;
                     string format = useParenthese ? "({0})" : "{0}";
 
@@ -94,10 +126,10 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 }
             }
             //Output a semicolon for certain SQL Statments
-            if(SqlParts.First().Keyword == SqlKeyword.Merge)
-            {
-                sbSql.Append(";");
-            }
+            //if(SqlParts.First().Keyword == SqlKeyword.Merge)
+            //{
+            //    sbSql.Append(";");
+            //}
             return sbSql.ToString();
         }
     }

@@ -4,6 +4,7 @@ using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -29,6 +30,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             TestDbContext dbContext = new TestDbContext();
             dbContext.Orders.Truncate();
             dbContext.Products.Truncate();
+            dbContext.ProductCategories.Clear();
             dbContext.ProductsWithCustomSchema.Truncate();
             dbContext.Database.ClearTable("TpcCustomer");
             dbContext.Database.ClearTable("TpcVendor");
@@ -81,11 +83,20 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
                     Debug.WriteLine("Last Id for Order is {0}", id);
                     dbContext.BulkInsert(orders, new BulkInsertOptions<Order>() { KeepIdentity = true });
+
+                    var productCategories = new List<ProductCategory>()
+                    {
+                        new ProductCategory { Id=1, Name="Category-1", Active=true},
+                        new ProductCategory { Id=2, Name="Category-2", Active=true},
+                        new ProductCategory { Id=3, Name="Category-3", Active=true},
+                        new ProductCategory { Id=4, Name="Category-4", Active=false},
+                    };
+                    dbContext.BulkInsert(productCategories, o => { o.KeepIdentity = true; o.UsePermanentTable = true; });
                     var products = new List<Product>();
                     id = 1;
                     for (int i = 0; i < 2050; i++)
                     {
-                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false });
+                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, ProductCategoryId = 4 });
                         id++;
                     }
                     for (int i = 2050; i < 7000; i++)

@@ -253,7 +253,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, options.KeepIdentity, true);
                     var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition, 
-                        options.AutoMapOutput, options.InsertIfNotExists);
+                        options.AutoMapOutput, options.KeepIdentity, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;
                     bulkOperation.DbTransactionContext.Commit();
                 }
@@ -414,7 +414,7 @@ namespace N.EntityFrameworkCore.Extensions
                     bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
                     var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
                     bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
-                        true, true, options.DeleteIfNotMatched);
+                        false, true, true, options.DeleteIfNotMatched);
                     bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)
