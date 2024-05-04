@@ -28,6 +28,9 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         As,
         By,
         Source,
-        Target
+        Target,
+        Off,
+        Identity_Insert,
+        Semicolon,
     }
 }

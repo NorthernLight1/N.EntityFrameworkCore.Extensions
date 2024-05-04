@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
@@ -20,6 +21,19 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(oldTotal > 0, "There must be products in database that match this condition (OutOfStock == true)");
             Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (OutOfStock == false)");
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
+        }
+        [TestMethod]
+        public async Task With_Child_Relationship()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(p => !p.ProductCategory.Active);
+            int oldTotal = products.Count();
+            int rowsDeleted = await products.DeleteFromQueryAsync();
+            int newTotal = products.Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be products in database that match this condition (ProductCategory.Active == false)");
+            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows update must match the count of rows that match the condition (ProductCategory.Active == false)");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
         }
         [TestMethod]
         public async Task With_Decimal_Using_IQuerable()
@@ -90,11 +104,11 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(oldTotal - newTotal == rowsDeleted, "The rows deleted must match the new count minues the old count");
         }
         [TestMethod]
-        public void With_Empty_List()
+        public async Task With_Empty_List()
         {
             var dbContext = SetupDbContext(false);
             int oldTotal = dbContext.Orders.Count();
-            int rowsDeleted = dbContext.Orders.DeleteFromQuery();
+            int rowsDeleted = await dbContext.Orders.DeleteFromQueryAsync();
             int newTotal = dbContext.Orders.Count();
 
             Assert.IsTrue(oldTotal == 0, "There must be no orders in database that match this condition");

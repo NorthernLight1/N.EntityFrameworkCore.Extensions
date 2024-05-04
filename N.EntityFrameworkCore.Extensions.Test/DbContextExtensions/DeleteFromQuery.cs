@@ -22,6 +22,19 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
         }
         [TestMethod]
+        public void With_Child_Relationship()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(p => !p.ProductCategory.Active);
+            int oldTotal = products.Count();
+            int rowsDeleted = products.DeleteFromQuery();
+            int newTotal = products.Count();
+
+            Assert.IsTrue(oldTotal > 0, "There must be products in database that match this condition (ProductCategory.Active == false)");
+            Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows update must match the count of rows that match the condition (ProductCategory.Active == false)");
+            Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
+        }
+        [TestMethod]
         public void With_Decimal_Using_IQuerable()
         {
             var dbContext = SetupDbContext(true);
