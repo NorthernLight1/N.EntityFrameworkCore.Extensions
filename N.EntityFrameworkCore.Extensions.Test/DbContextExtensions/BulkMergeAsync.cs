@@ -325,5 +325,22 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(result.RowsInserted == orders.Count(), "The number of rows inserted must match the count of order list");
             Assert.IsTrue(newTotal - oldTotal == result.RowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
+        [TestMethod]
+        public async Task With_Merge_On_Enum()
+        {
+            var dbContext = SetupDbContext(true);
+            await dbContext.BulkSaveChangesAsync();
+            var nowDateTime = DateTime.Now;
+            var orders = new List<Order>();
+            for (int i = 0; i < 20; i++)
+            {
+                orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime, Status = OrderStatus.Completed});
+            }
+
+            var result = await dbContext.BulkMergeAsync(orders, options => options.MergeOnCondition = (s, t) => s.Id == t.Id && s.Status == t.Status);
+
+            Assert.AreEqual(1, result.RowsInserted);
+            Assert.AreEqual(19, result.RowsUpdated);
+        }
     }
 }

@@ -17,10 +17,18 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         public DateTime DbModifiedDateTime { get; set; }
         public bool? Trigger { get; set; }
         public bool Active { get; set; }
+        public OrderStatus Status { get; set; }
         public Order()
         {
             AddedDateTime = DateTime.UtcNow;
             Active = true;
         }
+    }
+
+    public enum OrderStatus
+    {
+        Unknown,
+        Completed,
+        Error   
     }
 }

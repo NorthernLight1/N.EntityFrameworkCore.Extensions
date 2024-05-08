@@ -32,4 +32,8 @@ Inheritance models supported: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="N.EntityFrameworkCore.Extensions.Test" />
+  </ItemGroup>
+  
 </Project>

@@ -130,20 +130,45 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
             }
         }
+        
         internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {
-            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-            int i = 0;
-            foreach (var expressionParam in expression.Parameters)
-            {
-                if (parameters.Length <= i) break;
-                stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-                i++;
-            }
-            stringBuilder.Replace("&&", "AND");
-            stringBuilder.Replace("==", "=");
-            return stringBuilder.ToString();
+            var sql = ToSqlString(expression.Body);
+
+            for (var i = 0; i < parameters.Length; i++)
+                sql = sql.Replace($"${expression.Parameters[i].Name!}.", $"{parameters[i]}.");
+
+            return sql;
         }
+       
+        static string ToSqlString(Expression expression, string sql = null)
+        {
+            sql ??= "";
+            if (expression is not BinaryExpression b)
+                return sql;
+
+            var internalSql = "";
+            if (b.Left is MemberExpression mel)
+                internalSql += $"${mel} = ";
+            if (b.Right is MemberExpression mer)
+                internalSql += $"${mer}";
+
+            if (b.Left is UnaryExpression ubl)
+                internalSql += $"${ubl.Operand} = ";
+            if (b.Right is UnaryExpression ubr)
+                internalSql += $"${ubr.Operand}";
+
+            if (!string.IsNullOrWhiteSpace(internalSql))
+                return internalSql;
+
+            var left = ToSqlString(b.Left, sql);
+            if (string.IsNullOrWhiteSpace(left))
+                return sql;
+
+            var right = ToSqlString(b.Right, sql);
+            return left + " AND " + right;
+        }
+        
         internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
         {
             List<string> setValues = new List<string>();
