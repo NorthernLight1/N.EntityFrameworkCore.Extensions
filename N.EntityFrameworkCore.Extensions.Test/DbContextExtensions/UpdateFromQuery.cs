@@ -128,14 +128,14 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(matchCount == rowUpdated, "The match count must be equal the number of rows updated in the database.");
         }
         [TestMethod]
-        public async Task With_Enum_Value()
+        public void With_Enum_Value()
         {
             var dbContext = SetupDbContext(true);
-            int oldTotal = dbContext.Products.Count(a => a.StatusEnum == null && a.OutOfStock);
-            int rowUpdated = await dbContext.Products.Where(a => a.StatusEnum == null && a.OutOfStock)
-                .UpdateFromQueryAsync(a => new Product { StatusEnum = ProductStatus.OutOfStock });
-            int newTotal = dbContext.Products.Count(o => o.StatusEnum == null && o.OutOfStock);
-            int newTotal2 = dbContext.Products.Count(o => o.StatusEnum == ProductStatus.OutOfStock && o.OutOfStock);
+            var products = dbContext.Products.Where(a => a.StatusEnum == ProductStatus.OutOfStock && a.OutOfStock);
+            int oldTotal = products.Count();
+            int rowUpdated = products.UpdateFromQuery(a => new Product { StatusEnum = ProductStatus.InStock });
+            int newTotal = products.Count(o => o.StatusEnum == ProductStatus.OutOfStock && o.OutOfStock);
+            int newTotal2 = dbContext.Products.Count(o => o.StatusEnum == ProductStatus.InStock && o.OutOfStock);
 
             Assert.IsTrue(oldTotal > 0, "There must be articles in database that match this condition (OutOfStock == true)");
             Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (OutOfStock == false)");

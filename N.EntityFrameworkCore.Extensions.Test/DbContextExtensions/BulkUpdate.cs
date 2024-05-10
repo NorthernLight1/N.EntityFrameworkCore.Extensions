@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 using System;
@@ -197,6 +198,25 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(orders.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
             Assert.IsTrue(rowsUpdated == ordersWithExternalId, "The number of rows updated must match the count of entities that were retrieved");
             Assert.IsTrue(newTotal == rowsUpdated + oldTotal, "The count of new orders must be equal the number of rows updated in the database.");
+        }
+        [TestMethod]
+        public void With_Options_UpdateOnCondition_Enum()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).ToList();
+            foreach (var product in products)
+            {
+                product.Price = 2.35M;
+            }
+            int rowsUpdated = dbContext.BulkUpdate(products, o =>
+            {
+                o.UpdateOnCondition = (s, t) => s.Id == t.Id && s.StatusEnum == t.StatusEnum;
+            });
+            var newProducts = dbContext.Products.Where(o => o.Price == 2.35M).OrderBy(o => o.Id).Count();
+
+            Assert.IsTrue(products.Count > 0, "There must be products in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(rowsUpdated == products.Count, "The number of rows updated must match the count of entities that were retrieved");
+            Assert.IsTrue(newProducts == rowsUpdated, "The count of new products must be equal the number of rows updated in the database.");
         }
         [TestMethod]
         public void With_Transaction()
