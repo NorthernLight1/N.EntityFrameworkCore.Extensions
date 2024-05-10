@@ -96,12 +96,12 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     id = 1;
                     for (int i = 0; i < 2050; i++)
                     {
-                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, ProductCategoryId = 4 });
+                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, ProductCategoryId = 4, StatusEnum = ProductStatus.InStock });
                         id++;
                     }
                     for (int i = 2050; i < 7000; i++)
                     {
-                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = true });
+                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = true, StatusEnum = ProductStatus.OutOfStock });
                         id++;
                     }
 
