@@ -159,82 +159,55 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
                 sqlQuery.SelectColumns(columnsToFetch);
             }
-            using (var command = dbContext.Database.CreateCommand(ConnectionBehavior.New))
+
+            using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+            command.CommandText = sqlQuery.Sql;
+            command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
+            var reader = command.ExecuteReader();
+
+            var propertySetters = reader.GetPropertyInfos<T>();
+            //Read data
+            int batch = 1;
+            int count = 0;
+            int totalCount = 0;
+            var entities = new List<T>();
+            while (reader.Read())
             {
-                command.CommandText = sqlQuery.Sql;
-                command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-                var reader = command.ExecuteReader();
-
-                List<PropertyInfo> propertySetters = new List<PropertyInfo>();
-                var entityType = typeof(T);
-                for (int i = 0; i < reader.FieldCount; i++)
+                var entity = reader.MapEntity<T>(propertySetters);
+                entities.Add(entity);
+                count++;
+                totalCount++;
+                if (count == options.BatchSize)
                 {
-                    propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
-                }
-                //Read data
-                int batch = 1;
-                int count = 0;
-                int totalCount = 0;
-                var entities = new List<T>();
-                while (reader.Read())
-                {
-                    var entity = new T();
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        var value = reader.GetValue(i);
-                        if (value == DBNull.Value)
-                            value = null;
-                        propertySetters[i].SetValue(entity, value);
-                    }
-                    entities.Add(entity);
-                    count++;
-                    totalCount++;
-                    if (count == options.BatchSize)
-                    {
-                        action(new FetchResult<T> { Results = entities, Batch = batch });
-                        entities.Clear();
-                        count = 0;
-                        batch++;
-                    }
-                }
-
-                if (entities.Count > 0)
                     action(new FetchResult<T> { Results = entities, Batch = batch });
-                //close the DataReader
-                reader.Close();
+                    entities.Clear();
+                    count = 0;
+                    batch++;
+                }
             }
+
+            if (entities.Count > 0)
+                action(new FetchResult<T> { Results = entities, Batch = batch });
+
+            reader.Close();
         }
         private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
         {
-            using (var command = dbContext.Database.CreateCommand(Enums.ConnectionBehavior.New))
+            using var command = dbContext.Database.CreateCommand(Enums.ConnectionBehavior.New);
+            command.CommandText = sqlText;
+            if (parameters != null)
+                command.Parameters.AddRange(parameters);
+
+            var reader = command.ExecuteReader();
+            var propertySetters = reader.GetPropertyInfos<T>();
+                
+            while (reader.Read())
             {
-                command.CommandText = sqlText;
-                if (parameters != null)
-                    command.Parameters.AddRange(parameters);
-
-                var reader = command.ExecuteReader();
-
-                List<PropertyInfo> propertySetters = new List<PropertyInfo>();
-                var entityType = typeof(T);
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
-                }
-                while (reader.Read())
-                {
-                    var entity = new T();
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        var value = reader.GetValue(i);
-                        if (value == DBNull.Value)
-                            value = null;
-                        propertySetters[i].SetValue(entity, value);
-                    }
-                    yield return entity;
-                }
-                //close the DataReader
-                reader.Close();
+                var entity = reader.MapEntity<T>(propertySetters);
+                yield return entity;
             }
+            
+            reader.Close();
         }
         public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
         {
