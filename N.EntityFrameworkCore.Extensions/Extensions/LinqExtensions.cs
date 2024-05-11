@@ -134,7 +134,7 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
             }
         }
-        internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
+        internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
         {
             var sql = ToSqlString(expression.Body);
 
