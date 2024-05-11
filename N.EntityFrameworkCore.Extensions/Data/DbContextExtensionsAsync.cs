@@ -82,51 +82,38 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
                 sqlQuery.SelectColumns(columnsToFetch);
             }
-            using (var command = dbContext.Database.CreateCommand(ConnectionBehavior.New))
+
+            await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+            command.CommandText = sqlQuery.Sql;
+            command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
+            var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            var propertySetters = reader.GetPropertyInfos<T>();
+            //Read data
+            int batch = 1;
+            int count = 0;
+            int totalCount = 0;
+            var entities = new List<T>();
+            while (await reader.ReadAsync(cancellationToken))
             {
-                command.CommandText = sqlQuery.Sql;
-                command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-                var reader = await command.ExecuteReaderAsync(cancellationToken);
-
-                List<PropertyInfo> propertySetters = new List<PropertyInfo>();
-                var entityType = typeof(T);
-                for (int i = 0; i < reader.FieldCount; i++)
+                var entity = reader.MapEntity<T>(propertySetters);
+                entities.Add(entity);
+                count++;
+                totalCount++;
+                if (count == options.BatchSize)
                 {
-                    propertySetters.Add(entityType.GetProperty(reader.GetName(i)));
-                }
-                //Read data
-                int batch = 1;
-                int count = 0;
-                int totalCount = 0;
-                var entities = new List<T>();
-                while (await reader.ReadAsync(cancellationToken))
-                {
-                    var entity = new T();
-                    for (int i = 0; i < reader.FieldCount; i++)
-                    {
-                        var value = reader.GetValue(i);
-                        if (value == DBNull.Value)
-                            value = null;
-                        propertySetters[i].SetValue(entity, value);
-                    }
-                    entities.Add(entity);
-                    count++;
-                    totalCount++;
-                    if (count == options.BatchSize)
-                    {
-                        await action(new FetchResult<T> { Results = entities, Batch = batch });
-                        entities.Clear();
-                        count = 0;
-                        batch++;
-                    }
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-
-                if (entities.Count > 0)
                     await action(new FetchResult<T> { Results = entities, Batch = batch });
-                //close the DataReader
-                await reader.CloseAsync();
+                    entities.Clear();
+                    count = 0;
+                    batch++;
+                }
+                cancellationToken.ThrowIfCancellationRequested();
             }
+
+            if (entities.Count > 0)
+                await action(new FetchResult<T> { Results = entities, Batch = batch });
+            
+            await reader.CloseAsync();
         }
         public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {

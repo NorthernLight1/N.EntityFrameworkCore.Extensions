@@ -1,19 +1,41 @@
-﻿using System;
+﻿using Microsoft.IdentityModel.Protocols;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions
 {
     static class LinqExtensions
     {
-        internal static string GetExpressionValueAsString(MemberBinding binding)
+        static Dictionary<ExpressionType, string> sqlExpressionTypes = new()
         {
-            return GetExpressionValueAsString(binding.GetPrivateFieldValue("Expression") as Expression);
+            { ExpressionType.AndAlso, "AND" },
+            { ExpressionType.Or, "OR" },
+            { ExpressionType.Add, "+" },
+            { ExpressionType.Subtract, "-" },
+            { ExpressionType.Multiply, "*" },
+            { ExpressionType.Divide, "/" },
+            { ExpressionType.Modulo, "%" },
+            { ExpressionType.Equal, "=" }
+        };
+
+        internal static string ToSql(this MemberBinding binding)
+        {
+            if(binding is MemberAssignment memberAssingment)
+            {
+                return GetExpressionValueAsString(memberAssingment.Expression);
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
         }
         internal static string GetExpressionValueAsString(Expression expression)
         {
@@ -58,29 +80,11 @@ namespace N.EntityFrameworkCore.Extensions
             }
             else
             {
-                var leftExpression = expression.GetPrivateFieldValue("Left") as Expression;
-                var rightExpression = expression.GetPrivateFieldValue("Right") as Expression;
-                string leftValue = GetExpressionValueAsString(leftExpression);
-                string rightValue = GetExpressionValueAsString(rightExpression);
-                string joinValue = string.Empty;
-                switch (expression.NodeType)
-                {
-                    case ExpressionType.Add:
-                        joinValue = "+";
-                        break;
-                    case ExpressionType.Subtract:
-                        joinValue = "-";
-                        break;
-                    case ExpressionType.Multiply:
-                        joinValue = "*";
-                        break;
-                    case ExpressionType.Divide:
-                        joinValue = "/";
-                        break;
-                    case ExpressionType.Modulo:
-                        joinValue = "%";
-                        break;
-                }
+                var binaryExpression = expression as BinaryExpression;
+                string leftValue = GetExpressionValueAsString(binaryExpression.Left);
+                string rightValue = GetExpressionValueAsString(binaryExpression.Right);
+                string joinValue = expression.NodeType.ToSql();
+
                 return string.Format("({0} {1} {2})", leftValue, joinValue, rightValue);
             }
         }
@@ -130,7 +134,6 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
             }
         }
-        
         internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {
             var sql = ToSqlString(expression.Body);
@@ -168,14 +171,53 @@ namespace N.EntityFrameworkCore.Extensions
             var right = ToSqlString(b.Right, sql);
             return left + " AND " + right;
         }
-        
+        internal static string ToSql(this ExpressionType expressionType)
+        {
+            string value = string.Empty;
+            sqlExpressionTypes.TryGetValue(expressionType, out value);
+            return value;
+        }
+        internal static string ToSql(this Expression expression)
+        {
+            var sb = new StringBuilder();
+            if (expression is BinaryExpression binaryExpression)
+            {
+                sb.Append(binaryExpression.Left.ToSql());
+                sb.Append($" {expression.NodeType.ToSql()} ");
+                sb.Append(binaryExpression.Right.ToSql());
+            }
+            else if (expression is MemberExpression memberExpression)
+            {
+                return $"{memberExpression}";
+            }
+            else if(expression is UnaryExpression unaryExpression)
+            {
+                return $"{unaryExpression.Operand}";
+            }
+            return sb.ToString();
+        }
+        internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
+        {
+            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
+            int i = 0;
+            foreach (var expressionParam in expression.Parameters)
+            {
+                if (parameters.Length <= i) break;
+                stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
+                i++;
+            }
+            stringBuilder.Replace("&&", "AND");
+            stringBuilder.Replace("==", "=");
+            stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
+            return stringBuilder.ToString();
+        }
         internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
         {
             List<string> setValues = new List<string>();
             var memberInitExpression = expression.Body as MemberInitExpression;
             foreach (var binding in memberInitExpression.Bindings)
             {
-                string expValue = GetExpressionValueAsString(binding);
+                string expValue = binding.ToSql();
                 expValue = expValue.Replace(string.Format("{0}.", expression.Parameters.First().Name), "");
                 setValues.Add(string.Format("[{0}]={1}", binding.Member.Name, expValue));
             }

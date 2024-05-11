@@ -33,6 +33,28 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(ordersAreMatched, "The orders from BulkFetch() should match what is retrieved from DbContext");
         }
         [TestMethod]
+        public void With_Enum()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(o => o.Price == 1.25m).ToList();
+            var fetchedProducts = dbContext.Products.BulkFetch(products);
+            bool ordersAreMatched = true;
+
+            foreach (var fetchedOrder in fetchedProducts)
+            {
+                var order = products.First(o => o.Id == fetchedOrder.Id);
+                if (order.Id != fetchedOrder.Id || order.Name != fetchedOrder.Name || order.StatusEnum != fetchedOrder.StatusEnum)
+                {
+                    ordersAreMatched = false;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(products.Count == fetchedProducts.Count(), "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(ordersAreMatched, "The orders from BulkFetch() should match what is retrieved from DbContext");
+        }
+        [TestMethod]
         public void With_IQueryable()
         {
             var dbContext = SetupDbContext(true);
