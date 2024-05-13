@@ -134,7 +134,7 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
             }
         }
-        internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
+        internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {
             var sql = ToSqlString(expression.Body);
 
@@ -195,21 +195,6 @@ namespace N.EntityFrameworkCore.Extensions
                 return $"{unaryExpression.Operand}";
             }
             return sb.ToString();
-        }
-        internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        {
-            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-            int i = 0;
-            foreach (var expressionParam in expression.Parameters)
-            {
-                if (parameters.Length <= i) break;
-                stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-                i++;
-            }
-            stringBuilder.Replace("&&", "AND");
-            stringBuilder.Replace("==", "=");
-            stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
-            return stringBuilder.ToString();
         }
         internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
         {
