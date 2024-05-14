@@ -219,6 +219,32 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
         }
         [TestMethod]
+        public async Task With_merge_Should_include_all_auto_generated_properties()
+        {
+            var dbContext = SetupDbContext(true);
+            int ordersToUpdate = 3;
+            int ordersToAdd = 2;
+            var orders = new List<Order>
+            {
+                new Order { ExternalId = "id-1", Price=7.10M },
+                new Order { ExternalId = "id-2", Price=9.33M },
+                new Order { ExternalId = "id-3", Price=3.25M },
+                new Order { ExternalId = "id-1000001", Price=2.15M },
+                new Order { ExternalId = "id-1000002", Price=5.75M },
+            };
+            var result = await dbContext.BulkMergeAsync(orders, new BulkMergeOptions<Order>
+            {
+                MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId,
+                AutoMapOutput = true
+            });
+            var autoMapIdentityMatched = orders.All(x => x.Id != 0);
+
+            Assert.IsTrue(result.RowsAffected == ordersToAdd + ordersToUpdate, "The number of rows inserted must match the count of order list");
+            Assert.IsTrue(result.RowsUpdated == ordersToUpdate, "The number of rows updated must match");
+            Assert.IsTrue(result.RowsInserted == ordersToAdd, "The number of rows added must match");
+            Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
+        }
+        [TestMethod]
         public async Task With_Key()
         {
             var dbContext = SetupDbContext(true);
