@@ -209,6 +209,7 @@ namespace N.EntityFrameworkCore.Extensions
             stringBuilder.Replace("&&", "AND");
             stringBuilder.Replace("==", "=");
             stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
+            stringBuilder.Replace("(System.Int32)", "");
             return stringBuilder.ToString();
         }
         internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
