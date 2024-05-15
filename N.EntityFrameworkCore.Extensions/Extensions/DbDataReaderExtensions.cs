@@ -1,18 +1,21 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Reflection;
+using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions.Extensions;
 
 static class DbDataReaderExtensions
 {
-    internal static T MapEntity<T>(this DbDataReader reader, List<PropertyInfo> propertySetters) where T : class, new()
+    internal static T MapEntity<T>(this DbDataReader reader, List<PropertyInfo> propertySetters, List<Func<object, object>> valuesFromProvider) where T : class, new()
     {
         var entity = new T();
         for (var i = 0; i < reader.FieldCount; i++)
         {
-            var value = reader.GetValue(i);
+            var value = valuesFromProvider[i].Invoke(reader.GetValue(i));
             if (value == DBNull.Value)
                 value = null;
 

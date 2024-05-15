@@ -40,7 +40,7 @@ namespace N.EntityFrameworkCore.Extensions
             foreach (var property in tableMapping.Properties)
             {
                 var valueGeneratorFactory = property.GetValueGeneratorFactory();
-                if(valueGeneratorFactory != null)
+                if (valueGeneratorFactory != null)
                 {
                     var valueGenerator = valueGeneratorFactory.Invoke(property, this.TableMapping.EntityType);
                     Func<EntityEntry, object> selector = entry => valueGenerator.Next(entry);
@@ -48,8 +48,15 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 else
                 {
-                    Func<EntityEntry, object> selector = entry => entry.CurrentValues[property];
-                    selectors[i] = selector;
+                    var valueConverter = property.GetValueConverter();
+                    if (valueConverter != null)
+                    {
+                        selectors[i] = entry => valueConverter.ConvertToProvider(entry.CurrentValues[property]);
+                    }
+                    else
+                    {
+                        selectors[i] = entry => entry.CurrentValues[property];
+                    }
                 }
                 columnIndexes[property.Name] = i;
                 i++;

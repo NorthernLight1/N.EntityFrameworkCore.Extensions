@@ -4,6 +4,7 @@ using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
@@ -97,7 +98,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     id = 1;
                     for (int i = 0; i < 2050; i++)
                     {
-                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, ProductCategoryId = 4, StatusEnum = ProductStatus.InStock });
+                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, 
+                            ProductCategoryId = 4, StatusEnum = ProductStatus.InStock, Color = Color.Black });
                         id++;
                     }
                     for (int i = 2050; i < 7000; i++)

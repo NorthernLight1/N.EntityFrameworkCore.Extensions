@@ -2,6 +2,7 @@
 using N.EntityFrameworkCore.Extensions.Test.Common;
 using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Drawing;
 using System.Reflection.Metadata;
 using System.Runtime.ConstrainedExecution;
 
@@ -44,6 +45,9 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
             modelBuilder.Entity<TptPerson>().ToTable("TptPeople");
             modelBuilder.Entity<TptCustomer>().ToTable("TptCustomer");
             modelBuilder.Entity<TptVendor>().ToTable("TptVendor");
+            modelBuilder.Entity<Product>(t => 
+                t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x))
+            );
         }
     }
 }

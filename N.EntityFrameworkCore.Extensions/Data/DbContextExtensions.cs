@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -152,9 +153,9 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dbContext = querable.GetDbContext();
             var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+            var tableMapping = dbContext.GetTableMapping(typeof(T));
             if (options.InputColumns != null || options.IgnoreColumns != null)
             {
-                var tableMapping = dbContext.GetTableMapping(typeof(T));
                 IEnumerable<string> columnNames = options.InputColumns != null ? options.InputColumns.GetObjectProperties() : tableMapping.GetColumns(true);
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
                 sqlQuery.SelectColumns(columnsToFetch);
@@ -166,6 +167,7 @@ namespace N.EntityFrameworkCore.Extensions
             var reader = command.ExecuteReader();
 
             var propertySetters = reader.GetPropertyInfos<T>();
+            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
             //Read data
             int batch = 1;
             int count = 0;
@@ -173,7 +175,7 @@ namespace N.EntityFrameworkCore.Extensions
             var entities = new List<T>();
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters);
+                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
                 entities.Add(entity);
                 count++;
                 totalCount++;
@@ -198,12 +200,14 @@ namespace N.EntityFrameworkCore.Extensions
             if (parameters != null)
                 command.Parameters.AddRange(parameters);
 
+            var tableMapping = dbContext.GetTableMapping(typeof(T), null);
             var reader = command.ExecuteReader();
             var propertySetters = reader.GetPropertyInfos<T>();
-                
+            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters);
+                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
                 yield return entity;
             }
             

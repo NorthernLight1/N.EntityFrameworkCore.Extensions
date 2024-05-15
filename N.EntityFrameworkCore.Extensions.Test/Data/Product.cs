@@ -20,6 +20,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         [StringLength(25)]
         public string StatusString { get; set; }
         public int? ProductCategoryId { get; set; }
+        public System.Drawing.Color Color { get; set; }
         public ProductStatus? StatusEnum { get; set; }
         public DateTime? UpdatedDateTime { get; set; }
 

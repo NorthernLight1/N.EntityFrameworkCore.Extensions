@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using N.EntityFrameworkCore.Extensions.Extensions;
@@ -21,7 +23,7 @@ namespace N.EntityFrameworkCore.Extensions
         public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema());
         public string FullQualifedTableName
         {
-            get { return string.Format("[{0}].[{1}]", this.Schema, this.TableName);  }
+            get { return string.Format("[{0}].[{1}]", this.Schema, this.TableName); }
         }
 
         public TableMapping(DbContext dbContext, IEntityType entityType)
@@ -37,7 +39,7 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public IEnumerable<string> GetQualifiedColumnNames(IEnumerable<string> columnNames, IEntityType entityType = null)
         {
-            return EntityType.GetProperties().Where(o => (entityType == null || o.GetDeclaringEntityType() == entityType) 
+            return EntityType.GetProperties().Where(o => (entityType == null || o.GetDeclaringEntityType() == entityType)
                 && columnNames == null || columnNames.Contains(o.GetColumnName()))
                 .Select(o => string.Format("[{0}].[{1}]", FindTableName(o.GetDeclaringEntityType(), EntityType), o.GetColumnName()));
         }
@@ -49,15 +51,15 @@ namespace N.EntityFrameworkCore.Extensions
 
         public IEnumerable<string> GetColumnNames(IEntityType entityType)
         {
-            return entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract() 
+            return entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
                     || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
                 .Select(o => o.GetColumnName());
         }
-        public IEnumerable<string> GetColumns(bool includePrimaryKeyColumns=false)
+        public IEnumerable<string> GetColumns(bool includePrimaryKeyColumns = false)
         {
             var columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
                 .Select(o => o.GetColumnName());
-            if(includePrimaryKeyColumns)
+            if (includePrimaryKeyColumns)
             {
                 columns = columns.Union(GetPrimaryKeyColumns());
             }
@@ -79,6 +81,24 @@ namespace N.EntityFrameworkCore.Extensions
         {
             entityType = entityType ?? this.EntityType;
             return entityType.GetProperties().Where(o => valueGenerated == null || o.ValueGenerated == valueGenerated).AsEnumerable();
+        }
+
+        internal IEnumerable<Func<object, object>> GetValuesFromProvider()
+        {
+            var propertyGetters = new List<Func<object, object>>();
+            foreach(var property in this.Properties)
+            {
+                var valueConverter = property.GetValueConverter();
+                if (valueConverter != null)
+                {
+                    propertyGetters.Add(value => valueConverter.ConvertFromProvider(value));
+                }
+                else
+                {
+                    propertyGetters.Add(value => value);
+                }
+            }
+            return propertyGetters.AsEnumerable();
         }
 
         internal IEnumerable<string> GetSchemaQualifiedTableNames()

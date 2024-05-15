@@ -75,9 +75,9 @@ namespace N.EntityFrameworkCore.Extensions
         {
             var dbContext = querable.GetDbContext();
             var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+            var tableMapping = dbContext.GetTableMapping(typeof(T));
             if (options.InputColumns != null || options.IgnoreColumns != null)
             {
-                var tableMapping = dbContext.GetTableMapping(typeof(T));
                 IEnumerable<string> columnNames = options.InputColumns != null ? options.InputColumns.GetObjectProperties() : tableMapping.GetColumns(true);
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns(columnNames.Where(o => !options.IgnoreColumns.GetObjectProperties().Contains(o)));
                 sqlQuery.SelectColumns(columnsToFetch);
@@ -89,6 +89,7 @@ namespace N.EntityFrameworkCore.Extensions
             var reader = await command.ExecuteReaderAsync(cancellationToken);
 
             var propertySetters = reader.GetPropertyInfos<T>();
+            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
             //Read data
             int batch = 1;
             int count = 0;
@@ -96,7 +97,7 @@ namespace N.EntityFrameworkCore.Extensions
             var entities = new List<T>();
             while (await reader.ReadAsync(cancellationToken))
             {
-                var entity = reader.MapEntity<T>(propertySetters);
+                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
                 entities.Add(entity);
                 count++;
                 totalCount++;
