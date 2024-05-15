@@ -80,5 +80,28 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(orders.Count() == fetchedOrders.Count(), "The number of orders must match the number of fetched orders");
             Assert.IsTrue(!foundNullExternalId, "Fetched orders should not contain any items where ExternalId is null.");
         }
+        [TestMethod]
+        public void With_ValueConverter()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(o => o.Price == 1.25M).ToList();
+            var fetchedProducts = dbContext.Products.BulkFetch(products);
+            bool areMatched = true;
+
+            foreach (var fetchedProduct in fetchedProducts)
+            {
+                var product = products.First(o => o.Id == fetchedProduct.Id);
+                if (product.Name != fetchedProduct.Name || product.Price != fetchedProduct.Price
+                    || product.Color != fetchedProduct.Color)
+                {
+                    areMatched = false;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(products.Count == fetchedProducts.Count(), "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsTrue(areMatched, "The products from BulkFetch() should match what is retrieved from DbContext");
+        }
     }
 }
