@@ -56,7 +56,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                             ExternalId = string.Format("id-{0}", i),
                             Price = 1.25M,
                             AddedDateTime = addedDateTime,
-                            ModifiedDateTime = addedDateTime.AddHours(3)
+                            ModifiedDateTime = addedDateTime.AddHours(3),
+                            Status = OrderStatus.Completed
                         });
                         id++;
                     }
