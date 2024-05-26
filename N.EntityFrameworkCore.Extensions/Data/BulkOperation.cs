@@ -51,9 +51,9 @@ namespace N.EntityFrameworkCore.Extensions
             StagingTableName = CommonUtil.GetStagingTableName(TableMapping, options.UsePermanentTable, Connection);
             PrimaryKeyColumnNames = TableMapping.GetPrimaryKeyColumns().ToArray();
         }
-        internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity=false, bool useInternalId=false)
+        internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity=true, bool useInternalId=false)
         {
-            IEnumerable<string> columnsToInsert = GetStagingColumnNames(keepIdentity);
+            IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
             string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
             Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn);
             StagingTableCreated = true;
@@ -191,15 +191,13 @@ namespace N.EntityFrameworkCore.Extensions
                 Context.Database.DropTable(StagingTableName);
             }
         }
-        internal IEnumerable<string> GetColumnNames(IEntityType entityType, bool keepIdentity=false)
+        internal IEnumerable<string> GetColumnNames(bool includPrimaryKeys = false)
         {
-            return CommonUtil.FilterColumns(TableMapping.GetColumnNames(entityType, keepIdentity), PrimaryKeyColumnNames, InputColumns, IgnoreColumns);
-            //return TableMapping.GetColumnNames(entityType).Intersect(columnNames);
+            return GetColumnNames(null, includPrimaryKeys);
         }
-        internal IEnumerable<string> GetStagingColumnNames(bool keepIdentity=false)
+        internal IEnumerable<string> GetColumnNames(IEntityType entityType, bool includPrimaryKeys = false)
         {
-            IEnumerable<string> columnNames = CommonUtil.FilterColumns(TableMapping.GetColumns(keepIdentity), PrimaryKeyColumnNames, InputColumns, IgnoreColumns);
-            return columnNames.Union(PrimaryKeyColumnNames);
+            return CommonUtil.FilterColumns(TableMapping.GetColumnNames(entityType, includPrimaryKeys), PrimaryKeyColumnNames, InputColumns, IgnoreColumns);
         }
     }
 }
