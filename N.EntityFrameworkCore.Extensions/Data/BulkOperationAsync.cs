@@ -14,9 +14,9 @@ namespace N.EntityFrameworkCore.Extensions
 {
     internal partial class BulkOperation<T>
     {
-        internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = false, bool useInternalId = false, CancellationToken cancellationToken = default)
+        internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false, CancellationToken cancellationToken = default)
         {
-            IEnumerable<string> columnsToInsert = GetStagingColumnNames(keepIdentity);
+            IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
             string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
             await Context.Database.CloneTableAsync(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, cancellationToken);
             StagingTableCreated = true;

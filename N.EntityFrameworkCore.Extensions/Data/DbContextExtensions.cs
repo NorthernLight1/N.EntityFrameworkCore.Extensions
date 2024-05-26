@@ -228,7 +228,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, options.KeepIdentity, true);
+                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
                     var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition, 
                         options.AutoMapOutput, options.KeepIdentity, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;

@@ -131,7 +131,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, options.KeepIdentity, true);
+                    var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true);
                     var bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.InsertOnCondition,
                         options.AutoMapOutput, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;

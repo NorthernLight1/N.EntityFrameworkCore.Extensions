@@ -55,6 +55,26 @@ namespace N.EntityFrameworkCore.Extensions
                     || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
                 .Select(o => o.GetColumnName());
         }
+        public IEnumerable<string> GetColumnNames(IEntityType entityType, bool primaryKeyColumns)
+        {
+            IEnumerable<string> columns;
+            if (entityType != null)
+            {
+                columns = entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
+                        || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
+                    .Select(o => o.GetColumnName());
+            }
+            else
+            {
+                columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
+                .Select(o => o.GetColumnName());
+            }
+            if (primaryKeyColumns)
+            {
+                columns = columns.Union(GetPrimaryKeyColumns());
+            }
+            return columns;
+        }
         public IEnumerable<string> GetColumns(bool includePrimaryKeyColumns = false)
         {
             var columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
