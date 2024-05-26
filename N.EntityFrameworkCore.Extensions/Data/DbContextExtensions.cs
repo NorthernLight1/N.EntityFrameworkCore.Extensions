@@ -304,9 +304,9 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 foreach (var property in dataReader.TableMapping.Properties)
                 {
-                    var columnName = property.GetColumnName();
+                    var columnName = dataReader.TableMapping.GetColumnName(property);
                     if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
-                        sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
+                        sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
                 }
                 if (useInteralId)
                 {

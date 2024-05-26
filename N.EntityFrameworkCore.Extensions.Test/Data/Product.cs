@@ -24,6 +24,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         public ProductStatus? StatusEnum { get; set; }
         public DateTime? UpdatedDateTime { get; set; }
 
+        public Position Position { get; set; }
+
         public virtual ProductCategory ProductCategory { get; set; }
         public Product()
         {

@@ -30,60 +30,103 @@ namespace N.EntityFrameworkCore.Extensions
         {
             DbContext = dbContext;
             EntityType = entityType;
-            Properties = entityType.GetProperties().ToArray();
+            Properties = GetProperties(entityType);
             Schema = entityType.GetSchema() ?? "dbo";
             TableName = entityType.GetTableName();
             EntityTypes = EntityType.GetAllBaseTypesInclusive().Where(o => !o.IsAbstract());
 
-            var options = dbContext.GetPrivateFieldValue("_options") as DbContextOptions;
+            //var options = dbContext.GetPrivateFieldValue("_options") as DbContextOptions;
         }
+
+        private static IProperty[] GetProperties(IEntityType entityType)
+        {
+            var properties = entityType.GetProperties().ToList();
+            properties.AddRange(entityType.GetComplexProperties().SelectMany(p => p.ComplexType.GetProperties()));
+            return properties.ToArray();
+        }
+
         public IEnumerable<string> GetQualifiedColumnNames(IEnumerable<string> columnNames, IEntityType entityType = null)
         {
-            return EntityType.GetProperties().Where(o => (entityType == null || o.GetDeclaringEntityType() == entityType)
-                && columnNames == null || columnNames.Contains(o.GetColumnName()))
-                .Select(o => string.Format("[{0}].[{1}]", FindTableName(o.GetDeclaringEntityType(), EntityType), o.GetColumnName()));
+            return Properties.Where(o => entityType == null || o.GetDeclaringEntityType() == entityType)
+                .Select(o => FindColumn(o))
+                .Where(o => columnNames == null || columnNames.Contains(o.Name))
+                .Select(o => $"[{o.Table.Name}].[{o.Name}]").ToList();
+        }
+        public string GetColumnName(IProperty property)
+        {
+            return FindColumn(property).Name;
+        }
+        private IColumnBase FindColumn(IProperty property)
+        {
+            var entityType = property.GetDeclaringEntityType();
+            if (entityType == null  || entityType.IsAbstract())
+                entityType = EntityType;
+            var storeObjectIdentifier = StoreObjectIdentifier.Table(entityType.GetTableName(), entityType.GetSchema());
+            return property.FindColumn(storeObjectIdentifier);
         }
 
         private string FindTableName(IEntityType declaringEntityType, IEntityType entityType)
         {
-            return !declaringEntityType.IsAbstract() ? declaringEntityType.GetTableName() : entityType.GetTableName();
+            return declaringEntityType != null && declaringEntityType.IsAbstract() ? declaringEntityType.GetTableName() : entityType.GetTableName();
         }
 
-        public IEnumerable<string> GetColumnNames(IEntityType entityType)
-        {
-            return entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
-                    || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
-                .Select(o => o.GetColumnName());
-        }
+        //public IEnumerable<string> GetColumnNames(IEntityType entityType, bool includePrimaryKeyColumns = false)
+        //{
+        //    var storeObjectIdentifier = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table).GetValueOrDefault();
+        //    var columns = entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
+        //            || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
+        //        .Select(o => o.GetColumnName(storeObjectIdentifier)).ToList();
+            
+        //    columns.AddRange(entityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+        //        .Select(c => c.GetColumnName(storeObjectIdentifier))));
+            
+        //    if(includePrimaryKeyColumns)
+        //        columns.AddRange(GetPrimaryKeyColumns());
+
+        //    return columns;
+        //}
         public IEnumerable<string> GetColumnNames(IEntityType entityType, bool primaryKeyColumns)
         {
-            IEnumerable<string> columns;
+            List<string> columns;
             if (entityType != null)
             {
                 columns = entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
                         || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
-                    .Select(o => o.GetColumnName());
+                    .Select(o => GetColumnName(o)).ToList();
+
+                columns.AddRange(entityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                    .Select(c => GetColumnName(c))));
             }
             else
             {
                 columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
-                .Select(o => o.GetColumnName());
+                .Select(o => GetColumnName(o)).ToList();
+
+                columns.AddRange(EntityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                    .Select(c => GetColumnName(c))));
             }
             if (primaryKeyColumns)
             {
-                columns = columns.Union(GetPrimaryKeyColumns());
+                columns.AddRange(GetPrimaryKeyColumns());
             }
-            return columns;
+            return columns.Distinct();
         }
         public IEnumerable<string> GetColumns(bool includePrimaryKeyColumns = false)
         {
-            var columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
-                .Select(o => o.GetColumnName());
-            if (includePrimaryKeyColumns)
+            var columns = new List<string>();
+            foreach (var entityType in EntityTypes)
             {
-                columns = columns.Union(GetPrimaryKeyColumns());
+                var storeObjectIdentifier = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table).GetValueOrDefault();
+                columns.AddRange(entityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
+                    .Select(o => o.GetColumnName(storeObjectIdentifier)));
+
+                columns.AddRange(EntityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                    .Select(c => c.GetColumnName(storeObjectIdentifier))));
+
+                if (includePrimaryKeyColumns)
+                    columns.AddRange(GetPrimaryKeyColumns());
             }
-            return columns;
+            return columns.Where(o => o != null).Distinct();
         }
         public IEnumerable<string> GetPrimaryKeyColumns()
         {

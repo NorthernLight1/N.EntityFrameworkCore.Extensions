@@ -45,9 +45,11 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
             modelBuilder.Entity<TptPerson>().ToTable("TptPeople");
             modelBuilder.Entity<TptCustomer>().ToTable("TptCustomer");
             modelBuilder.Entity<TptVendor>().ToTable("TptVendor");
-            modelBuilder.Entity<Product>(t => 
-                t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x))
-            );
+            modelBuilder.Entity<Product>(t =>
+            {
+                t.ComplexProperty(p => p.Position).IsRequired();
+                t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x));
+            });
         }
     }
 }
