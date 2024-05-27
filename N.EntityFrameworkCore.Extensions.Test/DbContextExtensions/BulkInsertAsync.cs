@@ -258,13 +258,13 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
-        public async Task With_Options_KeepIdentity()
+        public async Task With_KeepIdentity()
         {
             var dbContext = SetupDbContext(false);
             var orders = new List<Order>();
             for (int i = 0; i < 20000; i++)
             {
-                orders.Add(new Order { Id = i, Price = 1.57M });
+                orders.Add(new Order { Id = i + 1000, Price = 1.57M });
             }
             int oldTotal = dbContext.Orders.Count();
             int rowsInserted = await dbContext.BulkInsertAsync(orders, options => { options.KeepIdentity = true; options.BatchSize = 1000; });
