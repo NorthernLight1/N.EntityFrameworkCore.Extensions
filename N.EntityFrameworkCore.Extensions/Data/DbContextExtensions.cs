@@ -340,7 +340,7 @@ namespace N.EntityFrameworkCore.Extensions
         public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess=true)
         {
             int rowsAffected = 0;
-            var stateManager = dbContext.ChangeTracker.GetPrivateFieldValue("StateManager") as StateManager;
+            var stateManager = dbContext.GetDependencies().StateManager;
 
             dbContext.ChangeTracker.DetectChanges();
             var entries = stateManager.GetEntriesToSave(true);

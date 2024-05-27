@@ -34,8 +34,6 @@ namespace N.EntityFrameworkCore.Extensions
             Schema = entityType.GetSchema() ?? "dbo";
             TableName = entityType.GetTableName();
             EntityTypes = EntityType.GetAllBaseTypesInclusive().Where(o => !o.IsAbstract());
-
-            //var options = dbContext.GetPrivateFieldValue("_options") as DbContextOptions;
         }
 
         private static IProperty[] GetProperties(IEntityType entityType)
@@ -64,27 +62,10 @@ namespace N.EntityFrameworkCore.Extensions
             var storeObjectIdentifier = StoreObjectIdentifier.Table(entityType.GetTableName(), entityType.GetSchema());
             return property.FindColumn(storeObjectIdentifier);
         }
-
         private string FindTableName(IEntityType declaringEntityType, IEntityType entityType)
         {
             return declaringEntityType != null && declaringEntityType.IsAbstract() ? declaringEntityType.GetTableName() : entityType.GetTableName();
         }
-
-        //public IEnumerable<string> GetColumnNames(IEntityType entityType, bool includePrimaryKeyColumns = false)
-        //{
-        //    var storeObjectIdentifier = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table).GetValueOrDefault();
-        //    var columns = entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
-        //            || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
-        //        .Select(o => o.GetColumnName(storeObjectIdentifier)).ToList();
-            
-        //    columns.AddRange(entityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
-        //        .Select(c => c.GetColumnName(storeObjectIdentifier))));
-            
-        //    if(includePrimaryKeyColumns)
-        //        columns.AddRange(GetPrimaryKeyColumns());
-
-        //    return columns;
-        //}
         public IEnumerable<string> GetColumnNames(IEntityType entityType, bool primaryKeyColumns)
         {
             List<string> columns;

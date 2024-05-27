@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using N.EntityFrameworkCore.Extensions.Common;
@@ -196,7 +197,7 @@ namespace N.EntityFrameworkCore.Extensions
         public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
         {
             int rowsAffected = 0;
-            var stateManager = dbContext.ChangeTracker.GetPrivateFieldValue("StateManager") as StateManager;
+            var stateManager = dbContext.GetDependencies().StateManager;
 
             dbContext.ChangeTracker.DetectChanges();
             var entries = stateManager.GetEntriesToSave(true);
