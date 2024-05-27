@@ -169,6 +169,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int oldTotal = dbContext.Products.Where(o => o.Price <= 10).Count();
             int rowsInserted = dbContext.BulkInsert(products);
             int newTotal = dbContext.Products.Where(o => o.Price <= 10).Count();
+            var productsTest = dbContext.Products.Where(o => o.Price == 1.57M).ToList();
 
             Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of order list");
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");

@@ -166,8 +166,8 @@ namespace N.EntityFrameworkCore.Extensions
             command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
             var reader = command.ExecuteReader();
 
-            var propertySetters = reader.GetPropertyInfos<T>();
-            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+            var properties = reader.GetProperties(tableMapping);
+            var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
             //Read data
             int batch = 1;
             int count = 0;
@@ -175,7 +175,7 @@ namespace N.EntityFrameworkCore.Extensions
             var entities = new List<T>();
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
+                var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 entities.Add(entity);
                 count++;
                 totalCount++;
@@ -202,12 +202,12 @@ namespace N.EntityFrameworkCore.Extensions
 
             var tableMapping = dbContext.GetTableMapping(typeof(T), null);
             var reader = command.ExecuteReader();
-            var propertySetters = reader.GetPropertyInfos<T>();
-            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+            var properties = reader.GetProperties(tableMapping);
+            var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
+                var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 yield return entity;
             }
             

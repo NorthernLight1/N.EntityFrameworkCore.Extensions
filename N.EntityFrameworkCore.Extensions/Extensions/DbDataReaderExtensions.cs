@@ -5,60 +5,53 @@ using System.Collections.Generic;
 using System.Data.Common;
 using System.Reflection;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace N.EntityFrameworkCore.Extensions.Extensions;
 
 static class DbDataReaderExtensions
 {
-    internal static T MapEntity<T>(this DbDataReader reader, List<PropertyInfo> propertySetters, List<Func<object, object>> valuesFromProvider) where T : class, new()
+    internal static T MapEntity<T>(this DbDataReader reader, DbContext dbContext, IProperty[] properties, Func<object, object>[] valuesFromProvider) where T : class, new()
     {
         var entity = new T();
+        var entry = dbContext.Entry(entity);
+
         for (var i = 0; i < reader.FieldCount; i++)
         {
+            var property = properties[i];
             var value = valuesFromProvider[i].Invoke(reader.GetValue(i));
             if (value == DBNull.Value)
                 value = null;
 
-            var prop = propertySetters[i];
-            if (prop == null) continue;
-
-            if (prop.PropertyType.IsEnum)
+            if (property.DeclaringType is IComplexType complexType)
             {
-                var valueString = value?.ToString();
-                prop.SetValue(entity, string.IsNullOrWhiteSpace(valueString) ? null : Enum.Parse(prop.PropertyType, valueString));
-            }
-            else if (prop.PropertyType.IsNullableEnum())
-            {
-                var valueString = value?.ToString();
-                var enumType = Nullable.GetUnderlyingType(prop.PropertyType)!;
-                prop.SetValue(entity, string.IsNullOrWhiteSpace(valueString) ? null : Enum.Parse(enumType, valueString));
+                var complexProperty = entry.ComplexProperty(complexType.ComplexProperty);
+                if (complexProperty.CurrentValue == null)
+                {
+                    complexProperty.CurrentValue = Activator.CreateInstance(complexType.ClrType);
+                }
+                complexProperty.Property(property).CurrentValue = value;
             }
             else
             {
-                prop.SetValue(entity, value);
+                entry.Property(property).CurrentValue = value;
             }
         }
-
         return entity;
     }
-
-    static bool IsNullableEnum(this Type t)
+    internal static IProperty[] GetProperties(this DbDataReader reader, TableMapping tableMapping)
     {
-        var u = Nullable.GetUnderlyingType(t);
-        return u is { IsEnum: true };
-    }
-
-    internal static List<PropertyInfo> GetPropertyInfos<T>(this DbDataReader reader)
-    {
-        var propertySetters = new List<PropertyInfo>();
-        var entityType = typeof(T);
+        var properties = new List<IProperty>();
 
         for (var i = 0; i < reader.FieldCount; i++)
         {
-            var prop = entityType.GetProperty(reader.GetName(i));
-            propertySetters.Add(prop);
+            var property = tableMapping.GetPropertyFromColumnName(reader.GetName(i));
+            properties.Add(property);
         }
 
-        return propertySetters;
+        return properties.ToArray();
     }
 }

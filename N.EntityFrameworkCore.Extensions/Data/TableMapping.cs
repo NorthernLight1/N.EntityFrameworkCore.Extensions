@@ -21,6 +21,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         public bool HasIdentityColumn => EntityType.FindPrimaryKey().Properties.Any(o => o.ValueGenerated != ValueGenerated.Never);
         public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema());
+        private Dictionary<string, IProperty> ColumnMap { get; set; }
         public string FullQualifedTableName
         {
             get { return string.Format("[{0}].[{1}]", this.Schema, this.TableName); }
@@ -31,11 +32,15 @@ namespace N.EntityFrameworkCore.Extensions
             DbContext = dbContext;
             EntityType = entityType;
             Properties = GetProperties(entityType);
+            ColumnMap = Properties.Select(p => new KeyValuePair<string, IProperty>(GetColumnName(p), p)).ToDictionary();
             Schema = entityType.GetSchema() ?? "dbo";
             TableName = entityType.GetTableName();
             EntityTypes = EntityType.GetAllBaseTypesInclusive().Where(o => !o.IsAbstract());
         }
-
+        public IProperty GetPropertyFromColumnName(string columnName)
+        {
+            return ColumnMap[columnName];
+        }
         private static IProperty[] GetProperties(IEntityType entityType)
         {
             var properties = entityType.GetProperties().ToList();
@@ -57,11 +62,12 @@ namespace N.EntityFrameworkCore.Extensions
         private IColumnBase FindColumn(IProperty property)
         {
             var entityType = property.GetDeclaringEntityType();
-            if (entityType == null  || entityType.IsAbstract())
+            if (entityType == null || entityType.IsAbstract())
                 entityType = EntityType;
             var storeObjectIdentifier = StoreObjectIdentifier.Table(entityType.GetTableName(), entityType.GetSchema());
             return property.FindColumn(storeObjectIdentifier);
         }
+
         private string FindTableName(IEntityType declaringEntityType, IEntityType entityType)
         {
             return declaringEntityType != null && declaringEntityType.IsAbstract() ? declaringEntityType.GetTableName() : entityType.GetTableName();
@@ -126,21 +132,24 @@ namespace N.EntityFrameworkCore.Extensions
             entityType = entityType ?? this.EntityType;
             return entityType.GetProperties().Where(o => valueGenerated == null || o.ValueGenerated == valueGenerated).AsEnumerable();
         }
-
+        internal Func<object, object> GetValueFromProvider(IProperty property)
+        {
+            var valueConverter = property.GetTypeMapping().Converter;
+            if (valueConverter != null)
+            {
+                return value => valueConverter.ConvertFromProvider(value);
+            }
+            else
+            {
+                return value => value;
+            }
+        }
         internal IEnumerable<Func<object, object>> GetValuesFromProvider()
         {
             var propertyGetters = new List<Func<object, object>>();
-            foreach(var property in this.Properties)
+            foreach (var property in this.Properties)
             {
-                var valueConverter = property.GetValueConverter();
-                if (valueConverter != null)
-                {
-                    propertyGetters.Add(value => valueConverter.ConvertFromProvider(value));
-                }
-                else
-                {
-                    propertyGetters.Add(value => value);
-                }
+                propertyGetters.Add(value => GetValueFromProvider(property));
             }
             return propertyGetters.AsEnumerable();
         }
@@ -148,7 +157,7 @@ namespace N.EntityFrameworkCore.Extensions
         internal IEnumerable<string> GetSchemaQualifiedTableNames()
         {
             return EntityTypes
-                .Select(o => $"[{o.GetSchema()??"dbo"}].[{o.GetTableName()}]").Distinct();
+                .Select(o => $"[{o.GetSchema() ?? "dbo"}].[{o.GetTableName()}]").Distinct();
         }
     }
 }
