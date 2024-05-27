@@ -166,8 +166,8 @@ namespace N.EntityFrameworkCore.Extensions
             command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
             var reader = command.ExecuteReader();
 
-            var propertySetters = reader.GetPropertyInfos<T>();
-            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+            var properties = reader.GetProperties(tableMapping);
+            var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
             //Read data
             int batch = 1;
             int count = 0;
@@ -175,7 +175,7 @@ namespace N.EntityFrameworkCore.Extensions
             var entities = new List<T>();
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
+                var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 entities.Add(entity);
                 count++;
                 totalCount++;
@@ -202,12 +202,12 @@ namespace N.EntityFrameworkCore.Extensions
 
             var tableMapping = dbContext.GetTableMapping(typeof(T), null);
             var reader = command.ExecuteReader();
-            var propertySetters = reader.GetPropertyInfos<T>();
-            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+            var properties = reader.GetProperties(tableMapping);
+            var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
             while (reader.Read())
             {
-                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
+                var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 yield return entity;
             }
             
@@ -228,7 +228,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, options.KeepIdentity, true);
+                    var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
                     var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition, 
                         options.AutoMapOutput, options.KeepIdentity, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;
@@ -304,9 +304,9 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 foreach (var property in dataReader.TableMapping.Properties)
                 {
-                    var columnName = property.GetColumnName();
+                    var columnName = dataReader.TableMapping.GetColumnName(property);
                     if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
-                        sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
+                        sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
                 }
                 if (useInteralId)
                 {
@@ -340,7 +340,7 @@ namespace N.EntityFrameworkCore.Extensions
         public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess=true)
         {
             int rowsAffected = 0;
-            var stateManager = dbContext.ChangeTracker.GetPrivateFieldValue("StateManager") as StateManager;
+            var stateManager = dbContext.GetDependencies().StateManager;
 
             dbContext.ChangeTracker.DetectChanges();
             var entries = stateManager.GetEntriesToSave(true);

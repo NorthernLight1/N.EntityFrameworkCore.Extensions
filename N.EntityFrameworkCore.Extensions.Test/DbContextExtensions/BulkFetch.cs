@@ -11,6 +11,18 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
     public class BulkFetch : DbContextExtensionsBase
     {
         [TestMethod]
+        public void With_Complex_Property()
+        {
+            var dbContext = SetupDbContext(true);
+            var products = dbContext.Products.Where(o => o.Price == 1.25m).ToList();
+            var fetchedProducts = dbContext.Products.BulkFetch(products);
+            bool foundNullPositionProperty = fetchedProducts.Any(o => o.Position == null);
+
+            Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
+            Assert.IsTrue(products.Count == fetchedProducts.Count(), "The number of rows deleted must match the count of existing rows in database");
+            Assert.IsFalse(foundNullPositionProperty, "The Position complex property should be populated when using BulkFetch()");
+        }
+        [TestMethod]
         public void With_Default_Options()
         {
             var dbContext = SetupDbContext(true);
@@ -38,21 +50,21 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             var dbContext = SetupDbContext(true);
             var products = dbContext.Products.Where(o => o.Price == 1.25m).ToList();
             var fetchedProducts = dbContext.Products.BulkFetch(products);
-            bool ordersAreMatched = true;
+            bool productsAreMatched = true;
 
-            foreach (var fetchedOrder in fetchedProducts)
+            foreach (var fetchedProduct in fetchedProducts)
             {
-                var order = products.First(o => o.Id == fetchedOrder.Id);
-                if (order.Id != fetchedOrder.Id || order.Name != fetchedOrder.Name || order.StatusEnum != fetchedOrder.StatusEnum)
+                var product = products.First(o => o.Id == fetchedProduct.Id);
+                if (product.Id != fetchedProduct.Id || product.Name != fetchedProduct.Name || product.StatusEnum != fetchedProduct.StatusEnum)
                 {
-                    ordersAreMatched = false;
+                    productsAreMatched = false;
                     break;
                 }
             }
 
             Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
             Assert.IsTrue(products.Count == fetchedProducts.Count(), "The number of rows deleted must match the count of existing rows in database");
-            Assert.IsTrue(ordersAreMatched, "The orders from BulkFetch() should match what is retrieved from DbContext");
+            Assert.IsTrue(productsAreMatched, "The products from BulkFetch() should match what is retrieved from DbContext");
         }
         [TestMethod]
         public void With_IQueryable()

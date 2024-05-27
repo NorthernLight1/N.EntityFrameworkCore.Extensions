@@ -38,7 +38,7 @@ namespace N.EntityFrameworkCore.Extensions.Util
             if (inputColumns != null)
             {
                 var inputColumnNames = inputColumns.GetObjectProperties();
-                filteredColumnNames = filteredColumnNames.Intersect(inputColumnNames);
+                filteredColumnNames = filteredColumnNames.Intersect(inputColumnNames.Union(primaryKeyColumnNames));
             }
             if (ignoreColumns != null)
             {

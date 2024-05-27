@@ -98,8 +98,16 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     id = 1;
                     for (int i = 0; i < 2050; i++)
                     {
-                        products.Add(new Product { Id = i.ToString(), Price = 1.25M, OutOfStock = false, 
-                            ProductCategoryId = 4, StatusEnum = ProductStatus.InStock, Color = Color.Black });
+                        products.Add(new Product
+                        {
+                            Id = i.ToString(),
+                            Price = 1.25M,
+                            OutOfStock = false,
+                            ProductCategoryId = 4,
+                            StatusEnum = ProductStatus.InStock,
+                            Color = Color.Black,
+                            Position = new Position { Building = 5, Aisle = 33, Bay = i },
+                        });
                         id++;
                     }
                     for (int i = 2050; i < 7000; i++)
@@ -109,7 +117,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                     }
 
                     Debug.WriteLine("Last Id for Product is {0}", id);
-                    dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutput = false });
+                    dbContext.BulkInsert(products, new BulkInsertOptions<Product>() { KeepIdentity = false, AutoMapOutput = false, UsePermanentTable = true });
 
                     //ProductWithComplexKey
                     var productsWithComplexKey = new List<ProductWithComplexKey>();
@@ -217,7 +225,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
                             Url = string.Format("http://domain.com/mike.smith{0}", i)
                         });
                     }
-                    dbContext.BulkInsert(tptCustomers, new BulkInsertOptions<TptCustomer>() { KeepIdentity = true });
+                    dbContext.BulkInsert(tptCustomers, new BulkInsertOptions<TptCustomer>() { KeepIdentity = true, UsePermanentTable = true });
                     dbContext.BulkInsert(tptVendors, new BulkInsertOptions<TptVendor>() { KeepIdentity = true });
                 }
                 else if (mode == PopulateDataMode.Schema)

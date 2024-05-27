@@ -1,11 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
 using N.EntityFrameworkCore.Extensions.Common;
+using N.EntityFrameworkCore.Extensions.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace N.EntityFrameworkCore.Extensions
@@ -39,36 +44,47 @@ namespace N.EntityFrameworkCore.Extensions
             int i = 0;
             foreach (var property in tableMapping.Properties)
             {
-                var valueGeneratorFactory = property.GetValueGeneratorFactory();
-                if (valueGeneratorFactory != null)
-                {
-                    var valueGenerator = valueGeneratorFactory.Invoke(property, this.TableMapping.EntityType);
-                    Func<EntityEntry, object> selector = entry => valueGenerator.Next(entry);
-                    selectors[i] = selector;
-                }
-                else
-                {
-                    var valueConverter = property.GetValueConverter();
-                    if (valueConverter != null)
-                    {
-                        selectors[i] = entry => valueConverter.ConvertToProvider(entry.CurrentValues[property]);
-                    }
-                    else
-                    {
-                        selectors[i] = entry => entry.CurrentValues[property];
-                    }
-                }
-                columnIndexes[property.Name] = i;
+                selectors[i] = GetValueSelector(property);
+                columnIndexes[tableMapping.GetColumnName(property)] = i;
                 i++;
             }
-            
-            if(useInternalId)
+
+            if (useInternalId)
             {
                 this.FieldCount++;
                 columnIndexes[Constants.InternalId_ColumnName] = i;
             }
         }
-
+        private Func<EntityEntry, object> GetValueSelector(IProperty property)
+        {
+            Func<EntityEntry, object> selector;
+            var valueGeneratorFactory = property.GetValueGeneratorFactory();
+            if (valueGeneratorFactory != null)
+            {
+                var valueGenerator = valueGeneratorFactory.Invoke(property, this.TableMapping.EntityType);
+                selector = entry => valueGenerator.Next(entry);
+            }
+            else
+            {
+                var valueConverter = property.GetValueConverter();
+                if (valueConverter != null)
+                {
+                    selector = entry => valueConverter.ConvertToProvider(entry.CurrentValues[property]);
+                }
+                else
+                {
+                    if(property.DeclaringType is IComplexType complexType)
+                    {
+                        selector = entry => entry.ComplexProperty(complexType.ComplexProperty).Property(property).CurrentValue;
+                    }
+                    else
+                    {
+                        selector = entry => entry.CurrentValues[property];
+                    }
+                }
+            }
+            return selector;
+        }
         public object this[int i] => throw new NotImplementedException();
 
         public object this[string name] => throw new NotImplementedException();

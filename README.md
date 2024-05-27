@@ -7,7 +7,7 @@
 
 N.EntityFrameworkCore.Extensions extends your DbContext with high-performance bulk operations: BulkDelete, BulkFetch, BulkInsert, BulkMerge, BulkSaveChanges, BulkSync, BulkUpdate, Fetch, FromSqlQuery, DeleteFromQuery, InsertFromQuery, UpdateFromQuery, QueryToCsvFile, SqlQueryToCsvFile
 
-Supports: Multiple Schemas, Transactions, Synchronous & Asynchronous Execution
+Supports: Multiple Schemas, Complex Properties, Value Converters, Transactions, Synchronous & Asynchronous Execution
 
 Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
 

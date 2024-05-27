@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using N.EntityFrameworkCore.Extensions.Common;
@@ -88,8 +89,8 @@ namespace N.EntityFrameworkCore.Extensions
             command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
             var reader = await command.ExecuteReaderAsync(cancellationToken);
 
-            var propertySetters = reader.GetPropertyInfos<T>();
-            var valuesFromProvider = tableMapping.GetValuesFromProvider().ToList();
+            var properties = reader.GetProperties(tableMapping);
+            var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
             //Read data
             int batch = 1;
             int count = 0;
@@ -97,7 +98,7 @@ namespace N.EntityFrameworkCore.Extensions
             var entities = new List<T>();
             while (await reader.ReadAsync(cancellationToken))
             {
-                var entity = reader.MapEntity<T>(propertySetters, valuesFromProvider);
+                var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 entities.Add(entity);
                 count++;
                 totalCount++;
@@ -131,7 +132,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 try
                 {
-                    var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, options.KeepIdentity, true);
+                    var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true);
                     var bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.InsertOnCondition,
                         options.AutoMapOutput, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;
@@ -161,9 +162,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
             foreach (var property in dataReader.TableMapping.Properties)
             {
-                var columnName = property.GetColumnName();
+                var columnName = dataReader.TableMapping.GetColumnName(property);
                 if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
-                    sqlBulkCopy.ColumnMappings.Add(property.Name, columnName);
+                    sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
             }
             if (useInteralId)
             {
@@ -196,7 +197,7 @@ namespace N.EntityFrameworkCore.Extensions
         public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
         {
             int rowsAffected = 0;
-            var stateManager = dbContext.ChangeTracker.GetPrivateFieldValue("StateManager") as StateManager;
+            var stateManager = dbContext.GetDependencies().StateManager;
 
             dbContext.ChangeTracker.DetectChanges();
             var entries = stateManager.GetEntriesToSave(true);

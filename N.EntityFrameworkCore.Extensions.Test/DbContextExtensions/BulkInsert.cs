@@ -169,6 +169,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             int oldTotal = dbContext.Products.Where(o => o.Price <= 10).Count();
             int rowsInserted = dbContext.BulkInsert(products);
             int newTotal = dbContext.Products.Where(o => o.Price <= 10).Count();
+            var productsTest = dbContext.Products.Where(o => o.Price == 1.57M).ToList();
 
             Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of order list");
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
@@ -239,13 +240,13 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
-        public void With_Options_KeepIdentity()
+        public void With_KeepIdentity()
         {
             var dbContext = SetupDbContext(false);
             var orders = new List<Order>();
             for (int i = 0; i < 20000; i++)
             {
-                orders.Add(new Order { Id = i, Price = 1.57M });
+                orders.Add(new Order { Id = i + 1000, Price = 1.57M });
             }
             int oldTotal = dbContext.Orders.Count();
             int rowsInserted = dbContext.BulkInsert(orders, options => { options.KeepIdentity = true; options.BatchSize = 1000; });

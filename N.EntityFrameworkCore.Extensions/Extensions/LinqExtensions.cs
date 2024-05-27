@@ -39,15 +39,15 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal static string GetExpressionValueAsString(Expression expression)
         {
-            if (expression.NodeType == ExpressionType.Constant)
+            if (expression is ConstantExpression constantExpression)
             {
-                return ConvertToSqlValue((expression as ConstantExpression).Value);
+                return ConvertToSqlValue(constantExpression.Value);
             }
-            else if (expression.NodeType == ExpressionType.MemberAccess)
+            else if (expression is MemberExpression memberExpression)
             {
-                if (expression.GetPrivateFieldValue("Expression") is ParameterExpression parameterExpression)
+                if (memberExpression.Expression is ParameterExpression parameterExpression)
                 {
-                    return Expression.Lambda(expression).Body.ToString();
+                    return memberExpression.ToString();
                 }
                 else
                 {
