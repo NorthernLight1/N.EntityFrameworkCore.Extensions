@@ -740,42 +740,6 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = context.Database.GetDbConnection();
             return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
         }
-
-        //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        //{
-        //    var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-        //    int i = 0;
-        //    foreach (var expressionParam in expression.Parameters)
-        //    {
-        //        if (parameters.Length <= i) break;
-        //        stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-        //        i++;
-        //    }
-        //    stringBuilder.Replace("&&", "AND");
-        //    stringBuilder.Replace("==", "=");
-        //    return stringBuilder.ToString();
-        //}
-        //private static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
-        //{
-        //    List<string> setValues = new List<string>();
-        //    var memberInitExpression = expression.Body as MemberInitExpression;
-        //    foreach (var binding in memberInitExpression.Bindings)
-        //    {
-        //        var constantExpression = binding.GetPrivateFieldValue("Expression") as ConstantExpression;
-        //        var setValue = "";
-        //        if(constantExpression.Value == null)
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]=NULL", tableName, binding.Member.Name);
-        //        }
-        //        else
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]='{2}'", tableName, binding.Member.Name, constantExpression.Value);
-        //        }
-        //        setValues.Add(setValue);
-        //    }
-        //    return string.Join(",", setValues);
-        //}
-
         public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
         {
             entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
