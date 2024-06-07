@@ -13,7 +13,7 @@ namespace N.EntityFrameworkCore.Extensions
         public bool InsertIfNotExists { get; set; }
         public Expression<Func<T, T, bool>> InsertOnCondition { get; set; }
         public bool KeepIdentity { get; set; }
-         
+
         public string[] GetInputColumns()
         {
             return this.InputColumns == null ? null : this.InputColumns.Body.Type.GetProperties().Select(o => o.Name).ToArray();

@@ -1,4 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -7,18 +12,13 @@ using Microsoft.EntityFrameworkCore.Update;
 using Microsoft.EntityFrameworkCore.ValueGeneration;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Linq.Expressions;
 
 namespace N.EntityFrameworkCore.Extensions
 {
     internal class EntityDataReader<T> : IDataReader
     {
         public TableMapping TableMapping { get; set; }
-        public Dictionary<long,T> EntityMap { get; set; }
+        public Dictionary<long, T> EntityMap { get; set; }
         private Dictionary<string, int> columnIndexes;
         private int currentId;
         private bool useInternalId;
@@ -39,7 +39,7 @@ namespace N.EntityFrameworkCore.Extensions
             this.EntityMap = new Dictionary<long, T>();
             this.FieldCount = tableMapping.Properties.Length;
             this.TableMapping = tableMapping;
-            
+
 
             int i = 0;
             foreach (var property in tableMapping.Properties)
@@ -73,7 +73,7 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 else
                 {
-                    if(property.DeclaringType is IComplexType complexType)
+                    if (property.DeclaringType is IComplexType complexType)
                     {
                         selector = entry => entry.ComplexProperty(complexType.ComplexProperty).Property(property).CurrentValue;
                     }
@@ -210,7 +210,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         public object GetValue(int i)
         {
-            if(i == tableFieldCount)
+            if (i == tableFieldCount)
             {
                 return this.currentId;
             }
@@ -244,7 +244,7 @@ namespace N.EntityFrameworkCore.Extensions
         public bool Read()
         {
             bool moveNext = enumerator.MoveNext();
-            
+
             if (moveNext && this.useInternalId)
             {
                 this.currentId++;
@@ -254,4 +254,3 @@ namespace N.EntityFrameworkCore.Extensions
         }
     }
 }
-

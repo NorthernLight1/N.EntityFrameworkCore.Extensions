@@ -1,8 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using N.EntityFrameworkCore.Extensions.Enums;
-using System;
 
 
 namespace N.EntityFrameworkCore.Extensions
@@ -40,14 +40,14 @@ namespace N.EntityFrameworkCore.Extensions
                 this.ownsTransaction = context.Database.CurrentTransaction == null;
                 this.transaction = context.Database.CurrentTransaction; //?? context.Database.BeginTransaction();
                 this.defaultCommandTimeout = context.Database.GetCommandTimeout();
-                if(this.transaction != null)
+                if (this.transaction != null)
                     this.CurrentTransaction = transaction.GetDbTransaction() as SqlTransaction;
             }
             else
             {
                 //this.CurrentTransaction = this.Connection.BeginTransaction();
             }
-            
+
             context.Database.SetCommandTimeout(commandTimeout);
         }
 
@@ -67,7 +67,7 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal void Rollback()
         {
-            if(this.transaction != null)
+            if (this.transaction != null)
                 transaction.Rollback();
         }
     }

@@ -1,9 +1,9 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
+using Microsoft.Data.SqlClient;
 
 namespace N.EntityFrameworkCore.Extensions.Sql
 {
@@ -32,7 +32,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 //Find new Sql clause
                 int maxLenToSearch = sqlText.Length - i >= 10 ? 10 : sqlText.Length - i;
                 string keyword = StartsWithString(sqlText.Substring(i, maxLenToSearch), keywords, StringComparison.OrdinalIgnoreCase);
-                bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText.Substring(i-2,2) == "\r\n") : true;
+                bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText.Substring(i - 2, 2) == "\r\n") : true;
                 //Process Sql clause
                 if (keyword != null && curClause != keyword && isWordStart)
                 {
@@ -43,11 +43,11 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                         {
                             var declareParts = inputText.Substring(0, inputText.IndexOf(";")).Trim().Split(" ");
                             int sizeStartIndex = declareParts[1].IndexOf("(");
-                            int sizeLength = declareParts[1].IndexOf(")") - (sizeStartIndex+1);
+                            int sizeLength = declareParts[1].IndexOf(")") - (sizeStartIndex + 1);
                             string dbTypeString = sizeStartIndex != -1 ? declareParts[1].Substring(0, sizeStartIndex) : declareParts[1];
                             SqlDbType dbType = (SqlDbType)Enum.Parse(typeof(SqlDbType), dbTypeString, true);
-                            int size = sizeStartIndex != -1 ? 
-                                Convert.ToInt32(declareParts[1].Substring(sizeStartIndex+1, sizeLength)) : 0;
+                            int size = sizeStartIndex != -1 ?
+                                Convert.ToInt32(declareParts[1].Substring(sizeStartIndex + 1, sizeLength)) : 0;
                             string value = GetDeclareValue(declareParts[3]);
                             Parameters.Add(new SqlParameter(declareParts[0], dbType, size) { Value = value });
                         }
@@ -71,7 +71,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
 
         private string GetDeclareValue(string value)
         {
-            if(value.StartsWith("'"))
+            if (value.StartsWith("'"))
             {
                 return value.Substring(1, value.Length - 2);
             }
@@ -95,7 +95,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         }
         private static string StartsWithString(string textToSearch, IEnumerable<string> valuesToFind, StringComparison stringComparison)
         {
-            string value=null;
+            string value = null;
             foreach (var valueToFind in valuesToFind)
             {
                 if (textToSearch.StartsWith(valueToFind, stringComparison))
@@ -115,14 +115,14 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         {
             var sqlFromClause = Clauses.First(o => o.Name == "FROM");
             var startIndex = sqlFromClause.InputText.LastIndexOf(" AS ");
-            return startIndex > 0 ? sqlFromClause.InputText.Substring(startIndex+4) : "";
+            return startIndex > 0 ? sqlFromClause.InputText.Substring(startIndex + 4) : "";
         }
         public void ChangeToDelete()
         {
             Validate();
             var sqlClause = Clauses.FirstOrDefault();
             var sqlFromClause = Clauses.First(o => o.Name == "FROM");
-            if(sqlClause != null)
+            if (sqlClause != null)
             {
                 sqlClause.Name = "DELETE";
                 int aliasStartIndex = sqlFromClause.InputText.IndexOf("AS ") + 3;
@@ -149,7 +149,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             string insertValueExpression = string.Format("INTO {0} ({1})", tableName, columnsToInsert);
             Clauses.Insert(0, new SqlClause { Name = "INSERT", InputText = insertValueExpression });
             sqlSelectClause.InputText = columnsToInsert;
-            
+
         }
         internal void SelectColumns(IEnumerable<string> columns)
         {
@@ -162,7 +162,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         }
         private void Validate()
         {
-            if(Clauses.Count == 0)
+            if (Clauses.Count == 0)
             {
                 throw new Exception("You must parse a valid sql statement before you can use this function.");
             }

@@ -14,9 +14,9 @@ public class ToSqlPredicateTests
 
         var sqlPredicate = expression.ToSqlPredicate("s", "t");
 
-        Assert.AreEqual("s.Id = t.Id",sqlPredicate);
+        Assert.AreEqual("s.Id = t.Id", sqlPredicate);
     }
-    
+
     [TestMethod]
     public void Should_handle_enum()
     {
@@ -24,7 +24,7 @@ public class ToSqlPredicateTests
 
         var sqlPredicate = expression.ToSqlPredicate("s", "t");
 
-        Assert.AreEqual("s.Type = t.Type",sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type", sqlPredicate);
     }
 
     [TestMethod]
@@ -49,7 +49,7 @@ public class ToSqlPredicateTests
 
         Assert.AreEqual("s.Id = t.Id AND s.ExternalId = t.ExternalId", sqlPredicate);
     }
-    
+
     record Entity
     {
         public Guid Id { get; set; }

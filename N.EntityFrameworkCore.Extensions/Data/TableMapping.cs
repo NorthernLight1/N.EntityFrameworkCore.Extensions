@@ -1,12 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using N.EntityFrameworkCore.Extensions.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -161,4 +161,3 @@ namespace N.EntityFrameworkCore.Extensions
         }
     }
 }
-

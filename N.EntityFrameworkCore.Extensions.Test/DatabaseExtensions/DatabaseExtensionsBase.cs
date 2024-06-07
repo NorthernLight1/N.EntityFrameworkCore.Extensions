@@ -1,10 +1,10 @@
-﻿using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
@@ -13,7 +13,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
         protected TestDbContext SetupDbContext(bool populateData)
         {
             TestDbContext dbContext = new TestDbContext();
-			dbContext.Database.EnsureCreated();
+            dbContext.Database.EnsureCreated();
             dbContext.Orders.Truncate();
             if (populateData)
             {

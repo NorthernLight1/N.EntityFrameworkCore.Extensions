@@ -1,11 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -32,7 +32,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             //Update existing orders
             var ordersToUpdate = dbContext.Orders.Where(o => o.Price > 5 && o.Price <= 10).ToList();
-            foreach(var orderToUpdate in ordersToUpdate)
+            foreach (var orderToUpdate in ordersToUpdate)
             {
                 orderToUpdate.Price = 99M;
             }

@@ -1,11 +1,11 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -121,7 +121,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             //Add New Customers
             long maxId = dbContext.TpcPeople.OfType<TpcCustomer>().Max(o => o.Id);
             int expectedRowsAdded = 3000;
-            for (long i = maxId+1; i <= maxId+expectedRowsAdded; i++)
+            for (long i = maxId + 1; i <= maxId + expectedRowsAdded; i++)
             {
                 dbContext.TpcPeople.Add(new TpcCustomer
                 {

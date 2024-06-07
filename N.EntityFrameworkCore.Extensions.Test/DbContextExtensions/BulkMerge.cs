@@ -1,8 +1,8 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -24,7 +24,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             {
                 orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
             }
-            var result = dbContext.BulkMerge(orders, o => o.UsePermanentTable=true);
+            var result = dbContext.BulkMerge(orders, o => o.UsePermanentTable = true);
             var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
             bool areAddedOrdersMerged = true;
             bool areUpdatedOrdersMerged = true;
@@ -327,7 +327,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             }
             int oldTotal = dbContext.Orders.Where(o => o.DbAddedDateTime > nowDateTime).Count();
             var mergeResult = dbContext.BulkMerge(orders);
-            int newTotal = dbContext.Orders.Where(o => o.Price <= 1.57M 
+            int newTotal = dbContext.Orders.Where(o => o.Price <= 1.57M
                 && o.DbAddedDateTime > nowDateTime).Count();
 
             Assert.IsTrue(mergeResult.RowsInserted == orders.Count, "The number of rows inserted must match the count of order list");

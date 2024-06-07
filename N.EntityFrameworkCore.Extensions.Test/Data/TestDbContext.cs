@@ -1,10 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
-using N.EntityFrameworkCore.Extensions.Test.Common;
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Drawing;
 using System.Reflection.Metadata;
 using System.Runtime.ConstrainedExecution;
+using Microsoft.EntityFrameworkCore;
+using N.EntityFrameworkCore.Extensions.Test.Common;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data
 {
@@ -14,7 +14,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         public virtual DbSet<ProductCategory> ProductCategories { get; set; }
         public virtual DbSet<ProductWithCustomSchema> ProductsWithCustomSchema { get; set; }
         public virtual DbSet<ProductWithComplexKey> ProductsWithComplexKey { get; set; }
-        public virtual DbSet<Order> Orders { get; set;  }
+        public virtual DbSet<Order> Orders { get; set; }
         public virtual DbSet<TpcPerson> TpcPeople { get; set; }
         public virtual DbSet<TphPerson> TphPeople { get; set; }
         public virtual DbSet<TphCustomer> TphCustomers { get; set; }
