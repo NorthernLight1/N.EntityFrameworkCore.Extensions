@@ -1,13 +1,13 @@
-﻿using Microsoft.Extensions.Options;
-using N.EntityFrameworkCore.Extensions.Extensions;
-using N.EntityFrameworkCore.Extensions.Util;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using N.EntityFrameworkCore.Extensions.Extensions;
+using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions.Sql
 {
@@ -50,9 +50,9 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         //{
 
         //}
-        internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition, 
-            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns, 
-            bool deleteIfNotMatched=false, bool hasIdentityColumn=false)
+        internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition,
+            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns,
+            bool deleteIfNotMatched = false, bool hasIdentityColumn = false)
         {
             var statement = new SqlStatement();
             if (hasIdentityColumn)
@@ -65,7 +65,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             statement.CreatePart(SqlKeyword.Matched);
             statement.CreatePart(SqlKeyword.Then);
             statement.WriteInsert(insertColumns);
-            if(updateColumns.Any())
+            if (updateColumns.Any())
             {
                 var updateSetColumns = updateColumns.Select(c => $"t.[{c}]=s.[{c}]");
                 statement.CreatePart(SqlKeyword.When);
@@ -74,7 +74,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 statement.CreatePart(SqlKeyword.Update);
                 statement.CreatePart(SqlKeyword.Set, SqlExpression.Set(updateSetColumns));
             }
-            if(deleteIfNotMatched)
+            if (deleteIfNotMatched)
             {
                 statement.CreatePart(SqlKeyword.When);
                 statement.CreatePart(SqlKeyword.Not);
@@ -84,7 +84,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 statement.CreatePart(SqlKeyword.Then);
                 statement.CreatePart(SqlKeyword.Delete);
             }
-            if(outputColumns.Any())
+            if (outputColumns.Any())
                 statement.CreatePart(SqlKeyword.Output, SqlExpression.Columns(outputColumns));
             statement.CreatePart(SqlKeyword.Semicolon);
 
@@ -96,7 +96,7 @@ namespace N.EntityFrameworkCore.Extensions.Sql
         private string ToSql()
         {
             StringBuilder sbSql = new StringBuilder();
-            foreach(var part in SqlParts)
+            foreach (var part in SqlParts)
             {
                 if (part.Keyword == SqlKeyword.Semicolon)
                 {

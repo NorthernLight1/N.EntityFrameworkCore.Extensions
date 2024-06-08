@@ -1,5 +1,4 @@
-﻿using Microsoft.IdentityModel.Protocols;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -9,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using Microsoft.IdentityModel.Protocols;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -28,7 +28,7 @@ namespace N.EntityFrameworkCore.Extensions
 
         internal static string ToSql(this MemberBinding binding)
         {
-            if(binding is MemberAssignment memberAssingment)
+            if (binding is MemberAssignment memberAssingment)
             {
                 return GetExpressionValueAsString(memberAssingment.Expression);
             }
@@ -143,7 +143,7 @@ namespace N.EntityFrameworkCore.Extensions
 
             return sql;
         }
-       
+
         static string ToSqlString(Expression expression, string sql = null)
         {
             sql ??= "";
@@ -190,7 +190,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 return $"{memberExpression}";
             }
-            else if(expression is UnaryExpression unaryExpression)
+            else if (expression is UnaryExpression unaryExpression)
             {
                 return $"{unaryExpression.Operand}";
             }

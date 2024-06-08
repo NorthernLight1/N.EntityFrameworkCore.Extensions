@@ -1,7 +1,7 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -74,7 +74,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             await orders.FetchAsync(async result =>
             {
-                await Task.Run(() => {
+                await Task.Run(() =>
+                {
                     batchCount++;
                     totalCount += result.Results.Count;
                     Assert.IsTrue(result.Results.Count <= batchSize, "The count of results in each batch callback should less than or equal to the batchSize");

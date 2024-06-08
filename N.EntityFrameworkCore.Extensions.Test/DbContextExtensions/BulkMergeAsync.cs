@@ -1,9 +1,9 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -360,7 +360,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             var orders = new List<Order>();
             for (int i = 0; i < 20; i++)
             {
-                orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime, Status = OrderStatus.Completed});
+                orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime, Status = OrderStatus.Completed });
             }
 
             var result = await dbContext.BulkMergeAsync(orders, options => options.MergeOnCondition = (s, t) => s.Id == t.Id && s.Status == t.Status);

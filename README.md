@@ -11,7 +11,7 @@ Supports: Multiple Schemas, Complex Properties, Value Converters, Transactions, 
 
 Inheritance Models: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type
 
-Supported Databases: SQL Server
+Supports Databases: SQL Server
 
   ### Installation
 

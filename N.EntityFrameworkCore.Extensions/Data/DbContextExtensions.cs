@@ -1,4 +1,15 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Data.Common;
+using System.IO;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Text;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -16,17 +27,6 @@ using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Data.Common;
-using System.IO;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace N.EntityFrameworkCore.Extensions
@@ -86,16 +86,16 @@ namespace N.EntityFrameworkCore.Extensions
                 }
                 return rowsAffected;
             }
-        }        
-        public static IEnumerable<T> BulkFetch<T,U>(this DbSet<T> dbSet, IEnumerable<U> entities) where T : class, new()
+        }
+        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities) where T : class, new()
         {
             return dbSet.BulkFetch(entities, new BulkFetchOptions<T>());
         }
-        public static IEnumerable<T> BulkFetch<T,U>(this DbSet<T> dbSet, IEnumerable<U> entities, Action<BulkFetchOptions<T>> optionsAction) where T : class, new()
+        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, Action<BulkFetchOptions<T>> optionsAction) where T : class, new()
         {
             return dbSet.BulkFetch(entities, optionsAction.Build());
         }
-        public static IEnumerable<T> BulkFetch<T,U>(this DbSet<T> dbSet, IEnumerable<U> entities, BulkFetchOptions<T> options) where T : class, new()
+        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, BulkFetchOptions<T> options) where T : class, new()
         {
             var context = dbSet.GetDbContext();
             var tableMapping = context.GetTableMapping(typeof(T));
@@ -210,7 +210,7 @@ namespace N.EntityFrameworkCore.Extensions
                 var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
                 yield return entity;
             }
-            
+
             reader.Close();
         }
         public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
@@ -229,7 +229,7 @@ namespace N.EntityFrameworkCore.Extensions
                 try
                 {
                     var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
-                    var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition, 
+                    var bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.InsertOnCondition,
                         options.AutoMapOutput, options.KeepIdentity, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;
                     bulkOperation.DbTransactionContext.Commit();
@@ -247,15 +247,15 @@ namespace N.EntityFrameworkCore.Extensions
         {
             int index = 0;
             var updateEntry = entity as InternalEntityEntry;
-            if(updateEntry == null)
+            if (updateEntry == null)
             {
                 var entry = context.Entry(entity);
                 updateEntry = entry.GetInfrastructure();
             }
 
-            if(updateEntry != null)
+            if (updateEntry != null)
             {
-                foreach(var property in properties)
+                foreach (var property in properties)
                 {
                     if (!property.IsPrimaryKey() ||
                         (property.IsPrimaryKey() && updateEntry.EntityState == EntityState.Detached))
@@ -271,7 +271,7 @@ namespace N.EntityFrameworkCore.Extensions
                     }
                     index++;
                 }
-                if(updateEntry.EntityState == EntityState.Detached)
+                if (updateEntry.EntityState == EntityState.Detached)
                     updateEntry.AcceptChanges();
             }
             else
@@ -337,7 +337,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             return dbContext.BulkSaveChanges(true);
         }
-        public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess=true)
+        public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
         {
             int rowsAffected = 0;
             var stateManager = dbContext.GetDependencies().StateManager;
@@ -363,8 +363,8 @@ namespace N.EntityFrameworkCore.Extensions
                     rowsAffected += dbContext.BulkDelete(entities, o => { o.EntityType = key.EntityType; });
                 }
             }
-            
-            if(acceptAllChangesOnSuccess)
+
+            if (acceptAllChangesOnSuccess)
                 dbContext.ChangeTracker.AcceptAllChanges();
 
             return rowsAffected;
@@ -490,7 +490,7 @@ namespace N.EntityFrameworkCore.Extensions
                 {
                     var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
                     sqlQuery.ChangeToDelete();
-                    rowAffected =  dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
 
                     dbTransactionContext.Commit();
                 }
@@ -740,42 +740,6 @@ namespace N.EntityFrameworkCore.Extensions
             var dbConnection = context.Database.GetDbConnection();
             return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
         }
-
-        //private static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        //{
-        //    var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
-        //    int i = 0;
-        //    foreach (var expressionParam in expression.Parameters)
-        //    {
-        //        if (parameters.Length <= i) break;
-        //        stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-        //        i++;
-        //    }
-        //    stringBuilder.Replace("&&", "AND");
-        //    stringBuilder.Replace("==", "=");
-        //    return stringBuilder.ToString();
-        //}
-        //private static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
-        //{
-        //    List<string> setValues = new List<string>();
-        //    var memberInitExpression = expression.Body as MemberInitExpression;
-        //    foreach (var binding in memberInitExpression.Bindings)
-        //    {
-        //        var constantExpression = binding.GetPrivateFieldValue("Expression") as ConstantExpression;
-        //        var setValue = "";
-        //        if(constantExpression.Value == null)
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]=NULL", tableName, binding.Member.Name);
-        //        }
-        //        else
-        //        {
-        //            setValue = string.Format("[{0}].[{1}]='{2}'", tableName, binding.Member.Name, constantExpression.Value);
-        //        }
-        //        setValues.Add(setValue);
-        //    }
-        //    return string.Join(",", setValues);
-        //}
-
         public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
         {
             entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
@@ -783,4 +747,3 @@ namespace N.EntityFrameworkCore.Extensions
         }
     }
 }
-

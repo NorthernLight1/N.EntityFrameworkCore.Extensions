@@ -1,14 +1,14 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using N.EntityFrameworkCore.Extensions.Util;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Data;
-using System;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -82,4 +82,3 @@ namespace N.EntityFrameworkCore.Extensions
         }
     }
 }
-

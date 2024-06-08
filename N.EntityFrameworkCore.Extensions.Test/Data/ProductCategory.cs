@@ -1,10 +1,10 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data
 {

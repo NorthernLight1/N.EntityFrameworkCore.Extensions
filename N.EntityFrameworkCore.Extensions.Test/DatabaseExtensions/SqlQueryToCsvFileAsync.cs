@@ -1,10 +1,10 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
 {
@@ -16,7 +16,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
         {
             var dbContext = SetupDbContext(true);
             int count = dbContext.Orders.Where(o => o.Price > 5M).Count();
-            var queryToCsvFileResult = await dbContext.Database.SqlQueryToCsvFileAsync("SqlQueryToCsvFile-Test.csv", "SELECT * FROM Orders WHERE Price > @Price", new object[] { new SqlParameter("@Price", 5M) } );
+            var queryToCsvFileResult = await dbContext.Database.SqlQueryToCsvFileAsync("SqlQueryToCsvFile-Test.csv", "SELECT * FROM Orders WHERE Price > @Price", new object[] { new SqlParameter("@Price", 5M) });
 
             Assert.IsTrue(count > 0, "There should be existing data in the source table");
             Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");

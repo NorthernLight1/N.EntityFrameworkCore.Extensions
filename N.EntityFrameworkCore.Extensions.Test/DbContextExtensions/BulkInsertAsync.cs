@@ -1,10 +1,10 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using N.EntityFrameworkCore.Extensions.Test.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 {
@@ -247,11 +247,14 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
             var orders = new List<Order>();
             for (int i = 0; i < 20000; i++)
             {
-                orders.Add(new Order { Id = i, ExternalId = i.ToString(), Price = 1.57M, Active = true, Status = OrderStatus.Completed});
+                orders.Add(new Order { Id = i, ExternalId = i.ToString(), Price = 1.57M, Active = true, Status = OrderStatus.Completed });
             }
             int oldTotal = dbContext.Orders.Where(o => o.Price == 1.57M && o.ExternalId == null && o.Active == true).Count();
-            int rowsInserted = await dbContext.BulkInsertAsync(orders, options => { options.UsePermanentTable = true; 
-                options.InputColumns = o => new { o.Price, o.Active, o.AddedDateTime, o.Status }; });
+            int rowsInserted = await dbContext.BulkInsertAsync(orders, options =>
+            {
+                options.UsePermanentTable = true;
+                options.InputColumns = o => new { o.Price, o.Active, o.AddedDateTime, o.Status };
+            });
             int newTotal = dbContext.Orders.Where(o => o.Price == 1.57M && o.ExternalId == null && o.Active == true).Count();
 
             Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");

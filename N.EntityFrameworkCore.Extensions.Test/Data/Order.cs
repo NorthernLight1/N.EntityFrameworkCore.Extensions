@@ -29,6 +29,6 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
     {
         Unknown,
         Completed,
-        Error   
+        Error
     }
 }
