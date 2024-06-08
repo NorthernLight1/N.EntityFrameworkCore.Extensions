@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 
@@ -346,6 +347,27 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions
 
             Assert.IsTrue(rowsInserted == expectedRowsInserted, "The number of rows inserted must match the count of order list");
             Assert.IsTrue(newTotal - oldTotal == expectedRowsInserted, "The new count minus the old count should match the number of rows inserted.");
+        }
+        [TestMethod]
+        public void With_Proxy_Type()
+        {
+            var dbContext = SetupDbContext(false);
+            int oldTotalCount = dbContext.Products.Where(o => o.Price == 10.57M).Count();
+
+            var products = new List<Product>();
+            for (int i = 0; i < 2000; i++)
+            {
+                var product = dbContext.Products.CreateProxy();
+                product.Id = (-i).ToString();
+                product.Price = 10.57M;
+                products.Add(product);
+            }
+            int oldTotal = dbContext.Products.Where(o => o.Price == 10.57M).Count();
+            int rowsInserted = dbContext.BulkInsert(products);
+            int newTotal = dbContext.Products.Where(o => o.Price == 10.57M).Count();
+
+            Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of products list");
+            Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
         }
         [TestMethod]
         public void With_ValueGenerated_Default()
