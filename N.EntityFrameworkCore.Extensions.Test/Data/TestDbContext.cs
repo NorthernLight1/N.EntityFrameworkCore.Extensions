@@ -27,6 +27,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
         {
             optionsBuilder.UseSqlServer(Config.GetConnectionString("TestDatabase"));
             optionsBuilder.SetupEfCoreExtensions();
+            optionsBuilder.UseLazyLoadingProxies();
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +51,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data
                 t.ComplexProperty(p => p.Position).IsRequired();
                 t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x));
             });
+
         }
     }
 }
