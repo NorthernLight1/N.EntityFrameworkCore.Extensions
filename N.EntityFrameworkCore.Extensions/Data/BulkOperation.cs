@@ -1,13 +1,4 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Options;
-using N.EntityFrameworkCore.Extensions.Common;
-using N.EntityFrameworkCore.Extensions.Sql;
-using N.EntityFrameworkCore.Extensions.Util;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -18,6 +9,15 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Transactions;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Conventions;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Options;
+using N.EntityFrameworkCore.Extensions.Common;
+using N.EntityFrameworkCore.Extensions.Sql;
+using N.EntityFrameworkCore.Extensions.Util;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace N.EntityFrameworkCore.Extensions
@@ -37,7 +37,7 @@ namespace N.EntityFrameworkCore.Extensions
         internal SqlTransaction Transaction => DbTransactionContext.CurrentTransaction;
         internal TableMapping TableMapping { get; }
         internal IEnumerable<string> SchemaQualifiedTableNames => TableMapping.GetSchemaQualifiedTableNames();
-        
+
 
         public BulkOperation(DbContext dbContext, BulkOptions options, Expression<Func<T, object>> inputColumns = null, Expression<Func<T, object>> ignoreColumns = null)
         {
@@ -51,7 +51,7 @@ namespace N.EntityFrameworkCore.Extensions
             StagingTableName = CommonUtil.GetStagingTableName(TableMapping, options.UsePermanentTable, Connection);
             PrimaryKeyColumnNames = TableMapping.GetPrimaryKeyColumns().ToArray();
         }
-        internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity=true, bool useInternalId=false)
+        internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
         {
             IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
             string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
@@ -59,7 +59,7 @@ namespace N.EntityFrameworkCore.Extensions
             StagingTableCreated = true;
             return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId);
         }
-        internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition, 
+        internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
             bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update = false, bool delete = false)
         {
             var rowsInserted = new Dictionary<IEntityType, int>();
@@ -88,10 +88,10 @@ namespace N.EntityFrameworkCore.Extensions
 
                 if (autoMapOutput)
                 {
-                    List<IProperty> allProperties = 
+                    List<IProperty> allProperties =
                     [
-                        ..TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAdd).ToArray(), 
-                        ..TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAddOrUpdate).ToArray()
+                        .. TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAdd).ToArray(),
+                        .. TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAddOrUpdate).ToArray()
                     ];
 
                     var bulkQueryResult = Context.BulkQuery(mergeStatement.Sql, Options);
@@ -165,7 +165,7 @@ namespace N.EntityFrameworkCore.Extensions
                 IEnumerable<string> columnstoUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
                 string updateSetExpression = string.Join(",", columnstoUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
                 string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                    updateSetExpression, StagingTableName, CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName()), 
+                    updateSetExpression, StagingTableName, CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName()),
                     CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
                 rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
             }
@@ -186,7 +186,7 @@ namespace N.EntityFrameworkCore.Extensions
         }
         public void Dispose()
         {
-            if(StagingTableCreated)
+            if (StagingTableCreated)
             {
                 Context.Database.DropTable(StagingTableName);
             }

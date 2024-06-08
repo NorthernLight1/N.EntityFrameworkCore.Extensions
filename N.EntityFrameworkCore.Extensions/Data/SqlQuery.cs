@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore.Infrastructure;
-using N.EntityFrameworkCore.Extensions.Sql;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using N.EntityFrameworkCore.Extensions.Sql;
 
 namespace N.EntityFrameworkCore.Extensions
 {

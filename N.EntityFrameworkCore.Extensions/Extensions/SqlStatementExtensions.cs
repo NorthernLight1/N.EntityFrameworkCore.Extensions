@@ -1,9 +1,9 @@
-﻿using N.EntityFrameworkCore.Extensions.Sql;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using N.EntityFrameworkCore.Extensions.Sql;
 
 namespace N.EntityFrameworkCore.Extensions.Extensions
 {

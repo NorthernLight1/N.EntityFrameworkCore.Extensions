@@ -1,17 +1,17 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
-using Microsoft.EntityFrameworkCore.Storage;
-using N.EntityFrameworkCore.Extensions.Enums;
-using N.EntityFrameworkCore.Extensions.Util;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Transactions;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Scaffolding.Metadata;
+using Microsoft.EntityFrameworkCore.Storage;
+using N.EntityFrameworkCore.Extensions.Enums;
+using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions
 {
@@ -33,7 +33,7 @@ namespace N.EntityFrameworkCore.Extensions
         {
             string columns = columnNames != null && columnNames.Count() > 0 ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
             columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
-            return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",",sourceTables)));
+            return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)));
         }
         internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
         {
@@ -41,12 +41,12 @@ namespace N.EntityFrameworkCore.Extensions
             if (dbConnection.State != ConnectionState.Open)
                 dbConnection.Open();
             var command = dbConnection.CreateCommand();
-            if(database.CurrentTransaction != null && connectionBehavior == ConnectionBehavior.Default)
+            if (database.CurrentTransaction != null && connectionBehavior == ConnectionBehavior.Default)
                 command.Transaction = database.CurrentTransaction.GetDbTransaction();
             return command;
 
         }
-        public  static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
+        public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
         {
             bool deleteTable = !ifExists || (ifExists && database.TableExists(tableName)) ? true : false;
             return deleteTable ? database.ExecuteSqlInternal(string.Format("DROP TABLE {0}", tableName), null, ConnectionBehavior.Default) : -1;
@@ -79,7 +79,7 @@ namespace N.EntityFrameworkCore.Extensions
             {
                 command.CommandTimeout = commandTimeout.Value;
             }
-            if(parameters != null)
+            if (parameters != null)
             {
                 command.Parameters.AddRange(parameters);
             }
@@ -119,4 +119,3 @@ namespace N.EntityFrameworkCore.Extensions
         }
     }
 }
-
