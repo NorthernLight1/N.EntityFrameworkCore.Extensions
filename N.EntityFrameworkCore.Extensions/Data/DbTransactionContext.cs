@@ -5,26 +5,26 @@ using Microsoft.EntityFrameworkCore.Storage;
 using N.EntityFrameworkCore.Extensions.Enums;
 
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+internal class DbTransactionContext : IDisposable
 {
-    internal class DbTransactionContext : IDisposable
+    private bool closeConnection;
+    private bool ownsTransaction;
+    private int? defaultCommandTimeout;
+    private DbContext context;
+    private IDbContextTransaction transaction;
+
+    public SqlConnection Connection { get; internal set; }
+    public SqlTransaction CurrentTransaction { get; private set; }
+    public DbContext DbContext => context;
+
+    public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
     {
-        private bool closeConnection;
-        private bool ownsTransaction;
-        private int? defaultCommandTimeout;
-        private DbContext context;
-        private IDbContextTransaction transaction;
-
-        public SqlConnection Connection { get; internal set; }
-        public SqlTransaction CurrentTransaction { get; private set; }
-        public DbContext DbContext => context;
-
-        public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
-        {
 
         }
-        public DbTransactionContext(DbContext context, int? commandTimeout = null, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default, bool openConnection = true)
-        {
+    public DbTransactionContext(DbContext context, int? commandTimeout = null, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default, bool openConnection = true)
+    {
             this.context = context;
             this.Connection = context.GetSqlConnection(connectionBehavior);
             if (openConnection)
@@ -51,8 +51,8 @@ namespace N.EntityFrameworkCore.Extensions
             context.Database.SetCommandTimeout(commandTimeout);
         }
 
-        public void Dispose()
-        {
+    public void Dispose()
+    {
             context.Database.SetCommandTimeout(defaultCommandTimeout);
             if (closeConnection)
             {
@@ -60,15 +60,14 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        internal void Commit()
-        {
+    internal void Commit()
+    {
             if (this.ownsTransaction && this.transaction != null)
                 transaction.Commit();
         }
-        internal void Rollback()
-        {
+    internal void Rollback()
+    {
             if (this.transaction != null)
                 transaction.Rollback();
         }
-    }
 }

@@ -1,10 +1,9 @@
-﻿namespace N.EntityFrameworkCore.Extensions.Sql
+﻿namespace N.EntityFrameworkCore.Extensions.Sql;
+
+public enum SqlExpressionType
 {
-    public enum SqlExpressionType
-    {
-        String,
-        Table,
-        Columns,
-        Set
-    }
+    String,
+    Table,
+    Columns,
+    Set
 }

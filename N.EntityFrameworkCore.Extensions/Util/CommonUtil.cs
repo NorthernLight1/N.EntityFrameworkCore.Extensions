@@ -6,12 +6,12 @@ using System.Linq.Expressions;
 using System.Text;
 using Microsoft.Data.SqlClient;
 
-namespace N.EntityFrameworkCore.Extensions.Util
+namespace N.EntityFrameworkCore.Extensions.Util;
+
+internal static class CommonUtil
 {
-    internal static class CommonUtil
+    internal static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
     {
-        internal static string GetStagingTableName(TableMapping tableMapping, bool usePermanentTable, SqlConnection sqlConnection)
-        {
             string tableName = string.Empty;
             if (usePermanentTable)
                 tableName = string.Format("[{0}].[tmp_be_xx_{1}_{2}]", tableMapping.Schema, tableMapping.TableName, sqlConnection.ClientConnectionId.ToString());
@@ -19,21 +19,21 @@ namespace N.EntityFrameworkCore.Extensions.Util
                 tableName = string.Format("[{0}].[#tmp_be_xx_{1}]", tableMapping.Schema, tableMapping.TableName);
             return tableName;
         }
-        private static string FormatColumn(string column)
-        {
+    private static string FormatColumn(string column)
+    {
             var parts = column.Split('.');
             return string.Join(".", parts.Select(p => p.StartsWith("$") || (p.StartsWith("[") && p.EndsWith("]")) ? p : $"[{p}]"));
         }
-        internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
-        {
+    internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
+    {
             return columns.Select(s => FormatColumn(s));
         }
-        internal static IEnumerable<string> FormatColumns(string tableAlias, IEnumerable<string> columns)
-        {
+    internal static IEnumerable<string> FormatColumns(string tableAlias, IEnumerable<string> columns)
+    {
             return columns.Select(s => s.StartsWith("[") && s.EndsWith("]") ? string.Format("[{0}].{1}", tableAlias, s) : string.Format("[{0}].[{1}]", tableAlias, s));
         }
-        internal static IEnumerable<string> FilterColumns<T>(IEnumerable<string> columnNames, string[] primaryKeyColumnNames, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
-        {
+    internal static IEnumerable<string> FilterColumns<T>(IEnumerable<string> columnNames, string[] primaryKeyColumnNames, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
+    {
             var filteredColumnNames = columnNames;
             if (inputColumns != null)
             {
@@ -55,20 +55,20 @@ namespace N.EntityFrameworkCore.Extensions.Util
             return filteredColumnNames;
         }
 
-        internal static string FormatTableName(string tableName)
-        {
+    internal static string FormatTableName(string tableName)
+    {
             return string.Join(".", tableName.Split('.').Select(s => $"[{RemoveQualifier(s)}]"));
         }
 
-        private static string RemoveQualifier(string name)
-        {
+    private static string RemoveQualifier(string name)
+    {
             return name.TrimStart('[').TrimEnd(']');
         }
-    }
-    internal static class CommonUtil<T>
+}
+internal static class CommonUtil<T>
+{
+    internal static string[] GetColumns(Expression<Func<T, T, bool>> expression, string[] tableNames)
     {
-        internal static string[] GetColumns(Expression<Func<T, T, bool>> expression, string[] tableNames)
-        {
             List<string> foundColumns = new List<string>();
             string sqlText = (string)expression.Body.GetPrivateFieldValue("DebugView");
 
@@ -87,8 +87,8 @@ namespace N.EntityFrameworkCore.Extensions.Util
 
             return foundColumns.ToArray();
         }
-        internal static string GetJoinConditionSql(Expression<Func<T, T, bool>> joinKeyExpression, string[] storeGeneratedColumnNames, string sourceTableName = "s", string targetTableName = "t")
-        {
+    internal static string GetJoinConditionSql(Expression<Func<T, T, bool>> joinKeyExpression, string[] storeGeneratedColumnNames, string sourceTableName = "s", string targetTableName = "t")
+    {
             string joinConditionSql = string.Empty;
             if (joinKeyExpression != null)
             {
@@ -105,5 +105,4 @@ namespace N.EntityFrameworkCore.Extensions.Util
             }
             return joinConditionSql;
         }
-    }
 }

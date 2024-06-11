@@ -10,24 +10,24 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Microsoft.IdentityModel.Protocols;
 
-namespace N.EntityFrameworkCore.Extensions
-{
-    static class LinqExtensions
-    {
-        static Dictionary<ExpressionType, string> sqlExpressionTypes = new()
-        {
-            { ExpressionType.AndAlso, "AND" },
-            { ExpressionType.Or, "OR" },
-            { ExpressionType.Add, "+" },
-            { ExpressionType.Subtract, "-" },
-            { ExpressionType.Multiply, "*" },
-            { ExpressionType.Divide, "/" },
-            { ExpressionType.Modulo, "%" },
-            { ExpressionType.Equal, "=" }
-        };
+namespace N.EntityFrameworkCore.Extensions;
 
-        internal static string ToSql(this MemberBinding binding)
-        {
+static class LinqExtensions
+{
+    static Dictionary<ExpressionType, string> sqlExpressionTypes = new()
+    {
+        { ExpressionType.AndAlso, "AND" },
+        { ExpressionType.Or, "OR" },
+        { ExpressionType.Add, "+" },
+        { ExpressionType.Subtract, "-" },
+        { ExpressionType.Multiply, "*" },
+        { ExpressionType.Divide, "/" },
+        { ExpressionType.Modulo, "%" },
+        { ExpressionType.Equal, "=" }
+    };
+
+    internal static string ToSql(this MemberBinding binding)
+    {
             if (binding is MemberAssignment memberAssingment)
             {
                 return GetExpressionValueAsString(memberAssingment.Expression);
@@ -37,8 +37,8 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new NotSupportedException();
             }
         }
-        internal static string GetExpressionValueAsString(Expression expression)
-        {
+    internal static string GetExpressionValueAsString(Expression expression)
+    {
             if (expression is ConstantExpression constantExpression)
             {
                 return ConvertToSqlValue(constantExpression.Value);
@@ -89,8 +89,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        private static string ConvertToSqlValue(object value)
-        {
+    private static string ConvertToSqlValue(object value)
+    {
             if (value == null)
                 return "NULL";
             if (value is string str)
@@ -111,8 +111,8 @@ namespace N.EntityFrameworkCore.Extensions
 
             throw new NotImplementedException("Unhandled data type.");
         }
-        public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
-        {
+    public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
+    {
             if (expression == null)
             {
                 return new List<string>();
@@ -134,8 +134,8 @@ namespace N.EntityFrameworkCore.Extensions
                 throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
             }
         }
-        internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
-        {
+    internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
+    {
             var sql = ToSqlString(expression.Body);
 
             for (var i = 0; i < parameters.Length; i++)
@@ -144,8 +144,8 @@ namespace N.EntityFrameworkCore.Extensions
             return sql;
         }
 
-        static string ToSqlString(Expression expression, string sql = null)
-        {
+    static string ToSqlString(Expression expression, string sql = null)
+    {
             sql ??= "";
             if (expression is not BinaryExpression b)
                 return sql;
@@ -171,14 +171,14 @@ namespace N.EntityFrameworkCore.Extensions
             var right = ToSqlString(b.Right, sql);
             return left + " AND " + right;
         }
-        internal static string ToSql(this ExpressionType expressionType)
-        {
+    internal static string ToSql(this ExpressionType expressionType)
+    {
             string value = string.Empty;
             sqlExpressionTypes.TryGetValue(expressionType, out value);
             return value;
         }
-        internal static string ToSql(this Expression expression)
-        {
+    internal static string ToSql(this Expression expression)
+    {
             var sb = new StringBuilder();
             if (expression is BinaryExpression binaryExpression)
             {
@@ -196,8 +196,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return sb.ToString();
         }
-        internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
-        {
+    internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
+    {
             var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
             int i = 0;
             foreach (var expressionParam in expression.Parameters)
@@ -212,8 +212,8 @@ namespace N.EntityFrameworkCore.Extensions
             stringBuilder.Replace("(System.Int32)", "");
             return stringBuilder.ToString();
         }
-        internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
-        {
+    internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
+    {
             List<string> setValues = new List<string>();
             var memberInitExpression = expression.Body as MemberInitExpression;
             foreach (var binding in memberInitExpression.Bindings)
@@ -224,5 +224,4 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return string.Join(",", setValues);
         }
-    }
 }

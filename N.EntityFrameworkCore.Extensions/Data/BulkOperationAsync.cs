@@ -10,12 +10,12 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+internal partial class BulkOperation<T>
 {
-    internal partial class BulkOperation<T>
+    internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false, CancellationToken cancellationToken = default)
     {
-        internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false, CancellationToken cancellationToken = default)
-        {
             IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
             string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
             await Context.Database.CloneTableAsync(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, cancellationToken);
@@ -23,9 +23,9 @@ namespace N.EntityFrameworkCore.Extensions
             return await DbContextExtensionsAsync.BulkInsertAsync(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId, cancellationToken);
         }
 
-        internal async Task<BulkMergeResult<T>> ExecuteMergeAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
-            bool autoMapOutput, bool insertIfNotExists, bool update = false, bool delete = false, CancellationToken cancellationToken = default)
-        {
+    internal async Task<BulkMergeResult<T>> ExecuteMergeAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
+        bool autoMapOutput, bool insertIfNotExists, bool update = false, bool delete = false, CancellationToken cancellationToken = default)
+    {
             var rowsInserted = new Dictionary<IEntityType, int>();
             var rowsUpdated = new Dictionary<IEntityType, int>();
             var rowsDeleted = new Dictionary<IEntityType, int>();
@@ -108,8 +108,8 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsUpdated = rowsUpdated.Values.LastOrDefault()
             };
         }
-        internal async Task<int> ExecuteUpdateAsync(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition, CancellationToken cancellationToken = default)
-        {
+    internal async Task<int> ExecuteUpdateAsync(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition, CancellationToken cancellationToken = default)
+    {
             int rowsUpdated = 0;
             foreach (var entityType in TableMapping.EntityTypes)
             {
@@ -122,5 +122,4 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowsUpdated;
         }
-    }
 }

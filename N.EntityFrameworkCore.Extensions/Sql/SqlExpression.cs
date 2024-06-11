@@ -9,18 +9,18 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using N.EntityFrameworkCore.Extensions.Util;
 
-namespace N.EntityFrameworkCore.Extensions.Sql
-{
-    internal class SqlExpression
-    {
-        internal SqlExpressionType ExpressionType { get; }
-        List<object> Items { get; set; }
-        internal string Sql => ToSql();
-        string Alias { get; }
-        public bool IsEmpty => Items.Count == 0;
+namespace N.EntityFrameworkCore.Extensions.Sql;
 
-        SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
-        {
+internal class SqlExpression
+{
+    internal SqlExpressionType ExpressionType { get; }
+    List<object> Items { get; set; }
+    internal string Sql => ToSql();
+    string Alias { get; }
+    public bool IsEmpty => Items.Count == 0;
+
+    SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
+    {
             ExpressionType = expressionType;
             Items = new List<object>();
             if (item is IEnumerable<string> values)
@@ -33,35 +33,35 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             }
             Alias = alias;
         }
-        SqlExpression(SqlExpressionType expressionType, object[] items, string alias = null)
-        {
+    SqlExpression(SqlExpressionType expressionType, object[] items, string alias = null)
+    {
             ExpressionType = expressionType;
             Items = new List<object>();
             Items.AddRange(items);
             Alias = alias;
         }
-        internal static SqlExpression Columns(IEnumerable<string> columns)
-        {
+    internal static SqlExpression Columns(IEnumerable<string> columns)
+    {
             return new SqlExpression(SqlExpressionType.Columns, columns);
         }
 
-        internal static SqlExpression Set(IEnumerable<string> columns)
-        {
+    internal static SqlExpression Set(IEnumerable<string> columns)
+    {
             return new SqlExpression(SqlExpressionType.Set, columns);
         }
 
-        internal static SqlExpression String(string joinOnCondition)
-        {
+    internal static SqlExpression String(string joinOnCondition)
+    {
             return new SqlExpression(SqlExpressionType.String, joinOnCondition);
         }
 
-        internal static SqlExpression Table(string tableName, string alias = null)
-        {
+    internal static SqlExpression Table(string tableName, string alias = null)
+    {
             return new SqlExpression(SqlExpressionType.Table, Util.CommonUtil.FormatTableName(tableName), alias);
         }
 
-        private string ToSql()
-        {
+    private string ToSql()
+    {
             var values = Items.Select(o => o.ToString()).ToArray();
             StringBuilder sbSql = new StringBuilder();
             if (ExpressionType == SqlExpressionType.Columns)
@@ -82,5 +82,4 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             //var test = Items.Select(o => o.ToString()).ToArray();
             return sbSql.ToString();
         }
-    }
 }

@@ -1,11 +1,10 @@
 ﻿using System;
 
-namespace N.EntityFrameworkCore.Extensions.Test.Data
+namespace N.EntityFrameworkCore.Extensions.Test.Data;
+
+public class TpcCustomer : TpcPerson
 {
-    public class TpcCustomer : TpcPerson
-    {
-        public string Email { get; set; }
-        public string Phone { get; set; }
-        public DateTime AddedDate { get; set; }
-    }
+    public string Email { get; set; }
+    public string Phone { get; set; }
+    public DateTime AddedDate { get; set; }
 }
