@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace N.EntityFrameworkCore.Extensions;
+﻿namespace N.EntityFrameworkCore.Extensions;
 
 public class QueryToFileResult
 {

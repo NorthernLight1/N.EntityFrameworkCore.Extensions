@@ -3,12 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Net.NetworkInformation;
 using System.Reflection;
 using System.Text;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
-using Microsoft.IdentityModel.Protocols;
 
 namespace N.EntityFrameworkCore.Extensions;
 

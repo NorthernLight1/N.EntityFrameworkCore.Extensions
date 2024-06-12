@@ -1,8 +1,5 @@
 ﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Drawing;
-using System.Reflection.Metadata;
-using System.Runtime.ConstrainedExecution;
 using Microsoft.EntityFrameworkCore;
 using N.EntityFrameworkCore.Extensions.Test.Common;
 
