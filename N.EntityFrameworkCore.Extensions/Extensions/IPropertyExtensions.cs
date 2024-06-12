@@ -7,13 +7,12 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
-namespace N.EntityFrameworkCore.Extensions.Extensions
+namespace N.EntityFrameworkCore.Extensions.Extensions;
+
+public static class IPropertyExtensions
 {
-    public static class IPropertyExtensions
+    public static IEntityType GetDeclaringEntityType(this IProperty property)
     {
-        public static IEntityType GetDeclaringEntityType(this IProperty property)
-        {
             return property.DeclaringType as IEntityType;
         }
-    }
 }

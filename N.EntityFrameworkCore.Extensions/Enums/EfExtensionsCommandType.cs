@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+enum EfExtensionsCommandType
 {
-    enum EfExtensionsCommandType
-    {
-        ChangeTableName
-    }
+    ChangeTableName
 }

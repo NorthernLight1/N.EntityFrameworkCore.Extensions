@@ -13,22 +13,22 @@ using Microsoft.EntityFrameworkCore.ValueGeneration;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Extensions;
 
-namespace N.EntityFrameworkCore.Extensions
-{
-    internal class EntityDataReader<T> : IDataReader
-    {
-        public TableMapping TableMapping { get; set; }
-        public Dictionary<long, T> EntityMap { get; set; }
-        private Dictionary<string, int> columnIndexes;
-        private int currentId;
-        private bool useInternalId;
-        private int tableFieldCount;
-        private IEnumerable<T> entities;
-        private IEnumerator<T> enumerator;
-        private Dictionary<int, Func<EntityEntry, object>> selectors;
+namespace N.EntityFrameworkCore.Extensions;
 
-        public EntityDataReader(TableMapping tableMapping, IEnumerable<T> entities, bool useInternalId)
-        {
+internal class EntityDataReader<T> : IDataReader
+{
+    public TableMapping TableMapping { get; set; }
+    public Dictionary<long, T> EntityMap { get; set; }
+    private Dictionary<string, int> columnIndexes;
+    private int currentId;
+    private bool useInternalId;
+    private int tableFieldCount;
+    private IEnumerable<T> entities;
+    private IEnumerator<T> enumerator;
+    private Dictionary<int, Func<EntityEntry, object>> selectors;
+
+    public EntityDataReader(TableMapping tableMapping, IEnumerable<T> entities, bool useInternalId)
+    {
             this.columnIndexes = new Dictionary<string, int>();
             this.currentId = 0;
             this.useInternalId = useInternalId;
@@ -55,8 +55,8 @@ namespace N.EntityFrameworkCore.Extensions
                 columnIndexes[Constants.InternalId_ColumnName] = i;
             }
         }
-        private Func<EntityEntry, object> GetValueSelector(IProperty property)
-        {
+    private Func<EntityEntry, object> GetValueSelector(IProperty property)
+    {
             Func<EntityEntry, object> selector;
             var valueGeneratorFactory = property.GetValueGeneratorFactory();
             if (valueGeneratorFactory != null)
@@ -85,131 +85,131 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return selector;
         }
-        public object this[int i] => throw new NotImplementedException();
+    public object this[int i] => throw new NotImplementedException();
 
-        public object this[string name] => throw new NotImplementedException();
+    public object this[string name] => throw new NotImplementedException();
 
-        public int Depth { get; set; }
+    public int Depth { get; set; }
 
-        public bool IsClosed => throw new NotImplementedException();
+    public bool IsClosed => throw new NotImplementedException();
 
-        public int RecordsAffected => throw new NotImplementedException();
+    public int RecordsAffected => throw new NotImplementedException();
 
-        public int FieldCount { get; set; }
+    public int FieldCount { get; set; }
 
-        public void Close()
-        {
+    public void Close()
+    {
             throw new NotImplementedException();
         }
 
-        public void Dispose()
-        {
+    public void Dispose()
+    {
             selectors = null;
             enumerator.Dispose();
         }
 
-        public bool GetBoolean(int i)
-        {
+    public bool GetBoolean(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public byte GetByte(int i)
-        {
+    public byte GetByte(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
-        {
+    public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
+    {
             throw new NotImplementedException();
         }
 
-        public char GetChar(int i)
-        {
+    public char GetChar(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
-        {
+    public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
+    {
             throw new NotImplementedException();
         }
 
-        public IDataReader GetData(int i)
-        {
+    public IDataReader GetData(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public string GetDataTypeName(int i)
-        {
+    public string GetDataTypeName(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public DateTime GetDateTime(int i)
-        {
+    public DateTime GetDateTime(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public decimal GetDecimal(int i)
-        {
+    public decimal GetDecimal(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public double GetDouble(int i)
-        {
+    public double GetDouble(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public Type GetFieldType(int i)
-        {
+    public Type GetFieldType(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public float GetFloat(int i)
-        {
+    public float GetFloat(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public Guid GetGuid(int i)
-        {
+    public Guid GetGuid(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public short GetInt16(int i)
-        {
+    public short GetInt16(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public int GetInt32(int i)
-        {
+    public int GetInt32(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public long GetInt64(int i)
-        {
+    public long GetInt64(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public string GetName(int i)
-        {
+    public string GetName(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public int GetOrdinal(string name)
-        {
+    public int GetOrdinal(string name)
+    {
             return columnIndexes[name];
         }
 
-        public DataTable GetSchemaTable()
-        {
+    public DataTable GetSchemaTable()
+    {
             throw new NotImplementedException();
         }
 
-        public string GetString(int i)
-        {
+    public string GetString(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public object GetValue(int i)
-        {
+    public object GetValue(int i)
+    {
             if (i == tableFieldCount)
             {
                 return this.currentId;
@@ -221,28 +221,28 @@ namespace N.EntityFrameworkCore.Extensions
 
         }
 
-        private EntityEntry FindEntry(object entity)
-        {
+    private EntityEntry FindEntry(object entity)
+    {
             return entity is InternalEntityEntry ? ((InternalEntityEntry)entity).ToEntityEntry() : this.TableMapping.DbContext.Entry(entity);
         }
 
-        public int GetValues(object[] values)
-        {
+    public int GetValues(object[] values)
+    {
             throw new NotImplementedException();
         }
 
-        public bool IsDBNull(int i)
-        {
+    public bool IsDBNull(int i)
+    {
             throw new NotImplementedException();
         }
 
-        public bool NextResult()
-        {
+    public bool NextResult()
+    {
             throw new NotImplementedException();
         }
 
-        public bool Read()
-        {
+    public bool Read()
+    {
             bool moveNext = enumerator.MoveNext();
 
             if (moveNext && this.useInternalId)
@@ -252,5 +252,4 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return moveNext;
         }
-    }
 }
