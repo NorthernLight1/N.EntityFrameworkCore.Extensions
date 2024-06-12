@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 using N.EntityFrameworkCore.Extensions.Test.Data.Enums;

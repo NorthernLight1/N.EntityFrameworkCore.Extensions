@@ -1,24 +1,14 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Transactions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Options;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace N.EntityFrameworkCore.Extensions;
 

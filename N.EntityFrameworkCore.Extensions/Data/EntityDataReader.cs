@@ -1,17 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.EntityFrameworkCore.Update;
-using Microsoft.EntityFrameworkCore.ValueGeneration;
 using N.EntityFrameworkCore.Extensions.Common;
-using N.EntityFrameworkCore.Extensions.Extensions;
 
 namespace N.EntityFrameworkCore.Extensions;
 
