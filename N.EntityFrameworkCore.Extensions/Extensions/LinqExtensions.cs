@@ -198,7 +198,10 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {
-            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
+            var expressionBody = (string)expression.Body.GetPrivateFieldValue("DebugView");
+            expressionBody = expressionBody.Replace(System.Environment.NewLine, " ");
+            var stringBuilder = new StringBuilder(expressionBody);
+
             int i = 0;
             foreach (var expressionParam in expression.Parameters)
             {
@@ -206,8 +209,11 @@ namespace N.EntityFrameworkCore.Extensions
                 stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
                 i++;
             }
+            stringBuilder.Replace("== null", "IS NULL");
+            stringBuilder.Replace("!= null", "IS NOT NULL");
             stringBuilder.Replace("&&", "AND");
             stringBuilder.Replace("==", "=");
+            stringBuilder.Replace("||", "OR");
             stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
             stringBuilder.Replace("(System.Int32)", "");
             return stringBuilder.ToString();
