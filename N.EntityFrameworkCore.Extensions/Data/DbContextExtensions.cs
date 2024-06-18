@@ -1,57 +1,46 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
-using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Metadata.Conventions;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.EntityFrameworkCore.Update;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public static class DbContextExtensions
 {
-    public static class DbContextExtensions
+    private static readonly EfExtensionsCommandInterceptor efExtensionsCommandInterceptor;
+    static DbContextExtensions()
     {
-        private static readonly EfExtensionsCommandInterceptor efExtensionsCommandInterceptor;
-        static DbContextExtensions()
-        {
             efExtensionsCommandInterceptor = new EfExtensionsCommandInterceptor();
         }
-        public static void SetupEfCoreExtensions(this DbContextOptionsBuilder builder)
-        {
+    public static void SetupEfCoreExtensions(this DbContextOptionsBuilder builder)
+    {
             builder.AddInterceptors(efExtensionsCommandInterceptor);
         }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities)
-        {
+    public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities)
+    {
             return context.BulkDelete(entities, new BulkDeleteOptions<T>());
         }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction)
-        {
+    public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction)
+    {
             return context.BulkDelete(entities, optionsAction.Build());
         }
-        public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options)
-        {
+    public static int BulkDelete<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options)
+    {
             var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
 
             using (var dbTransactionContext = new DbTransactionContext(context, options))
@@ -87,16 +76,16 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities) where T : class, new()
-        {
+    public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities) where T : class, new()
+    {
             return dbSet.BulkFetch(entities, new BulkFetchOptions<T>());
         }
-        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, Action<BulkFetchOptions<T>> optionsAction) where T : class, new()
-        {
+    public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, Action<BulkFetchOptions<T>> optionsAction) where T : class, new()
+    {
             return dbSet.BulkFetch(entities, optionsAction.Build());
         }
-        public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, BulkFetchOptions<T> options) where T : class, new()
-        {
+    public static IEnumerable<T> BulkFetch<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, BulkFetchOptions<T> options) where T : class, new()
+    {
             var context = dbSet.GetDbContext();
             var tableMapping = context.GetTableMapping(typeof(T));
 
@@ -138,19 +127,19 @@ namespace N.EntityFrameworkCore.Extensions
                 context.Database.DropTable(stagingTableName);
             }
         }
-        private static void Validate(TableMapping tableMapping)
-        {
+    private static void Validate(TableMapping tableMapping)
+    {
             if (!tableMapping.GetPrimaryKeyColumns().Any())
             {
                 throw new Exception("You must have a primary key on this table to use this function.");
             }
         }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
-        {
+    public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
+    {
             Fetch(querable, action, optionsAction.Build());
         }
-        public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options) where T : class, new()
-        {
+    public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options) where T : class, new()
+    {
             var dbContext = querable.GetDbContext();
             var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
             var tableMapping = dbContext.GetTableMapping(typeof(T));
@@ -193,8 +182,8 @@ namespace N.EntityFrameworkCore.Extensions
 
             reader.Close();
         }
-        private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
-        {
+    private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
+    {
             using var command = dbContext.Database.CreateCommand(Enums.ConnectionBehavior.New);
             command.CommandText = sqlText;
             if (parameters != null)
@@ -213,16 +202,16 @@ namespace N.EntityFrameworkCore.Extensions
 
             reader.Close();
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
-        {
+    public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
+    {
             return context.BulkInsert<T>(entities, new BulkInsertOptions<T> { });
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction)
-        {
+    public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction)
+    {
             return context.BulkInsert<T>(entities, optionsAction.Build());
         }
-        public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
-        {
+    public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
+    {
             int rowsAffected = 0;
             using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
@@ -243,8 +232,8 @@ namespace N.EntityFrameworkCore.Extensions
             return rowsAffected;
         }
 
-        internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
-        {
+    internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
+    {
             int index = 0;
             var updateEntry = entity as InternalEntityEntry;
             if (updateEntry == null)
@@ -280,9 +269,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-            IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
-        {
+    internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
+    {
             using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId))
             {
 
@@ -321,24 +310,24 @@ namespace N.EntityFrameworkCore.Extensions
                 };
             }
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
-        {
+    public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
+    {
             return BulkMerge(context, entities, new BulkMergeOptions<T>());
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
-        {
+    public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+    {
             return InternalBulkMerge(context, entities, options);
         }
-        public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction)
-        {
+    public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction)
+    {
             return BulkMerge(context, entities, optionsAction.Build());
         }
-        public static int BulkSaveChanges(this DbContext dbContext)
-        {
+    public static int BulkSaveChanges(this DbContext dbContext)
+    {
             return dbContext.BulkSaveChanges(true);
         }
-        public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
-        {
+    public static int BulkSaveChanges(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
+    {
             int rowsAffected = 0;
             var stateManager = dbContext.GetDependencies().StateManager;
 
@@ -369,20 +358,20 @@ namespace N.EntityFrameworkCore.Extensions
 
             return rowsAffected;
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities)
-        {
+    public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities)
+    {
             return BulkSync(context, entities, new BulkSyncOptions<T>());
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction)
-        {
+    public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction)
+    {
             return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, optionsAction.Build()));
         }
-        public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options)
-        {
+    public static BulkSyncResult<T> BulkSync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options)
+    {
             return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, options));
         }
-        private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
-        {
+    private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+    {
             BulkMergeResult<T> bulkMergeResult;
             using (var bulkOperation = new BulkOperation<T>(context, options))
             {
@@ -402,16 +391,16 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return bulkMergeResult;
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities)
-        {
+    public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities)
+    {
             return BulkUpdate<T>(context, entities, new BulkUpdateOptions<T>());
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction)
-        {
+    public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction)
+    {
             return BulkUpdate<T>(context, entities, optionsAction.Build());
         }
-        public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
-        {
+    public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
+    {
             int rowsUpdated = 0;
             using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
@@ -431,8 +420,8 @@ namespace N.EntityFrameworkCore.Extensions
             return rowsUpdated;
         }
 
-        private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
-        {
+    private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
+    {
             foreach (var entity in entities)
             {
                 var entry = dbContext.Entry(entity);
@@ -441,8 +430,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
         }
 
-        internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
-        {
+    internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
+    {
             var results = new List<object[]>();
             var columns = new List<string>();
             var command = context.Database.CreateCommand();
@@ -480,8 +469,8 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-        public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
-        {
+    public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
+    {
             int rowAffected = 0;
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
@@ -502,8 +491,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
-        {
+    public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
+    {
             int rowAffected = 0;
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
@@ -534,8 +523,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
-        {
+    public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
+    {
             int rowAffected = 0;
             using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
             {
@@ -556,77 +545,77 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath) where T : class
+    {
             return QueryToCsvFile<T>(querable, filePath, new QueryToFileOptions());
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream) where T : class
+    {
             return QueryToCsvFile<T>(querable, stream, new QueryToFileOptions());
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
+    {
             return QueryToCsvFile<T>(querable, filePath, optionsAction.Build());
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
+    {
             return QueryToCsvFile<T>(querable, stream, optionsAction.Build());
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options) where T : class
+    {
             var fileStream = File.Create(filePath);
             return QueryToCsvFile<T>(querable, fileStream, options);
         }
-        public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
-        {
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+    {
             return InternalQueryToFile<T>(querable, stream, options);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
+    {
             return SqlQueryToCsvFile(database, filePath, new QueryToFileOptions(), sqlText, parameters);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
+    {
             return SqlQueryToCsvFile(database, stream, new QueryToFileOptions(), sqlText, parameters);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
             return SqlQueryToCsvFile(database, filePath, optionsAction.Build(), sqlText, parameters);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
             return SqlQueryToCsvFile(database, stream, optionsAction.Build(), sqlText, parameters);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
+    {
             var fileStream = File.Create(filePath);
             return SqlQueryToCsvFile(database, fileStream, options, sqlText, parameters);
         }
-        public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
-        {
+    public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
+    {
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return InternalQueryToFile(dbConnection, stream, options, sqlText, parameters);
         }
-        public static void Clear<T>(this DbSet<T> dbSet) where T : class
-        {
+    public static void Clear<T>(this DbSet<T> dbSet) where T : class
+    {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             dbContext.Database.ClearTable(tableMapping.FullQualifedTableName);
         }
-        public static void Truncate<T>(this DbSet<T> dbSet) where T : class
-        {
+    public static void Truncate<T>(this DbSet<T> dbSet) where T : class
+    {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             dbContext.Database.TruncateTable(tableMapping.FullQualifedTableName);
         }
-        private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
-        {
+    private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+    {
             var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
             return InternalQueryToFile(dbConnection, stream, options, querable.ToQueryString());
         }
-        private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
-        {
+    private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
+    {
             int dataRowCount = 0;
             int totalRowCount = 0;
             long bytesWritten = 0;
@@ -694,8 +683,8 @@ namespace N.EntityFrameworkCore.Extensions
                 TotalRowCount = totalRowCount
             };
         }
-        public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
-        {
+    public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
+    {
             var dbContext = querable.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             efExtensionsCommandInterceptor.AddCommand(Guid.NewGuid(),
@@ -708,8 +697,8 @@ namespace N.EntityFrameworkCore.Extensions
                 });
             return querable;
         }
-        internal static DbContext GetDbContext<T>(this IQueryable<T> querable) where T : class
-        {
+    internal static DbContext GetDbContext<T>(this IQueryable<T> querable) where T : class
+    {
             DbContext dbContext;
             try
             {
@@ -735,15 +724,14 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return dbContext;
         }
-        internal static SqlConnection GetSqlConnection(this DbContext context, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
-        {
+    internal static SqlConnection GetSqlConnection(this DbContext context, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
+    {
             var dbConnection = context.Database.GetDbConnection();
             return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
         }
-        public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
-        {
+    public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
+    {
             entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
             return new TableMapping(dbContext, entityType);
         }
-    }
 }

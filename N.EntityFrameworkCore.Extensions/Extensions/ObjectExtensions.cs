@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Linq.Expressions;
 using System.Reflection;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+internal static class ObjectExtensions
 {
-    internal static class ObjectExtensions
+    public static object GetPrivateFieldValue(this object obj, string propName)
     {
-        public static object GetPrivateFieldValue(this object obj, string propName)
-        {
             if (obj == null) throw new ArgumentNullException(nameof(obj));
             Type t = obj.GetType();
             FieldInfo fieldInfo = null;
@@ -30,5 +29,4 @@ namespace N.EntityFrameworkCore.Extensions
 
             return propertyInfo.GetValue(obj, null);
         }
-    }
 }

@@ -1,11 +1,10 @@
 ﻿
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public class BulkSyncOptions<T> : BulkMergeOptions<T>
 {
-    public class BulkSyncOptions<T> : BulkMergeOptions<T>
+    public BulkSyncOptions()
     {
-        public BulkSyncOptions()
-        {
             this.DeleteIfNotMatched = true;
         }
-    }
 }

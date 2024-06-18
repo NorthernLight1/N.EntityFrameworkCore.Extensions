@@ -5,26 +5,26 @@ using System.Linq;
 using System.Linq.Expressions;
 using Microsoft.Data.SqlClient;
 
-namespace N.EntityFrameworkCore.Extensions.Sql
+namespace N.EntityFrameworkCore.Extensions.Sql;
+
+class SqlBuilder
 {
-    class SqlBuilder
+    private static IEnumerable<string> keywords = new string[] { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
+    public string Sql
     {
-        private static IEnumerable<string> keywords = new string[] { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
-        public string Sql
-        {
-            get { return this.ToString(); }
-        }
-        public List<SqlClause> Clauses { get; private set; }
-        public List<SqlParameter> Parameters { get; private set; }
-        private SqlBuilder(string sql)
-        {
+        get { return this.ToString(); }
+    }
+    public List<SqlClause> Clauses { get; private set; }
+    public List<SqlParameter> Parameters { get; private set; }
+    private SqlBuilder(string sql)
+    {
             Clauses = new List<SqlClause>();
             Parameters = new List<SqlParameter>();
             Initialize(sql);
         }
 
-        private void Initialize(string sqlText)
-        {
+    private void Initialize(string sqlText)
+    {
             string curClause = string.Empty;
             int curClauseIndex = 0;
             for (int i = 0; i < sqlText.Length;)
@@ -69,8 +69,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 Clauses.Add(SqlClause.Parse(curClause, sqlText.Substring(curClauseIndex)));
         }
 
-        private string GetDeclareValue(string value)
-        {
+    private string GetDeclareValue(string value)
+    {
             if (value.StartsWith("'"))
             {
                 return value.Substring(1, value.Length - 2);
@@ -85,16 +85,16 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             }
         }
 
-        public string Count()
-        {
+    public string Count()
+    {
             return string.Format("SELECT COUNT(*) FROM ({0}) s", string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString())));
         }
-        public override string ToString()
-        {
+    public override string ToString()
+    {
             return string.Join("\r\n", Clauses.Select(o => o.ToString()));
         }
-        private static string StartsWithString(string textToSearch, IEnumerable<string> valuesToFind, StringComparison stringComparison)
-        {
+    private static string StartsWithString(string textToSearch, IEnumerable<string> valuesToFind, StringComparison stringComparison)
+    {
             string value = null;
             foreach (var valueToFind in valuesToFind)
             {
@@ -107,18 +107,18 @@ namespace N.EntityFrameworkCore.Extensions.Sql
 
             return value;
         }
-        public static SqlBuilder Parse(string sql)
-        {
+    public static SqlBuilder Parse(string sql)
+    {
             return new SqlBuilder(sql);
         }
-        public String GetTableAlias()
-        {
+    public String GetTableAlias()
+    {
             var sqlFromClause = Clauses.First(o => o.Name == "FROM");
             var startIndex = sqlFromClause.InputText.LastIndexOf(" AS ");
             return startIndex > 0 ? sqlFromClause.InputText.Substring(startIndex + 4) : "";
         }
-        public void ChangeToDelete()
-        {
+    public void ChangeToDelete()
+    {
             Validate();
             var sqlClause = Clauses.FirstOrDefault();
             var sqlFromClause = Clauses.First(o => o.Name == "FROM");
@@ -130,8 +130,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 sqlClause.InputText = sqlFromClause.InputText.Substring(aliasStartIndex, aliasLength);
             }
         }
-        public void ChangeToUpdate(string updateExpression, string setExpression)
-        {
+    public void ChangeToUpdate(string updateExpression, string setExpression)
+    {
             Validate();
             var sqlClause = Clauses.FirstOrDefault();
             if (sqlClause != null)
@@ -141,8 +141,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 Clauses.Insert(1, new SqlClause { Name = "SET", InputText = setExpression });
             }
         }
-        internal void ChangeToInsert<T>(string tableName, Expression<Func<T, object>> insertObjectExpression)
-        {
+    internal void ChangeToInsert<T>(string tableName, Expression<Func<T, object>> insertObjectExpression)
+    {
             Validate();
             var sqlSelectClause = Clauses.FirstOrDefault();
             string columnsToInsert = string.Join(",", insertObjectExpression.GetObjectProperties());
@@ -151,8 +151,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             sqlSelectClause.InputText = columnsToInsert;
 
         }
-        internal void SelectColumns(IEnumerable<string> columns)
-        {
+    internal void SelectColumns(IEnumerable<string> columns)
+    {
             var tableAlias = GetTableAlias();
             var sqlClause = Clauses.FirstOrDefault();
             if (sqlClause.Name == "SELECT")
@@ -160,12 +160,11 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 sqlClause.InputText = string.Join(",", columns.Select(c => string.Format("{0}.{1}", tableAlias, c)));
             }
         }
-        private void Validate()
-        {
+    private void Validate()
+    {
             if (Clauses.Count == 0)
             {
                 throw new Exception("You must parse a valid sql statement before you can use this function.");
             }
         }
-    }
 }

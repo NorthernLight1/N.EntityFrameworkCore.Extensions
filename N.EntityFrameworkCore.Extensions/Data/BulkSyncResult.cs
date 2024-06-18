@@ -1,11 +1,11 @@
 ﻿
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public class BulkSyncResult<T> : BulkMergeResult<T>
 {
-    public class BulkSyncResult<T> : BulkMergeResult<T>
+    public new int RowsDeleted { get; set; }
+    public static BulkSyncResult<T> Map(BulkMergeResult<T> result)
     {
-        public new int RowsDeleted { get; set; }
-        public static BulkSyncResult<T> Map(BulkMergeResult<T> result)
-        {
             return new BulkSyncResult<T>()
             {
                 Output = result.Output,
@@ -15,5 +15,4 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsUpdated = result.RowsUpdated
             };
         }
-    }
 }

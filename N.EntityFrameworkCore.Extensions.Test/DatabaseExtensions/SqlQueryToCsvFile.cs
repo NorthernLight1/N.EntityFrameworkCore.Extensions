@@ -1,19 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using Microsoft.Data.SqlClient;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions;
+
+[TestClass]
+public class SqlQueryToCsvFile : DatabaseExtensionsBase
 {
-    [TestClass]
-    public class SqlQueryToCsvFile : DatabaseExtensionsBase
+    [TestMethod]
+    public void With_Default_Options()
     {
-        [TestMethod]
-        public void With_Default_Options()
-        {
             var dbContext = SetupDbContext(true);
             int count = dbContext.Orders.Where(o => o.Price > 5M).Count();
             var queryToCsvFileResult = dbContext.Database.SqlQueryToCsvFile("SqlQueryToCsvFile-Test.csv", "SELECT * FROM Orders WHERE Price > @Price", new SqlParameter("@Price", 5M));
@@ -22,9 +18,9 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
             Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
             Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
         }
-        [TestMethod]
-        public void With_Options_ColumnDelimiter_TextQualifer()
-        {
+    [TestMethod]
+    public void With_Options_ColumnDelimiter_TextQualifer()
+    {
             var dbContext = SetupDbContext(true);
             string filePath = "SqlQueryToCsvFile_Options_ColumnDelimiter_TextQualifer-Test.csv";
             int count = dbContext.Orders.Where(o => o.Price > 5M).Count();
@@ -35,5 +31,4 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
             Assert.IsTrue(queryToCsvFileResult.DataRowCount == count, "The number of data rows written to the file should match the count from the database");
             Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
         }
-    }
 }

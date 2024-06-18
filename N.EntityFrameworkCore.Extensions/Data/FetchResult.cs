@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public class FetchResult<T>
 {
-    public class FetchResult<T>
-    {
-        public List<T> Results { get; set; }
-        public int Batch { get; set; }
-    }
+    public List<T> Results { get; set; }
+    public int Batch { get; set; }
 }

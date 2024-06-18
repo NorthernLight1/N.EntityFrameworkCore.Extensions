@@ -4,36 +4,32 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public static class DbContextExtensionsAsync
 {
-    public static class DbContextExtensionsAsync
+    public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
-        {
             return await context.BulkDeleteAsync(entities, new BulkDeleteOptions<T>(), cancellationToken);
         }
-        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkDeleteOptions<T>> optionsAction, CancellationToken cancellationToken = default)
+    {
             return await context.BulkDeleteAsync(entities, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkDeleteAsync<T>(this DbContext context, IEnumerable<T> entities, BulkDeleteOptions<T> options, CancellationToken cancellationToken = default)
+    {
             int rowsAffected = 0;
             var tableMapping = context.GetTableMapping(typeof(T), options.EntityType);
 
@@ -68,12 +64,12 @@ namespace N.EntityFrameworkCore.Extensions
                 return rowsAffected;
             }
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>, Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
-        {
+    public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>, Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
+    {
             await FetchAsync(querable, action, optionsAction.Build(), cancellationToken);
         }
-        public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>, Task> action, FetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
-        {
+    public async static Task FetchAsync<T>(this IQueryable<T> querable, Func<FetchResult<T>, Task> action, FetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
+    {
             var dbContext = querable.GetDbContext();
             var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
             var tableMapping = dbContext.GetTableMapping(typeof(T));
@@ -117,16 +113,16 @@ namespace N.EntityFrameworkCore.Extensions
 
             await reader.CloseAsync();
         }
-        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
             return await context.BulkInsertAsync<T>(entities, new BulkInsertOptions<T> { }, cancellationToken);
         }
-        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction, CancellationToken cancellationToken = default)
+    {
             return await context.BulkInsertAsync<T>(entities, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options, CancellationToken cancellationToken = default)
+    {
             int rowsAffected = 0;
             using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
@@ -146,9 +142,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowsAffected;
         }
-        internal async static Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-            IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false, CancellationToken cancellationToken = default)
-        {
+    internal async static Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false, CancellationToken cancellationToken = default)
+    {
             var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId);
 
             var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions, transaction)
@@ -178,24 +174,24 @@ namespace N.EntityFrameworkCore.Extensions
                 EntityMap = dataReader.EntityMap
             };
         }
-        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
             return await BulkMergeAsync(context, entities, new BulkMergeOptions<T>(), cancellationToken);
         }
-        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
+    {
             return await InternalBulkMergeAsync(context, entities, options, cancellationToken);
         }
-        public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction, CancellationToken cancellationToken = default)
+    {
             return await BulkMergeAsync(context, entities, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext)
-        {
+    public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext)
+    {
             return await dbContext.BulkSaveChangesAsync(true);
         }
-        public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
-        {
+    public async static Task<int> BulkSaveChangesAsync(this DbContext dbContext, bool acceptAllChangesOnSuccess = true)
+    {
             int rowsAffected = 0;
             var stateManager = dbContext.GetDependencies().StateManager;
 
@@ -226,20 +222,20 @@ namespace N.EntityFrameworkCore.Extensions
 
             return rowsAffected;
         }
-        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
             return await BulkSyncAsync(context, entities, new BulkSyncOptions<T>(), cancellationToken);
         }
-        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkSyncOptions<T>> optionsAction, CancellationToken cancellationToken = default)
+    {
             return BulkSyncResult<T>.Map(await InternalBulkMergeAsync(context, entities, optionsAction.Build(), cancellationToken));
         }
-        public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    public async static Task<BulkSyncResult<T>> BulkSyncAsync<T>(this DbContext context, IEnumerable<T> entities, BulkSyncOptions<T> options, CancellationToken cancellationToken = default)
+    {
             return BulkSyncResult<T>.Map(await InternalBulkMergeAsync(context, entities, options, cancellationToken));
         }
-        private async static Task<BulkMergeResult<T>> InternalBulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    private async static Task<BulkMergeResult<T>> InternalBulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
+    {
             BulkMergeResult<T> bulkMergeResult;
             using (var bulkOperation = new BulkOperation<T>(context, options))
             {
@@ -259,16 +255,16 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return bulkMergeResult;
         }
-        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
+    {
             return await BulkUpdateAsync<T>(context, entities, new BulkUpdateOptions<T>(), cancellationToken);
         }
-        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkUpdateOptions<T>> optionsAction, CancellationToken cancellationToken = default)
+    {
             return await BulkUpdateAsync<T>(context, entities, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options, CancellationToken cancellationToken = default)
-        {
+    public async static Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options, CancellationToken cancellationToken = default)
+    {
             int rowsUpdated = 0;
             using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
             {
@@ -287,8 +283,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowsUpdated;
         }
-        internal async static Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
-        {
+    internal async static Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
+    {
             var results = new List<object[]>();
             var columns = new List<string>();
             var command = new SqlCommand(sqlText, dbConnection, transaction);
@@ -325,8 +321,8 @@ namespace N.EntityFrameworkCore.Extensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-        public async static Task<int> DeleteFromQueryAsync<T>(this IQueryable<T> querable, int? commandTimeout = null, CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<int> DeleteFromQueryAsync<T>(this IQueryable<T> querable, int? commandTimeout = null, CancellationToken cancellationToken = default) where T : class
+    {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
             using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
@@ -349,9 +345,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public async static Task<int> InsertFromQueryAsync<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<int> InsertFromQueryAsync<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null,
+        CancellationToken cancellationToken = default) where T : class
+    {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
             using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
@@ -384,9 +380,9 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public async static Task<int> UpdateFromQueryAsync<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<int> UpdateFromQueryAsync<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null,
+        CancellationToken cancellationToken = default) where T : class
+    {
             int rowAffected = 0;
             var dbContext = querable.GetDbContext();
             using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
@@ -409,89 +405,89 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return rowAffected;
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, CancellationToken cancellationToken = default) where T : class
+    {
             return await QueryToCsvFileAsync<T>(querable, filePath, new QueryToFileOptions(), cancellationToken);
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, CancellationToken cancellationToken = default) where T : class
+    {
             return await QueryToCsvFileAsync<T>(querable, stream, new QueryToFileOptions(), cancellationToken);
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction,
+        CancellationToken cancellationToken = default) where T : class
+    {
             return await QueryToCsvFileAsync<T>(querable, filePath, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction,
+        CancellationToken cancellationToken = default) where T : class
+    {
             return await QueryToCsvFileAsync<T>(querable, stream, optionsAction.Build(), cancellationToken);
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options,
+        CancellationToken cancellationToken = default) where T : class
+    {
             var fileStream = File.Create(filePath);
             return await QueryToCsvFileAsync<T>(querable, fileStream, options, cancellationToken);
         }
-        public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options,
+        CancellationToken cancellationToken = default) where T : class
+    {
             return await InternalQueryToFileAsync<T>(querable, stream, options, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             return await SqlQueryToCsvFileAsync(database, filePath, new QueryToFileOptions(), sqlText, parameters, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             return await SqlQueryToCsvFileAsync(database, stream, new QueryToFileOptions(), sqlText, parameters, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             return await SqlQueryToCsvFileAsync(database, filePath, optionsAction.Build(), sqlText, parameters, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, Action<QueryToFileOptions> optionsAction, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             return await SqlQueryToCsvFileAsync(database, stream, optionsAction.Build(), sqlText, parameters, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             var fileStream = File.Create(filePath);
             return await SqlQueryToCsvFileAsync(database, fileStream, options, sqlText, parameters, cancellationToken);
         }
-        public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters,
-            CancellationToken cancellationToken = default)
-        {
+    public async static Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters,
+        CancellationToken cancellationToken = default)
+    {
             var dbConnection = database.GetDbConnection() as SqlConnection;
             return await InternalQueryToFileAsync(dbConnection, stream, options, sqlText, parameters, cancellationToken);
         }
-        public async static Task ClearAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task ClearAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
+    {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             await dbContext.Database.ClearTableAsync(tableMapping.FullQualifedTableName, cancellationToken);
         }
-        public async static Task TruncateAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
-        {
+    public async static Task TruncateAsync<T>(this DbSet<T> dbSet, CancellationToken cancellationToken = default) where T : class
+    {
             var dbContext = dbSet.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             await dbContext.Database.TruncateTableAsync(tableMapping.FullQualifedTableName, false, cancellationToken);
         }
-        private async static Task<QueryToFileResult> InternalQueryToFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options,
-            CancellationToken cancellationToken = default) where T : class
-        {
+    private async static Task<QueryToFileResult> InternalQueryToFileAsync<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options,
+        CancellationToken cancellationToken = default) where T : class
+    {
             var dbContext = querable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
             return await InternalQueryToFileAsync(dbConnection, stream, options, querable.ToQueryString(), null, cancellationToken);
         }
-        private async static Task<QueryToFileResult> InternalQueryToFileAsync(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null,
-            CancellationToken cancellationToken = default)
-        {
+    private async static Task<QueryToFileResult> InternalQueryToFileAsync(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null,
+        CancellationToken cancellationToken = default)
+    {
             int dataRowCount = 0;
             int totalRowCount = 0;
             long bytesWritten = 0;
@@ -559,5 +555,4 @@ namespace N.EntityFrameworkCore.Extensions
                 TotalRowCount = totalRowCount
             };
         }
-    }
 }

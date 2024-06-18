@@ -1,17 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Data.Common;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-namespace N.EntityFrameworkCore.Extensions
+namespace N.EntityFrameworkCore.Extensions;
+
+public class EfExtensionsCommandInterceptor : DbCommandInterceptor
 {
-    public class EfExtensionsCommandInterceptor : DbCommandInterceptor
+    private ConcurrentDictionary<Guid, EfExtensionsCommand> extensionCommands = new ConcurrentDictionary<Guid, EfExtensionsCommand>();
+    public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
     {
-        private ConcurrentDictionary<Guid, EfExtensionsCommand> extensionCommands = new ConcurrentDictionary<Guid, EfExtensionsCommand>();
-        public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
-        {
             foreach (var extensionCommand in extensionCommands)
             {
                 if (extensionCommand.Value.Connection == command.Connection)
@@ -22,9 +20,8 @@ namespace N.EntityFrameworkCore.Extensions
             }
             return result;
         }
-        internal void AddCommand(Guid clientConnectionId, EfExtensionsCommand efExtensionsCommand)
-        {
+    internal void AddCommand(Guid clientConnectionId, EfExtensionsCommand efExtensionsCommand)
+    {
             extensionCommands.TryAdd(clientConnectionId, efExtensionsCommand);
         }
-    }
 }

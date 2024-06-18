@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data;
 
-public class ProductWithCustomSchema
+public class ProductWithTrigger
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
@@ -11,4 +11,12 @@ public class ProductWithCustomSchema
     [StringLength(50)]
     public string Name { get; set; }
     public decimal Price { get; set; }
+    public bool OutOfStock { get; set; }
+    [Column("Status")]
+    [StringLength(25)]
+    public string StatusString { get; set; }
+    public ProductWithTrigger()
+    {
+
+    }
 }

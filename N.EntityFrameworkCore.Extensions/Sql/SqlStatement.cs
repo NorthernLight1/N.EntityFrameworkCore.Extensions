@@ -1,42 +1,36 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
 using N.EntityFrameworkCore.Extensions.Extensions;
-using N.EntityFrameworkCore.Extensions.Util;
 
-namespace N.EntityFrameworkCore.Extensions.Sql
+namespace N.EntityFrameworkCore.Extensions.Sql;
+
+internal class SqlStatement
 {
-    internal class SqlStatement
+    internal string Sql => ToSql();
+    List<SqlPart> SqlParts { get; }
+    SqlStatement()
     {
-        internal string Sql => ToSql();
-        List<SqlPart> SqlParts { get; }
-        SqlStatement()
-        {
             SqlParts = new List<SqlPart>();
         }
-        //static SqlStatement CreateSelectInto(TableMapping souceTableMapping, string targetTable, string[] columns)
-        //{
-        //    foreach(var property in souceTableMapping.Properties)
-        //    {
-        //        var t = property;
-        //    }
-        //    var statement = new SqlStatement();
-        //    statement.CreatePart(SqlKeyword.Select, SqlPartExpression.Columns("column1","column2"));
-        //    statement.CreatePart(SqlKeyword.Into, SqlPartExpression.Table(targetTable));
-        //    statement.CreatePart(SqlKeyword.From, SqlPartExpression.Table("Table"));
-        //    return null;
-        //}
-        internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null)
-        {
+    //static SqlStatement CreateSelectInto(TableMapping souceTableMapping, string targetTable, string[] columns)
+    //{
+    //    foreach(var property in souceTableMapping.Properties)
+    //    {
+    //        var t = property;
+    //    }
+    //    var statement = new SqlStatement();
+    //    statement.CreatePart(SqlKeyword.Select, SqlPartExpression.Columns("column1","column2"));
+    //    statement.CreatePart(SqlKeyword.Into, SqlPartExpression.Table(targetTable));
+    //    statement.CreatePart(SqlKeyword.From, SqlPartExpression.Table("Table"));
+    //    return null;
+    //}
+    internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null)
+    {
             SqlParts.Add(new SqlPart(keyword, expression));
         }
-        internal void SetIdentityInsert(string tableName, bool enable)
-        {
+    internal void SetIdentityInsert(string tableName, bool enable)
+    {
             this.CreatePart(SqlKeyword.Set);
             this.CreatePart(SqlKeyword.Identity_Insert, SqlExpression.Table(tableName));
             if (enable)
@@ -45,15 +39,15 @@ namespace N.EntityFrameworkCore.Extensions.Sql
                 this.CreatePart(SqlKeyword.Off);
             this.CreatePart(SqlKeyword.Semicolon);
         }
-        //internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string mergeOnCondition,
-        //    IEnumerable<string> insertColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched = false)
-        //{
+    //internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string mergeOnCondition,
+    //    IEnumerable<string> insertColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched = false)
+    //{
 
-        //}
-        internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition,
-            IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns,
-            bool deleteIfNotMatched = false, bool hasIdentityColumn = false)
-        {
+    //}
+    internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition,
+        IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns,
+        bool deleteIfNotMatched = false, bool hasIdentityColumn = false)
+    {
             var statement = new SqlStatement();
             if (hasIdentityColumn)
                 statement.SetIdentityInsert(targetTableName, true);
@@ -93,8 +87,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             return statement;
         }
 
-        private string ToSql()
-        {
+    private string ToSql()
+    {
             StringBuilder sbSql = new StringBuilder();
             foreach (var part in SqlParts)
             {
@@ -132,5 +126,4 @@ namespace N.EntityFrameworkCore.Extensions.Sql
             //}
             return sbSql.ToString();
         }
-    }
 }

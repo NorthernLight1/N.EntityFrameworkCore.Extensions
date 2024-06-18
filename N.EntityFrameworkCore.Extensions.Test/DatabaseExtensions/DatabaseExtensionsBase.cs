@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 
-namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
+namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions;
+
+public class DatabaseExtensionsBase
 {
-    public class DatabaseExtensionsBase
+    protected TestDbContext SetupDbContext(bool populateData)
     {
-        protected TestDbContext SetupDbContext(bool populateData)
-        {
             TestDbContext dbContext = new TestDbContext();
             dbContext.Database.EnsureCreated();
             dbContext.Orders.Truncate();
@@ -58,5 +55,4 @@ namespace N.EntityFrameworkCore.Extensions.Test.DatabaseExtensions
             }
             return dbContext;
         }
-    }
 }
