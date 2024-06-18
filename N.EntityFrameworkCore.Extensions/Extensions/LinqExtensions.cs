@@ -209,8 +209,11 @@ namespace N.EntityFrameworkCore.Extensions
                 stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
                 i++;
             }
+            stringBuilder.Replace("== null", "IS NULL");
+            stringBuilder.Replace("!= null", "IS NOT NULL");
             stringBuilder.Replace("&&", "AND");
             stringBuilder.Replace("==", "=");
+            stringBuilder.Replace("||", "OR");
             stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
             stringBuilder.Replace("(System.Int32)", "");
             return stringBuilder.ToString();
