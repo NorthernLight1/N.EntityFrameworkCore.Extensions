@@ -198,7 +198,10 @@ namespace N.EntityFrameworkCore.Extensions
         }
         internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
         {
-            var stringBuilder = new StringBuilder((string)expression.Body.GetPrivateFieldValue("DebugView"));
+            var expressionBody = (string)expression.Body.GetPrivateFieldValue("DebugView");
+            expressionBody = expressionBody.Replace(System.Environment.NewLine, " ");
+            var stringBuilder = new StringBuilder(expressionBody);
+
             int i = 0;
             foreach (var expressionParam in expression.Parameters)
             {
