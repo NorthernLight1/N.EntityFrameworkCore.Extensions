@@ -381,7 +381,7 @@ public class BulkInsert : DbContextExtensionsBase
         }
         int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
         int rowsInserted = dbContext.BulkInsert(orders);
-        int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.DbAddedDateTime > nowDateTime).Count();
+        int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.DbAddedDateTime > nowDateTime && o.DbActive).Count();
 
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");

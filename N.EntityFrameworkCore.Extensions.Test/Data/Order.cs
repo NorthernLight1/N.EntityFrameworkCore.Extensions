@@ -13,6 +13,7 @@ public class Order
     public DateTime AddedDateTime { get; set; }
     public DateTime? ModifiedDateTime { get; set; }
     public DateTimeOffset? ModifiedDateTimeOffset { get; set; }
+    public bool DbActive { get; set; }
     public DateTime DbAddedDateTime { get; set; }
     public DateTime DbModifiedDateTime { get; set; }
     public bool? Trigger { get; set; }
