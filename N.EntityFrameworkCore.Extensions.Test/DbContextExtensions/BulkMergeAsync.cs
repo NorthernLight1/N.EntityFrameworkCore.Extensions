@@ -11,6 +11,41 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions;
 public class BulkMergeAsync : DbContextExtensionsBase
 {
     [TestMethod]
+    public async Task With_Complex_Key()
+    {
+        var dbContext = SetupDbContext(true);
+        var products = dbContext.ProductsWithComplexKey.Where(o => o.Price == 1.25M).ToList();
+        int productsToAdd = 5000;
+        decimal updatedPrice = 5.25M;
+        var productsToUpdate = products.ToList();
+        foreach (var product in products)
+        {
+            product.Price = updatedPrice;
+        }
+        for (int i = 0; i < productsToAdd; i++)
+        {
+            products.Add(new ProductWithComplexKey { ExternalId = (20000 + i).ToString(), Price = 3.55M });
+        }
+        var result = await dbContext.BulkMergeAsync(products);
+        var allProducts = dbContext.ProductsWithComplexKey.ToList();
+        bool areAddedOrdersMerged = true;
+        bool areUpdatedOrdersMerged = true;
+        foreach (var product in allProducts)
+        {
+            if (productsToUpdate.Contains(product) && product.Price != updatedPrice)
+            {
+                areUpdatedOrdersMerged = false;
+                break;
+            }
+        }
+
+        Assert.IsTrue(result.RowsAffected == products.Count(), "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(result.RowsUpdated == productsToUpdate.Count, "The number of rows updated must match");
+        Assert.IsTrue(result.RowsInserted == productsToAdd, "The number of rows added must match");
+        Assert.IsTrue(areAddedOrdersMerged, "The orders that were added did not merge correctly");
+        Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
+    }
+    [TestMethod]
     public async Task With_Default_Options()
     {
         var dbContext = SetupDbContext(true);

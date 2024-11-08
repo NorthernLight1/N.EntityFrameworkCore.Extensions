@@ -32,9 +32,10 @@ public class TestDbContext : DbContext
         modelBuilder.Entity<ProductWithComplexKey>().HasKey(c => new { c.Key1 });
         modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key1").HasDefaultValueSql("newsequentialid()");
         modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key2").HasDefaultValueSql("newsequentialid()");
-        modelBuilder.Entity<ProductWithComplexKey>().Property<Guid>("Key3").HasDefaultValueSql("newsequentialid()");
+        modelBuilder.Entity<ProductWithComplexKey>().HasKey(p => new { p.Key3, p.Key4  });
         modelBuilder.Entity<Order>().Property<DateTime>("DbAddedDateTime").HasDefaultValueSql("getdate()");
         modelBuilder.Entity<Order>().Property<DateTime>("DbModifiedDateTime").HasComputedColumnSql("getdate()");
+        modelBuilder.Entity<Order>().Property<bool>(p => p.DbActive).HasDefaultValueSql("((1))");
         modelBuilder.Entity<Order>().Property(p => p.Status).HasConversion<string>();
         modelBuilder.Entity<TpcPerson>().UseTpcMappingStrategy();
         modelBuilder.Entity<TpcCustomer>().ToTable("TpcCustomer");

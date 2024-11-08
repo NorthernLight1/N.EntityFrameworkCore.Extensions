@@ -98,7 +98,7 @@ internal static class CommonUtil<T>
                 int i = 1;
                 foreach (var storeGeneratedColumnName in storeGeneratedColumnNames)
                 {
-                    joinConditionSql += (i > 1 ? "AND" : "") + string.Format("{0}.{2}={1}.{2}", sourceTableName, targetTableName, storeGeneratedColumnName);
+                    joinConditionSql += (i > 1 ? " AND " : "") + string.Format("{0}.{2}={1}.{2}", sourceTableName, targetTableName, storeGeneratedColumnName);
                     i++;
                 }
             }
