@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 using N.EntityFrameworkCore.Extensions.Test.Data.Enums;
@@ -28,10 +29,12 @@ public class DbContextExtensionsBase
     protected TestDbContext SetupDbContext(bool populateData, PopulateDataMode mode = PopulateDataMode.Normal)
     {
         TestDbContext dbContext = new TestDbContext();
+        dbContext.Database.Migrate();
         dbContext.Orders.Truncate();
         dbContext.Products.Truncate();
         dbContext.ProductCategories.Clear();
         dbContext.ProductsWithCustomSchema.Truncate();
+        dbContext.ProductsWithTrigger.Truncate();
         dbContext.Database.ClearTable("TpcCustomer");
         dbContext.Database.ClearTable("TpcVendor");
         dbContext.TphPeople.Truncate();

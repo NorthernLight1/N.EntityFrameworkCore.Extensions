@@ -370,6 +370,22 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public void With_Trigger()
+    {
+        var dbContext = SetupDbContext(false);
+        var products = new List<ProductWithTrigger>();
+        for (int i = 1; i < 1000; i++)
+        {
+            products.Add(new ProductWithTrigger { Id = i.ToString(), Price = 1.57M, StatusString="InStock" });
+        }
+        int rowsInserted = dbContext.BulkInsert(products, options => { 
+            options.AutoMapOutput = false; 
+            options.BulkCopyOptions = SqlBulkCopyOptions.FireTriggers;  
+        });
+
+        Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of products");
+    }
+    [TestMethod]
     public void With_ValueGenerated_Default()
     {
         var dbContext = SetupDbContext(false);

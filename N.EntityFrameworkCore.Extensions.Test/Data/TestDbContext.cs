@@ -11,6 +11,7 @@ public class TestDbContext : DbContext
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
     public virtual DbSet<ProductWithCustomSchema> ProductsWithCustomSchema { get; set; }
     public virtual DbSet<ProductWithComplexKey> ProductsWithComplexKey { get; set; }
+    public virtual DbSet<ProductWithTrigger> ProductsWithTrigger { get; set; }
     public virtual DbSet<Order> Orders { get; set; }
     public virtual DbSet<TpcPerson> TpcPeople { get; set; }
     public virtual DbSet<TphPerson> TphPeople { get; set; }
@@ -49,6 +50,5 @@ public class TestDbContext : DbContext
             t.ComplexProperty(p => p.Position).IsRequired();
             t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x));
         });
-
     }
 }
