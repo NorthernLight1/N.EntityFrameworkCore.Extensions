@@ -63,6 +63,7 @@ public class BulkSaveChangesAsync : DbContextExtensionsBase
         int rowsAffected = await dbContext.BulkSaveChangesAsync();
         int newTotalCount = dbContext.Orders.Where(o => o.Price == 10.57M).Count();
 
+        Assert.IsTrue(ordersToAdd.Where(o => o.Id <= 0).Count() == 0, "Primary key should have been updated for all entities");
         Assert.IsTrue(rowsAffected == ordersToAdd.Count, "The number of rows affected must equal the sum of entities added, deleted and updated");
         Assert.IsTrue(oldTotalCount + ordersToAdd.Count == newTotalCount, "The number of orders to add did not match what was expected.");
     }

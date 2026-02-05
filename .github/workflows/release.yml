@@ -1,0 +1,80 @@
+# Manual workflow: publish to NuGet and create a GitHub release with source zip.
+# Run from Actions tab → "Publish and Release" → "Run workflow".
+# Required secrets: NUGET_API_KEY (https://www.nuget.org/account/apikeys)
+
+name: Publish and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 8.0.0.x). Tag will be v{version}.'
+        required: true
+        type: string
+      nuget_publish:
+        description: 'Publish package to NuGet.org'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NUGET_SOURCE: 'https://api.nuget.org/v3/index.json'
+
+jobs:
+  publish-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # create tag and release, upload assets
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+      - name: Pack (ensure .nupkg output)
+        run: dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out
+        id: pack
+
+      - name: Publish to NuGet
+        if: ${{ inputs.nuget_publish }}
+        run: dotnet nuget push .\out\*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+      - name: Create source zip
+        run: |
+          $tag = "v${{ inputs.version }}"
+          git archive --format=zip --output=source-$tag.zip HEAD
+          echo "SOURCE_ZIP=source-$tag.zip" >> $env:GITHUB_ENV
+          echo "ARCHIVE_NAME=source-$tag.zip" >> $env:GITHUB_ENV
+
+      - name: Get .nupkg path
+        id: nupkg
+        run: |
+          $nupkg = Get-ChildItem -Path out -Filter "*.nupkg" | Select-Object -First 1
+          echo "path=$($nupkg.FullName)" >> $env:GITHUB_OUTPUT
+          echo "name=$($nupkg.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Release v${{ inputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ env.ARCHIVE_NAME }}
+            ${{ steps.nupkg.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
