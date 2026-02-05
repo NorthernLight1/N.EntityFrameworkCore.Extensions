@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
@@ -247,8 +248,12 @@ public static class DbContextExtensions
             {
                 foreach (var property in properties)
                 {
-                    if (!property.IsPrimaryKey() ||
-                        (property.IsPrimaryKey() && updateEntry.EntityState == EntityState.Detached))
+                    if((updateEntry.EntityState == EntityState.Added && 
+                        (property.ValueGenerated == ValueGenerated.OnAdd|| property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
+                      (updateEntry.EntityState == EntityState.Modified && 
+                        (property.ValueGenerated == ValueGenerated.OnUpdate || property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
+                      updateEntry.EntityState == EntityState.Detached
+                    )
                     {
                         try
                         {
