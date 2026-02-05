@@ -2,11 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Version>8.0.0.12</Version>
+    <Version>8.0.0.13</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/</PackageProjectUrl>
     <Authors>Northern25</Authors>
-    <Copyright>Copyright © 2024</Copyright>
+    <Copyright>Copyright © 2026</Copyright>
     <Company />
     <Description>N.EntityFrameworkCore.Extensions extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.
 
