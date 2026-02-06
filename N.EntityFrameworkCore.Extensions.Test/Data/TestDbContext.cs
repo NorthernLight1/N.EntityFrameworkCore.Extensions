@@ -13,6 +13,7 @@ public class TestDbContext : DbContext
     public virtual DbSet<ProductWithComplexKey> ProductsWithComplexKey { get; set; }
     public virtual DbSet<ProductWithTrigger> ProductsWithTrigger { get; set; }
     public virtual DbSet<Order> Orders { get; set; }
+    public virtual DbSet<OrderWithComplexType> OrdersWithComplexType { get; set; }
     public virtual DbSet<TpcPerson> TpcPeople { get; set; }
     public virtual DbSet<TphPerson> TphPeople { get; set; }
     public virtual DbSet<TphCustomer> TphCustomers { get; set; }
@@ -38,6 +39,11 @@ public class TestDbContext : DbContext
         modelBuilder.Entity<Order>().Property<DateTime>("DbModifiedDateTime").HasComputedColumnSql("getdate()");
         modelBuilder.Entity<Order>().Property<bool>(p => p.DbActive).HasDefaultValueSql("((1))");
         modelBuilder.Entity<Order>().Property(p => p.Status).HasConversion<string>();
+        modelBuilder.Entity<OrderWithComplexType>(b =>
+        {
+            b.ComplexProperty(e => e.BillingAddress);
+            b.ComplexProperty(e => e.ShippingAddress);
+        });
         modelBuilder.Entity<TpcPerson>().UseTpcMappingStrategy();
         modelBuilder.Entity<TpcCustomer>().ToTable("TpcCustomer");
         modelBuilder.Entity<TpcVendor>().ToTable("TpcVendor");
