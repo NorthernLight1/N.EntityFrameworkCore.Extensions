@@ -29,6 +29,38 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public void With_Complex_Type()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = new List<OrderWithComplexType>();
+        for (int i = 1; i < 1000; i++)
+        {
+            orders.Add(new OrderWithComplexType {
+                Id = i,
+                ShippingAddress = new Address
+                {
+                    Line1 = $"123 Main St, {i}",
+                    City = "Atlanta",
+                    Country = "USA",
+                    PostCode = "30303"
+                },
+                BillingAddress = new Address
+                {
+                    Line1 = $"456 Oak St, {i}",
+                    City = "Atlanta",
+                    Country = "USA",
+                    PostCode = "30303"
+                }
+            });
+        }
+        int oldTotal = dbContext.OrdersWithComplexType.Count();
+        int rowsInserted = dbContext.BulkInsert(orders);
+        int newTotal = dbContext.OrdersWithComplexType.Count();
+
+        Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
     public void With_Default_Options()
     {
         var dbContext = SetupDbContext(false);
