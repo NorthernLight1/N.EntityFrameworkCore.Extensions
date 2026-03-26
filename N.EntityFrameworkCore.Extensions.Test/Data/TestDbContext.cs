@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using N.EntityFrameworkCore.Extensions.Test.Common;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data;
@@ -27,6 +28,9 @@ public class TestDbContext : DbContext
         optionsBuilder.UseSqlServer(Config.GetConnectionString("TestDatabase"));
         optionsBuilder.SetupEfCoreExtensions();
         optionsBuilder.UseLazyLoadingProxies();
+        // Tell EF Core to allow mismatched models for this test run
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

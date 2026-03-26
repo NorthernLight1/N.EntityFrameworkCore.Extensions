@@ -34,7 +34,7 @@ class SqlBuilder
                 string keyword = StartsWithString(sqlText.Substring(i, maxLenToSearch), keywords, StringComparison.OrdinalIgnoreCase);
                 bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText.Substring(i - 2, 2) == "\r\n") : true;
                 //Process Sql clause
-                if (keyword != null && curClause != keyword && isWordStart)
+                if(keyword != null && isWordStart)
                 {
                     string inputText = sqlText.Substring(curClauseIndex, i - curClauseIndex);
                     if (!string.IsNullOrEmpty(curClause))
@@ -78,6 +78,10 @@ class SqlBuilder
             else if (value.StartsWith("N'"))
             {
                 return value.Substring(2, value.Length - 3);
+            }
+            else if (value.StartsWith("CAST("))
+            {
+                return value.Substring(5, value.Length - 5);
             }
             else
             {
