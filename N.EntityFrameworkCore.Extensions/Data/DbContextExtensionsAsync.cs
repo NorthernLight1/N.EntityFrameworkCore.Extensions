@@ -41,7 +41,7 @@ public static class DbContextExtensionsAsync
             {
                 string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                 string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
-                string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
+                string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, ["s"])
                     : tableMapping.GetPrimaryKeyColumns().ToArray();
 
                 if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
@@ -114,7 +114,7 @@ public static class DbContextExtensionsAsync
     }
     public static async Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
-        return await context.BulkInsertAsync<T>(entities, new BulkInsertOptions<T> { }, cancellationToken);
+        return await context.BulkInsertAsync<T>(entities, new BulkInsertOptions<T>(), cancellationToken);
     }
     public static async Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction, CancellationToken cancellationToken = default)
     {
@@ -302,7 +302,7 @@ public static class DbContextExtensionsAsync
             //Read data
             while (await reader.ReadAsync(cancellationToken))
             {
-                Object[] values = new Object[reader.FieldCount];
+                object[] values = new object[reader.FieldCount];
                 reader.GetValues(values);
                 results.Add(values);
             }
@@ -527,7 +527,7 @@ public static class DbContextExtensionsAsync
             //Write data rows to file
             while (await reader.ReadAsync(cancellationToken))
             {
-                Object[] values = new Object[reader.FieldCount];
+                object[] values = new object[reader.FieldCount];
                 reader.GetValues(values);
                 for (int i = 0; i < values.Length; i++)
                 {

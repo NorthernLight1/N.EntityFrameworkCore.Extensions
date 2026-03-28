@@ -10,6 +10,29 @@ namespace N.EntityFrameworkCore.Extensions;
 
 internal static class LinqExtensions
 {
+    public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
+    {
+        if (expression == null)
+        {
+            return [];
+        }
+        else if (expression.Body is MemberExpression propertyExpression)
+        {
+            return [propertyExpression.Member.Name];
+        }
+        else if (expression.Body is NewExpression newExpression)
+        {
+            return newExpression.Members.Select(o => o.Name).ToList();
+        }
+        else if ((expression.Body is UnaryExpression unaryExpression) && (unaryExpression.Operand.GetPrivateFieldValue("Member") is PropertyInfo propertyInfo))
+        {
+            return [propertyInfo.Name];
+        }
+        else
+        {
+            throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
+        }
+    }
     internal static string ToSql(this ExpressionType expressionType) => expressionType switch
     {
         ExpressionType.AndAlso => "AND",
@@ -33,6 +56,25 @@ internal static class LinqExtensions
         {
             throw new NotSupportedException();
         }
+    }
+    internal static string ToSql(this Expression expression)
+    {
+        var sb = new StringBuilder();
+        if (expression is BinaryExpression binaryExpression)
+        {
+            sb.Append(binaryExpression.Left.ToSql());
+            sb.Append($" {expression.NodeType.ToSql()} ");
+            sb.Append(binaryExpression.Right.ToSql());
+        }
+        else if (expression is MemberExpression memberExpression)
+        {
+            return $"{memberExpression}";
+        }
+        else if (expression is UnaryExpression unaryExpression)
+        {
+            return $"{unaryExpression.Operand}";
+        }
+        return sb.ToString();
     }
     internal static string GetExpressionValueAsString(Expression expression)
     {
@@ -63,17 +105,11 @@ internal static class LinqExtensions
             {
                 argValues.Add(GetExpressionValueAsString(argument));
             }
-            string methodFormat;
-            switch (methodCallExpression.Method.Name)
+            return methodCallExpression.Method.Name switch
             {
-                case "ToString":
-                    methodFormat = $"CONVERT(VARCHAR,{argValues[0]})";
-                    break;
-                default:
-                    methodFormat = $"{methodCallExpression.Method.Name}({string.Join(",", argValues)})";
-                    break;
-            }
-            return methodFormat;
+                "ToString" => $"CONVERT(VARCHAR,{argValues[0]})",
+                _ => $"{methodCallExpression.Method.Name}({string.Join(",", argValues)})"
+            };
         }
         else
         {
@@ -85,52 +121,6 @@ internal static class LinqExtensions
             return $"({leftValue} {joinValue} {rightValue})";
         }
     }
-
-    private static string ConvertToSqlValue(object value)
-    {
-        if (value == null)
-            return "NULL";
-        if (value is string str)
-            return $"'{str.Replace("'", "''")}'";
-        if (value is Guid guid)
-            return $"'{guid}'";
-        if (value is bool b)
-            return b ? "1" : "0";
-        if (value is DateTime dt)
-            return $"'{dt:yyyy-MM-dd'T'HH:mm:ss.fffffff}'"; // Convert to ISO-8601
-        if (value is DateTimeOffset dto)
-            return $"'{dto:yyyy-MM-dd'T'HH:mm:ss.fffffffzzzz}'"; // Convert to ISO-8601
-        var valueType = value.GetType();
-        if (valueType.IsEnum)
-            return Convert.ToString((int)value);
-        if (!valueType.IsClass)
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
-
-        throw new NotImplementedException("Unhandled data type.");
-    }
-    public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
-    {
-        if (expression == null)
-        {
-            return [];
-        }
-        else if (expression.Body is MemberExpression propertyExpression)
-        {
-            return [propertyExpression.Member.Name];
-        }
-        else if (expression.Body is NewExpression newExpression)
-        {
-            return newExpression.Members.Select(o => o.Name).ToList();
-        }
-        else if ((expression.Body is UnaryExpression unaryExpression) && (unaryExpression.Operand.GetPrivateFieldValue("Member") is PropertyInfo propertyInfo))
-        {
-            return [propertyInfo.Name];
-        }
-        else
-        {
-            throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
-        }
-    }
     internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
     {
         var sql = ToSqlString(expression.Body);
@@ -139,53 +129,6 @@ internal static class LinqExtensions
             sql = sql.Replace($"${expression.Parameters[i].Name!}.", $"{parameters[i]}.");
 
         return sql;
-    }
-
-    static string ToSqlString(Expression expression, string sql = null)
-    {
-        sql ??= "";
-        if (expression is not BinaryExpression b)
-            return sql;
-
-        var internalSql = "";
-        if (b.Left is MemberExpression mel)
-            internalSql += $"${mel} = ";
-        if (b.Right is MemberExpression mer)
-            internalSql += $"${mer}";
-
-        if (b.Left is UnaryExpression ubl)
-            internalSql += $"${ubl.Operand} = ";
-        if (b.Right is UnaryExpression ubr)
-            internalSql += $"${ubr.Operand}";
-
-        if (!string.IsNullOrWhiteSpace(internalSql))
-            return internalSql;
-
-        var left = ToSqlString(b.Left, sql);
-        if (string.IsNullOrWhiteSpace(left))
-            return sql;
-
-        var right = ToSqlString(b.Right, sql);
-        return left + " AND " + right;
-    }
-    internal static string ToSql(this Expression expression)
-    {
-        var sb = new StringBuilder();
-        if (expression is BinaryExpression binaryExpression)
-        {
-            sb.Append(binaryExpression.Left.ToSql());
-            sb.Append($" {expression.NodeType.ToSql()} ");
-            sb.Append(binaryExpression.Right.ToSql());
-        }
-        else if (expression is MemberExpression memberExpression)
-        {
-            return $"{memberExpression}";
-        }
-        else if (expression is UnaryExpression unaryExpression)
-        {
-            return $"{unaryExpression.Operand}";
-        }
-        return sb.ToString();
     }
     internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
     {
@@ -220,5 +163,54 @@ internal static class LinqExtensions
             setValues.Add($"[{binding.Member.Name}]={expValue}");
         }
         return string.Join(",", setValues);
+    }
+    private static string ToSqlString(Expression expression, string sql = null)
+    {
+        sql ??= "";
+        if (expression is not BinaryExpression b)
+            return sql;
+
+        var sb = new StringBuilder();
+        if (b.Left is MemberExpression mel)
+            sb.Append($"${mel} = ");
+        if (b.Right is MemberExpression mer)
+            sb.Append($"${mer}");
+
+        if (b.Left is UnaryExpression ubl)
+            sb.Append($"${ubl.Operand} = ");
+        if (b.Right is UnaryExpression ubr)
+            sb.Append($"${ubr.Operand}");
+
+        if (sb.Length > 0)
+            return sb.ToString();
+
+        var left = ToSqlString(b.Left, sql);
+        if (string.IsNullOrWhiteSpace(left))
+            return sql;
+
+        var right = ToSqlString(b.Right, sql);
+        return $"{left} AND {right}";
+    }
+    private static string ConvertToSqlValue(object value)
+    {
+        if (value == null)
+            return "NULL";
+        if (value is string str)
+            return $"'{str.Replace("'", "''")}'";
+        if (value is Guid guid)
+            return $"'{guid}'";
+        if (value is bool b)
+            return b ? "1" : "0";
+        if (value is DateTime dt)
+            return $"'{dt:yyyy-MM-ddTHH:mm:ss.fffffff}'"; // Convert to ISO-8601
+        if (value is DateTimeOffset dto)
+            return $"'{dto:yyyy-MM-ddTHH:mm:ss.fffffffzzzz}'"; // Convert to ISO-8601
+        var valueType = value.GetType();
+        if (valueType.IsEnum)
+            return Convert.ToString((int)value);
+        if (!valueType.IsClass)
+            return Convert.ToString(value, CultureInfo.InvariantCulture);
+
+        throw new NotImplementedException("Unhandled data type.");
     }
 }

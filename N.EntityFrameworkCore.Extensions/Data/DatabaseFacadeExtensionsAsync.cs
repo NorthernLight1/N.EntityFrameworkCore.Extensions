@@ -17,6 +17,14 @@ public static class DatabaseFacadeExtensionsAsync
     {
         return await database.ExecuteSqlRawAsync(string.Format("DELETE FROM {0}", tableName), cancellationToken);
     }
+    public static async Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)
+    {
+        bool truncateTable = !ifExists || database.TableExists(tableName);
+        if (truncateTable)
+        {
+            await database.ExecuteSqlRawAsync(string.Format("TRUNCATE TABLE {0}", tableName), cancellationToken);
+        }
+    }
     internal static async Task<int> CloneTableAsync(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
     {
         return await database.CloneTableAsync([sourceTable], destinationTable, columnNames, internalIdColumnName, cancellationToken);
@@ -26,14 +34,6 @@ public static class DatabaseFacadeExtensionsAsync
         string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
         columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
         return await database.ExecuteSqlRawAsync(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)), cancellationToken);
-    }
-    public static async Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)
-    {
-        bool truncateTable = !ifExists || database.TableExists(tableName);
-        if (truncateTable)
-        {
-            await database.ExecuteSqlRawAsync(string.Format("TRUNCATE TABLE {0}", tableName), cancellationToken);
-        }
     }
     internal static async Task<int> ExecuteSqlAsync(this DatabaseFacade database, string sql, int? commandTimeout = null, CancellationToken cancellationToken = default)
     {

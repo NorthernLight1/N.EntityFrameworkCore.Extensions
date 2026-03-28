@@ -53,7 +53,7 @@ public static class DbContextExtensions
             {
                 string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
                 string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
-                string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
+                string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, ["s"])
                     : tableMapping.GetPrimaryKeyColumns().ToArray();
 
                 if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
@@ -98,7 +98,7 @@ public static class DbContextExtensions
             {
                 stagingTableName = CommonUtil.GetStagingTableName(tableMapping, true, dbConnection);
                 string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
-                string[] keyColumnNames = options.JoinOnCondition != null ? CommonUtil<T>.GetColumns(options.JoinOnCondition, new[] { "s" })
+                string[] keyColumnNames = options.JoinOnCondition != null ? CommonUtil<T>.GetColumns(options.JoinOnCondition, ["s"])
                     : tableMapping.GetPrimaryKeyColumns().ToArray();
                 IEnumerable<string> columnNames = CommonUtil.FilterColumns<T>(tableMapping.GetColumns(true), keyColumnNames, options.InputColumns, options.IgnoreColumns);
                 IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns("t", columnNames);
@@ -203,7 +203,7 @@ public static class DbContextExtensions
     }
     public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
     {
-        return context.BulkInsert<T>(entities, new BulkInsertOptions<T> { });
+        return context.BulkInsert<T>(entities, new BulkInsertOptions<T>());
     }
     public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, Action<BulkInsertOptions<T>> optionsAction)
     {
@@ -447,7 +447,7 @@ public static class DbContextExtensions
             //Read data
             while (reader.Read())
             {
-                Object[] values = new Object[reader.FieldCount];
+                object[] values = new object[reader.FieldCount];
                 reader.GetValues(values);
                 results.Add(values);
             }
@@ -652,7 +652,7 @@ public static class DbContextExtensions
             //Write data rows to file
             while (reader.Read())
             {
-                Object[] values = new Object[reader.FieldCount];
+                object[] values = new object[reader.FieldCount];
                 reader.GetValues(values);
                 for (int i = 0; i < values.Length; i++)
                 {
