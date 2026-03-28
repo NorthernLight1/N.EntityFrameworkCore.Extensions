@@ -12,7 +12,7 @@ public class SqlQuery
     public string SqlText { get; private set; }
     public object[] Parameters { get; private set; }
 
-    public SqlQuery(DatabaseFacade database, String sqlText, params object[] parameters)
+    public SqlQuery(DatabaseFacade database, string sqlText, params object[] parameters)
     {
         this.database = database;
         SqlText = sqlText;

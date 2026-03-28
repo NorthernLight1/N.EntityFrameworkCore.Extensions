@@ -17,12 +17,8 @@ public class BulkMergeOptions<T> : BulkOptions
     {
         AutoMapOutput = true;
     }
-    public List<string> GetIgnoreColumnsOnInsert()
-    {
-        return IgnoreColumnsOnInsert == null ? new List<string>() : IgnoreColumnsOnInsert.Body.Type.GetProperties().Select(o => o.Name).ToList();
-    }
-    public List<string> GetIgnoreColumnsOnUpdate()
-    {
-        return IgnoreColumnsOnUpdate == null ? new List<string>() : IgnoreColumnsOnUpdate.Body.Type.GetProperties().Select(o => o.Name).ToList();
-    }
+    public List<string> GetIgnoreColumnsOnInsert() =>
+        IgnoreColumnsOnInsert?.Body.Type.GetProperties().Select(o => o.Name).ToList() ?? [];
+    public List<string> GetIgnoreColumnsOnUpdate() =>
+        IgnoreColumnsOnUpdate?.Body.Type.GetProperties().Select(o => o.Name).ToList() ?? [];
 }

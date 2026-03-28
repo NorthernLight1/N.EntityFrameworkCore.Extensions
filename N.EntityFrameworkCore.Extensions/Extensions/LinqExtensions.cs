@@ -8,7 +8,7 @@ using System.Text;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-static class LinqExtensions
+internal static class LinqExtensions
 {
     static Dictionary<ExpressionType, string> sqlExpressionTypes = new()
     {

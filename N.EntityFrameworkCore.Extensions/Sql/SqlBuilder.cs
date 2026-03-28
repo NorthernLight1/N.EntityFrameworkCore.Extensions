@@ -7,7 +7,7 @@ using Microsoft.Data.SqlClient;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
-class SqlBuilder
+internal class SqlBuilder
 {
     private static readonly string[] keywords = { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
     public string Sql => ToString();
@@ -104,7 +104,7 @@ class SqlBuilder
         return value;
     }
     public static SqlBuilder Parse(string sql) => new SqlBuilder(sql);
-    public String GetTableAlias()
+    public string GetTableAlias()
     {
         var sqlFromClause = Clauses.First(o => o.Name == "FROM");
         var startIndex = sqlFromClause.InputText.LastIndexOf(" AS ");

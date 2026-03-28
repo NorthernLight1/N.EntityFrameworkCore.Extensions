@@ -541,7 +541,7 @@ public static class DbContextExtensions
         }
         return rowAffected;
     }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath) where T : class
     {
         return QueryToCsvFile<T>(queryable, filePath, new QueryToFileOptions());
     }
@@ -549,7 +549,7 @@ public static class DbContextExtensions
     {
         return QueryToCsvFile<T>(queryable, stream, new QueryToFileOptions());
     }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath, Action<QueryToFileOptions> optionsAction) where T : class
     {
         return QueryToCsvFile<T>(queryable, filePath, optionsAction.Build());
     }
@@ -557,7 +557,7 @@ public static class DbContextExtensions
     {
         return QueryToCsvFile<T>(queryable, stream, optionsAction.Build());
     }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath, QueryToFileOptions options) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options) where T : class
     {
         var fileStream = File.Create(filePath);
         return QueryToCsvFile<T>(queryable, fileStream, options);

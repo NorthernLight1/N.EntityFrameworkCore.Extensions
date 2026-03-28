@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-class EfExtensionsCommand
+internal class EfExtensionsCommand
 {
     public EfExtensionsCommandType CommandType { get; set; }
     public string OldValue { get; set; }

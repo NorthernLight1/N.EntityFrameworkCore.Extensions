@@ -404,7 +404,7 @@ public static class DbContextExtensionsAsync
         }
         return rowAffected;
     }
-    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, String filePath, CancellationToken cancellationToken = default) where T : class
+    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, CancellationToken cancellationToken = default) where T : class
     {
         return await QueryToCsvFileAsync<T>(queryable, filePath, new QueryToFileOptions(), cancellationToken);
     }
@@ -412,7 +412,7 @@ public static class DbContextExtensionsAsync
     {
         return await QueryToCsvFileAsync<T>(queryable, stream, new QueryToFileOptions(), cancellationToken);
     }
-    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, String filePath, Action<QueryToFileOptions> optionsAction,
+    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, Action<QueryToFileOptions> optionsAction,
         CancellationToken cancellationToken = default) where T : class
     {
         return await QueryToCsvFileAsync<T>(queryable, filePath, optionsAction.Build(), cancellationToken);
@@ -422,7 +422,7 @@ public static class DbContextExtensionsAsync
     {
         return await QueryToCsvFileAsync<T>(queryable, stream, optionsAction.Build(), cancellationToken);
     }
-    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, String filePath, QueryToFileOptions options,
+    public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options,
         CancellationToken cancellationToken = default) where T : class
     {
         var fileStream = File.Create(filePath);

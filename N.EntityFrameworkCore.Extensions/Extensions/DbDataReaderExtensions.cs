@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace N.EntityFrameworkCore.Extensions.Extensions;
 
-static class DbDataReaderExtensions
+internal static class DbDataReaderExtensions
 {
     internal static T MapEntity<T>(this DbDataReader reader, DbContext dbContext, IProperty[] properties, Func<object, object>[] valuesFromProvider) where T : class, new()
     {
