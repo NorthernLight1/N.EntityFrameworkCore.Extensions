@@ -11,7 +11,7 @@ internal sealed class SqlExpression
     List<object> Items { get; set; }
     internal string Sql => ToSql();
     string Alias { get; }
-    public bool IsEmpty => Items.Count == 0;
+    internal bool IsEmpty => Items.Count == 0;
 
     SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
     {

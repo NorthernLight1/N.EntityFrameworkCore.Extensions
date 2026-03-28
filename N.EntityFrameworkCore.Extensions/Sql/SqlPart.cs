@@ -5,7 +5,7 @@ internal sealed class SqlPart
     internal SqlKeyword Keyword { get; }
     internal SqlExpression Expression { get; }
     internal bool IgnoreOutput => GetIgnoreOutput();
-    public SqlPart(SqlKeyword keyword, SqlExpression expression)
+    internal SqlPart(SqlKeyword keyword, SqlExpression expression)
     {
         Keyword = keyword;
         Expression = expression;

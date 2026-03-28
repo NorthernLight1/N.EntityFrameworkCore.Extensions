@@ -10,9 +10,9 @@ namespace N.EntityFrameworkCore.Extensions.Sql;
 internal sealed class SqlBuilder
 {
     private static readonly string[] keywords = ["DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY"];
-    public string Sql => ToString();
-    public List<SqlClause> Clauses { get; private set; }
-    public List<SqlParameter> Parameters { get; private set; }
+    internal string Sql => ToString();
+    internal List<SqlClause> Clauses { get; private set; }
+    internal List<SqlParameter> Parameters { get; private set; }
     private SqlBuilder(string sql)
     {
         Clauses = [];
@@ -20,17 +20,17 @@ internal sealed class SqlBuilder
         Initialize(sql);
     }
 
-    public string Count() =>
+    internal string Count() =>
         $"SELECT COUNT(*) FROM ({string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString()))}) s";
     public override string ToString() => string.Join("\r\n", Clauses.Select(o => o.ToString()));
-    public static SqlBuilder Parse(string sql) => new SqlBuilder(sql);
-    public string GetTableAlias()
+    internal static SqlBuilder Parse(string sql) => new SqlBuilder(sql);
+    internal string GetTableAlias()
     {
         var sqlFromClause = Clauses.First(o => o.Name == "FROM");
         var startIndex = sqlFromClause.InputText.LastIndexOf(" AS ");
         return startIndex > 0 ? sqlFromClause.InputText[(startIndex + 4)..] : "";
     }
-    public void ChangeToDelete()
+    internal void ChangeToDelete()
     {
         Validate();
         var sqlClause = Clauses.FirstOrDefault();
@@ -43,7 +43,7 @@ internal sealed class SqlBuilder
             sqlClause.InputText = sqlFromClause.InputText[aliasStartIndex..(aliasStartIndex + aliasLength)];
         }
     }
-    public void ChangeToUpdate(string updateExpression, string setExpression)
+    internal void ChangeToUpdate(string updateExpression, string setExpression)
     {
         Validate();
         var sqlClause = Clauses.FirstOrDefault();

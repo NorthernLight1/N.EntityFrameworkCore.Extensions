@@ -140,38 +140,6 @@ public static class DbContextExtensionsAsync
         }
         return rowsAffected;
     }
-    internal static async Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false, CancellationToken cancellationToken = default)
-    {
-        var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
-
-        var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions, transaction)
-        {
-            DestinationTableName = tableName,
-            BatchSize = options.BatchSize
-        };
-        if (options.CommandTimeout.HasValue)
-        {
-            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
-        }
-        foreach (var property in dataReader.TableMapping.Properties)
-        {
-            var columnName = dataReader.TableMapping.GetColumnName(property);
-            if (inputColumns == null || inputColumns.Contains(columnName))
-                sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
-        }
-        if (useInternalId)
-        {
-            sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
-        }
-        await sqlBulkCopy.WriteToServerAsync(dataReader, cancellationToken);
-
-        return new BulkInsertResult<T>
-        {
-            RowsAffected = sqlBulkCopy.RowsCopied,
-            EntityMap = dataReader.EntityMap
-        };
-    }
     public static async Task<BulkMergeResult<T>> BulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         return await BulkMergeAsync(context, entities, new BulkMergeOptions<T>(), cancellationToken);
@@ -232,27 +200,6 @@ public static class DbContextExtensionsAsync
     {
         return BulkSyncResult<T>.Map(await InternalBulkMergeAsync(context, entities, options, cancellationToken));
     }
-    private static async Task<BulkMergeResult<T>> InternalBulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
-    {
-        BulkMergeResult<T> bulkMergeResult;
-        using (var bulkOperation = new BulkOperation<T>(context, options))
-        {
-            try
-            {
-                bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
-                var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true, cancellationToken);
-                bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
-                    false, true, true, options.DeleteIfNotMatched, cancellationToken);
-                bulkOperation.DbTransactionContext.Commit();
-            }
-            catch (Exception)
-            {
-                bulkOperation.DbTransactionContext.Rollback();
-                throw;
-            }
-        }
-        return bulkMergeResult;
-    }
     public static async Task<int> BulkUpdateAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
         return await BulkUpdateAsync<T>(context, entities, new BulkUpdateOptions<T>(), cancellationToken);
@@ -280,41 +227,6 @@ public static class DbContextExtensionsAsync
             }
         }
         return rowsUpdated;
-    }
-    internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
-    {
-        List<object[]> results = [];
-        List<string> columns = [];
-        var command = new SqlCommand(sqlText, dbConnection, transaction);
-        if (options.CommandTimeout.HasValue)
-        {
-            command.CommandTimeout = options.CommandTimeout.Value;
-        }
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
-        try
-        {
-            while (await reader.ReadAsync(cancellationToken))
-            {
-                object[] values = new object[reader.FieldCount];
-                reader.GetValues(values);
-                results.Add(values);
-            }
-        }
-        finally
-        {
-            await reader.CloseAsync();
-        }
-
-        return new BulkQueryResult
-        {
-            Columns = columns,
-            Results = results,
-            RowsAffected = reader.RecordsAffected
-        };
     }
     public static async Task<int> DeleteFromQueryAsync<T>(this IQueryable<T> queryable, int? commandTimeout = null, CancellationToken cancellationToken = default) where T : class
     {
@@ -472,6 +384,94 @@ public static class DbContextExtensionsAsync
         var dbContext = dbSet.GetDbContext();
         var tableMapping = dbContext.GetTableMapping(typeof(T));
         await dbContext.Database.TruncateTableAsync(tableMapping.FullQualifedTableName, false, cancellationToken);
+    }
+    internal static async Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false, CancellationToken cancellationToken = default)
+    {
+        var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
+
+        var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions, transaction)
+        {
+            DestinationTableName = tableName,
+            BatchSize = options.BatchSize
+        };
+        if (options.CommandTimeout.HasValue)
+        {
+            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
+        }
+        foreach (var property in dataReader.TableMapping.Properties)
+        {
+            var columnName = dataReader.TableMapping.GetColumnName(property);
+            if (inputColumns == null || inputColumns.Contains(columnName))
+                sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
+        }
+        if (useInternalId)
+        {
+            sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
+        }
+        await sqlBulkCopy.WriteToServerAsync(dataReader, cancellationToken);
+
+        return new BulkInsertResult<T>
+        {
+            RowsAffected = sqlBulkCopy.RowsCopied,
+            EntityMap = dataReader.EntityMap
+        };
+    }
+    internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
+    {
+        List<object[]> results = [];
+        List<string> columns = [];
+        var command = new SqlCommand(sqlText, dbConnection, transaction);
+        if (options.CommandTimeout.HasValue)
+        {
+            command.CommandTimeout = options.CommandTimeout.Value;
+        }
+        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            columns.Add(reader.GetName(i));
+        }
+        try
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                object[] values = new object[reader.FieldCount];
+                reader.GetValues(values);
+                results.Add(values);
+            }
+        }
+        finally
+        {
+            await reader.CloseAsync();
+        }
+
+        return new BulkQueryResult
+        {
+            Columns = columns,
+            Results = results,
+            RowsAffected = reader.RecordsAffected
+        };
+    }
+    private static async Task<BulkMergeResult<T>> InternalBulkMergeAsync<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options, CancellationToken cancellationToken = default)
+    {
+        BulkMergeResult<T> bulkMergeResult;
+        using (var bulkOperation = new BulkOperation<T>(context, options))
+        {
+            try
+            {
+                bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
+                var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true, cancellationToken);
+                bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
+                    false, true, true, options.DeleteIfNotMatched, cancellationToken);
+                bulkOperation.DbTransactionContext.Commit();
+            }
+            catch (Exception)
+            {
+                bulkOperation.DbTransactionContext.Rollback();
+                throw;
+            }
+        }
+        return bulkMergeResult;
     }
     private static async Task<QueryToFileResult> InternalQueryToFileAsync<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options,
         CancellationToken cancellationToken = default) where T : class
