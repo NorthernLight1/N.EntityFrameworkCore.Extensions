@@ -62,7 +62,7 @@ dotnet add package N.EntityFrameworkCore.Extensions
 
 ## Setup
 
-Call `SetupEfCoreExtensions()` in your `DbContext.OnConfiguring` override to register the required interceptor:
+Call `SetupEfCoreExtensions()` in your `DbContext.OnConfiguring` override:
 
 ```csharp
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -72,6 +72,8 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         .SetupEfCoreExtensions();
 }
 ```
+
+This registers an EF Core `DbCommandInterceptor` that enables the `UsingTable()` extension method to redirect queries to a different physical table at execution time. It is required when you use `UsingTable()`; all other bulk operations work without it.
 
 ---
 
@@ -196,7 +198,7 @@ var result = await dbContext.BulkMergeAsync(products);
 
 ### BulkSync
 
-Synchronises the database table with the provided list. Entities not in the source list are deleted by default.
+Synchronizes the database table with the provided list. Entities not in the source list are deleted by default.
 
 ```csharp
 var products = new List<Product>();
