@@ -10,8 +10,5 @@ class SqlClause
         string cleanText = inputText.Replace("\r\n", "").Trim();
         return new SqlClause { Name = name, InputText = cleanText };
     }
-    public override string ToString()
-    {
-        return $"{Name} {InputText}";
-    }
+    public override string ToString() => $"{Name} {InputText}";
 }

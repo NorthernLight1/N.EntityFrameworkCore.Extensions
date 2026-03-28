@@ -13,10 +13,8 @@ internal class SqlStatement
     {
         SqlParts = new List<SqlPart>();
     }
-    internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null)
-    {
+    internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null) =>
         SqlParts.Add(new SqlPart(keyword, expression));
-    }
     internal void SetIdentityInsert(string tableName, bool enable)
     {
         CreatePart(SqlKeyword.Set);
@@ -93,7 +91,6 @@ internal class SqlStatement
                 sbSql.Append(part.Keyword.ToString().ToUpper());
                 sbSql.Append(" ");
                 bool useParenthese = part.Keyword == SqlKeyword.Insert || part.Keyword == SqlKeyword.Values;
-                string format = useParenthese ? "({0})" : "{0}";
 
                 if (part.Expression != null)
                 {

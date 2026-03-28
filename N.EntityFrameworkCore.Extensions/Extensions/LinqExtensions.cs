@@ -66,10 +66,10 @@ static class LinqExtensions
             switch (methodCallExpression.Method.Name)
             {
                 case "ToString":
-                    methodFormat = string.Format("CONVERT(VARCHAR,{0})", argValues[0]);
+                    methodFormat = $"CONVERT(VARCHAR,{argValues[0]})";
                     break;
                 default:
-                    methodFormat = string.Format("{0}({1})", methodCallExpression.Method.Name, string.Join(",", argValues));
+                    methodFormat = $"{methodCallExpression.Method.Name}({string.Join(",", argValues)})";
                     break;
             }
             return methodFormat;
@@ -81,7 +81,7 @@ static class LinqExtensions
             string rightValue = GetExpressionValueAsString(binaryExpression.Right);
             string joinValue = expression.NodeType.ToSql();
 
-            return string.Format("({0} {1} {2})", leftValue, joinValue, rightValue);
+            return $"({leftValue} {joinValue} {rightValue})";
         }
     }
 
@@ -221,8 +221,8 @@ static class LinqExtensions
         foreach (var binding in memberInitExpression.Bindings)
         {
             string expValue = binding.ToSql();
-            expValue = expValue.Replace(string.Format("{0}.", expression.Parameters.First().Name), "");
-            setValues.Add(string.Format("[{0}]={1}", binding.Member.Name, expValue));
+            expValue = expValue.Replace($"{expression.Parameters.First().Name}.", "");
+            setValues.Add($"[{binding.Member.Name}]={expValue}");
         }
         return string.Join(",", setValues);
     }

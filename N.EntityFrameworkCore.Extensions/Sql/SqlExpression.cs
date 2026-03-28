@@ -34,25 +34,17 @@ internal class SqlExpression
         Items.AddRange(items);
         Alias = alias;
     }
-    internal static SqlExpression Columns(IEnumerable<string> columns)
-    {
-        return new SqlExpression(SqlExpressionType.Columns, columns);
-    }
+    internal static SqlExpression Columns(IEnumerable<string> columns) =>
+        new SqlExpression(SqlExpressionType.Columns, columns);
 
-    internal static SqlExpression Set(IEnumerable<string> columns)
-    {
-        return new SqlExpression(SqlExpressionType.Set, columns);
-    }
+    internal static SqlExpression Set(IEnumerable<string> columns) =>
+        new SqlExpression(SqlExpressionType.Set, columns);
 
-    internal static SqlExpression String(string joinOnCondition)
-    {
-        return new SqlExpression(SqlExpressionType.String, joinOnCondition);
-    }
+    internal static SqlExpression String(string joinOnCondition) =>
+        new SqlExpression(SqlExpressionType.String, joinOnCondition);
 
-    internal static SqlExpression Table(string tableName, string alias = null)
-    {
-        return new SqlExpression(SqlExpressionType.Table, Util.CommonUtil.FormatTableName(tableName), alias);
-    }
+    internal static SqlExpression Table(string tableName, string alias = null) =>
+        new SqlExpression(SqlExpressionType.Table, Util.CommonUtil.FormatTableName(tableName), alias);
 
     private string ToSql()
     {

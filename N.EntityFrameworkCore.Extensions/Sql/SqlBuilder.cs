@@ -86,14 +86,9 @@ class SqlBuilder
         }
     }
 
-    public string Count()
-    {
-        return $"SELECT COUNT(*) FROM ({string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString()))}) s";
-    }
-    public override string ToString()
-    {
-        return string.Join("\r\n", Clauses.Select(o => o.ToString()));
-    }
+    public string Count() =>
+        $"SELECT COUNT(*) FROM ({string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString()))}) s";
+    public override string ToString() => string.Join("\r\n", Clauses.Select(o => o.ToString()));
     private static string StartsWithString(string textToSearch, IEnumerable<string> valuesToFind, StringComparison stringComparison)
     {
         string value = null;
@@ -108,10 +103,7 @@ class SqlBuilder
 
         return value;
     }
-    public static SqlBuilder Parse(string sql)
-    {
-        return new SqlBuilder(sql);
-    }
+    public static SqlBuilder Parse(string sql) => new SqlBuilder(sql);
     public String GetTableAlias()
     {
         var sqlFromClause = Clauses.First(o => o.Name == "FROM");
@@ -150,7 +142,6 @@ class SqlBuilder
         string insertValueExpression = $"INTO {tableName} ({columnsToInsert})";
         Clauses.Insert(0, new SqlClause { Name = "INSERT", InputText = insertValueExpression });
         sqlSelectClause.InputText = columnsToInsert;
-
     }
     internal void SelectColumns(IEnumerable<string> columns)
     {
