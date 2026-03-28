@@ -14,23 +14,23 @@ public class SqlQuery
 
     public SqlQuery(DatabaseFacade database, String sqlText, params object[] parameters)
     {
-            this.database = database;
-            SqlText = sqlText;
-            Parameters = parameters;
-        }
+        this.database = database;
+        SqlText = sqlText;
+        Parameters = parameters;
+    }
 
     public int Count()
     {
-            string countSqlText = SqlBuilder.Parse(SqlText).Count();
-            return (int)database.ExecuteScalar(countSqlText, Parameters);
-        }
+        string countSqlText = SqlBuilder.Parse(SqlText).Count();
+        return (int)database.ExecuteScalar(countSqlText, Parameters);
+    }
     public async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-            string countSqlText = SqlBuilder.Parse(SqlText).Count();
-            return (int)await database.ExecuteScalarAsync(countSqlText, Parameters, null, cancellationToken);
-        }
+        string countSqlText = SqlBuilder.Parse(SqlText).Count();
+        return (int)await database.ExecuteScalarAsync(countSqlText, Parameters, null, cancellationToken);
+    }
     public int ExecuteNonQuery()
     {
-            return database.ExecuteSql(SqlText, Parameters);
-        }
+        return database.ExecuteSql(SqlText, Parameters);
+    }
 }

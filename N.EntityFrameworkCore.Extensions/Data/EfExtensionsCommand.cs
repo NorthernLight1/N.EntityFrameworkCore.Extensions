@@ -13,11 +13,11 @@ class EfExtensionsCommand
 
     internal bool Execute(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
     {
-            if (CommandType == EfExtensionsCommandType.ChangeTableName)
-            {
-                command.CommandText = command.CommandText.Replace(OldValue, NewValue);
-            }
-
-            return true;
+        if (CommandType == EfExtensionsCommandType.ChangeTableName)
+        {
+            command.CommandText = command.CommandText.Replace(OldValue, NewValue);
         }
+
+        return true;
+    }
 }

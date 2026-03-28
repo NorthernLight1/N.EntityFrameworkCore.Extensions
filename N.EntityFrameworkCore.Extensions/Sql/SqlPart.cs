@@ -7,16 +7,16 @@ internal class SqlPart
     internal bool IgnoreOutput => GetIgnoreOutput();
     public SqlPart(SqlKeyword keyword, SqlExpression expression)
     {
-            Keyword = keyword;
-            Expression = expression;
-        }
+        Keyword = keyword;
+        Expression = expression;
+    }
     private bool GetIgnoreOutput()
     {
-            if (Keyword == SqlKeyword.Output && (Expression == null || Expression.IsEmpty))
-                return true;
-            else
-                return false;
-        }
+        if (Keyword == SqlKeyword.Output && (Expression == null || Expression.IsEmpty))
+            return true;
+        else
+            return false;
+    }
 
 
 }

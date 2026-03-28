@@ -15,14 +15,14 @@ public class BulkMergeOptions<T> : BulkOptions
 
     public BulkMergeOptions()
     {
-            AutoMapOutput = true;
-        }
+        AutoMapOutput = true;
+    }
     public List<string> GetIgnoreColumnsOnInsert()
     {
-            return IgnoreColumnsOnInsert == null ? new List<string>() : IgnoreColumnsOnInsert.Body.Type.GetProperties().Select(o => o.Name).ToList();
-        }
+        return IgnoreColumnsOnInsert == null ? new List<string>() : IgnoreColumnsOnInsert.Body.Type.GetProperties().Select(o => o.Name).ToList();
+    }
     public List<string> GetIgnoreColumnsOnUpdate()
     {
-            return IgnoreColumnsOnUpdate == null ? new List<string>() : IgnoreColumnsOnUpdate.Body.Type.GetProperties().Select(o => o.Name).ToList();
-        }
+        return IgnoreColumnsOnUpdate == null ? new List<string>() : IgnoreColumnsOnUpdate.Body.Type.GetProperties().Select(o => o.Name).ToList();
+    }
 }
