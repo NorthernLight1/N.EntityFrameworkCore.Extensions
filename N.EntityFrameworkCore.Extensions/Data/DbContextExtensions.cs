@@ -5,7 +5,6 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
@@ -53,7 +52,7 @@ public static class DbContextExtensions
                 try
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.EntityTypes.First().GetTableName());
+                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
 
@@ -136,14 +135,14 @@ public static class DbContextExtensions
                 throw new Exception("You must have a primary key on this table to use this function.");
             }
         }
-    public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
+    public static void Fetch<T>(this IQueryable<T> queryable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
     {
-            Fetch(querable, action, optionsAction.Build());
+            Fetch(queryable, action, optionsAction.Build());
         }
-    public static void Fetch<T>(this IQueryable<T> querable, Action<FetchResult<T>> action, FetchOptions<T> options) where T : class, new()
+    public static void Fetch<T>(this IQueryable<T> queryable, Action<FetchResult<T>> action, FetchOptions<T> options) where T : class, new()
     {
-            var dbContext = querable.GetDbContext();
-            var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+            var dbContext = queryable.GetDbContext();
+            var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             if (options.InputColumns != null || options.IgnoreColumns != null)
             {
@@ -186,7 +185,7 @@ public static class DbContextExtensions
         }
     private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
     {
-            using var command = dbContext.Database.CreateCommand(Enums.ConnectionBehavior.New);
+            using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
             command.CommandText = sqlText;
             if (parameters != null)
                 command.Parameters.AddRange(parameters);
@@ -269,9 +268,9 @@ public static class DbContextExtensions
         }
 
     internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInteralId = false)
+        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false)
     {
-            using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInteralId))
+            using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId))
             {
 
                 var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions | options.BulkCopyOptions, transaction)
@@ -296,7 +295,7 @@ public static class DbContextExtensions
                     if (inputColumns == null || inputColumns.Contains(columnName))
                         sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
                 }
-                if (useInteralId)
+                if (useInternalId)
                 {
                     sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
                 }
@@ -468,15 +467,15 @@ public static class DbContextExtensions
                 RowsAffected = reader.RecordsAffected
             };
         }
-    public static int DeleteFromQuery<T>(this IQueryable<T> querable, int? commandTimeout = null) where T : class
+    public static int DeleteFromQuery<T>(this IQueryable<T> queryable, int? commandTimeout = null) where T : class
     {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
+            using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
                 {
-                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+                    var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                     sqlQuery.ChangeToDelete();
                     rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
 
@@ -490,15 +489,15 @@ public static class DbContextExtensions
             }
             return rowAffected;
         }
-    public static int InsertFromQuery<T>(this IQueryable<T> querable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
+    public static int InsertFromQuery<T>(this IQueryable<T> queryable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
     {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
+            using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
                 {
-                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+                    var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                     if (dbContext.Database.TableExists(tableName))
                     {
                         sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
@@ -522,15 +521,15 @@ public static class DbContextExtensions
             }
             return rowAffected;
         }
-    public static int UpdateFromQuery<T>(this IQueryable<T> querable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
+    public static int UpdateFromQuery<T>(this IQueryable<T> queryable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
     {
             int rowAffected = 0;
-            using (var dbTransactionContext = new DbTransactionContext(querable.GetDbContext(), commandTimeout))
+            using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
             {
                 var dbContext = dbTransactionContext.DbContext;
                 try
                 {
-                    var sqlQuery = SqlBuilder.Parse(querable.ToQueryString());
+                    var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                     string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                     sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
                     rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
@@ -544,30 +543,30 @@ public static class DbContextExtensions
             }
             return rowAffected;
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath) where T : class
     {
-            return QueryToCsvFile<T>(querable, filePath, new QueryToFileOptions());
+            return QueryToCsvFile<T>(queryable, filePath, new QueryToFileOptions());
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, Stream stream) where T : class
     {
-            return QueryToCsvFile<T>(querable, stream, new QueryToFileOptions());
+            return QueryToCsvFile<T>(queryable, stream, new QueryToFileOptions());
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath, Action<QueryToFileOptions> optionsAction) where T : class
     {
-            return QueryToCsvFile<T>(querable, filePath, optionsAction.Build());
+            return QueryToCsvFile<T>(queryable, filePath, optionsAction.Build());
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, Stream stream, Action<QueryToFileOptions> optionsAction) where T : class
     {
-            return QueryToCsvFile<T>(querable, stream, optionsAction.Build());
+            return QueryToCsvFile<T>(queryable, stream, optionsAction.Build());
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, String filePath, QueryToFileOptions options) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, String filePath, QueryToFileOptions options) where T : class
     {
             var fileStream = File.Create(filePath);
-            return QueryToCsvFile<T>(querable, fileStream, options);
+            return QueryToCsvFile<T>(queryable, fileStream, options);
         }
-    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+    public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
     {
-            return InternalQueryToFile<T>(querable, stream, options);
+            return InternalQueryToFile<T>(queryable, stream, options);
         }
     public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
     {
@@ -607,11 +606,11 @@ public static class DbContextExtensions
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             dbContext.Database.TruncateTable(tableMapping.FullQualifedTableName);
         }
-    private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> querable, Stream stream, QueryToFileOptions options) where T : class
+    private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
     {
-            var dbContext = querable.GetDbContext();
+            var dbContext = queryable.GetDbContext();
             var dbConnection = dbContext.GetSqlConnection();
-            return InternalQueryToFile(dbConnection, stream, options, querable.ToQueryString());
+            return InternalQueryToFile(dbConnection, stream, options, queryable.ToQueryString());
         }
     private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
     {
@@ -682,9 +681,9 @@ public static class DbContextExtensions
                 TotalRowCount = totalRowCount
             };
         }
-    public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
+    public static IQueryable<T> UsingTable<T>(this IQueryable<T> queryable, string tableName) where T : class
     {
-            var dbContext = querable.GetDbContext();
+            var dbContext = queryable.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
             efExtensionsCommandInterceptor.AddCommand(Guid.NewGuid(),
                 new EfExtensionsCommand
@@ -694,32 +693,32 @@ public static class DbContextExtensions
                     NewValue = tableName,
                     Connection = dbContext.GetSqlConnection()
                 });
-            return querable;
+            return queryable;
         }
-    internal static DbContext GetDbContext<T>(this IQueryable<T> querable) where T : class
+    internal static DbContext GetDbContext<T>(this IQueryable<T> queryable) where T : class
     {
             DbContext dbContext;
             try
             {
-                if ((querable as InternalDbSet<T>) != null)
+                if ((queryable as InternalDbSet<T>) != null)
                 {
-                    dbContext = querable.GetPrivateFieldValue("_context") as DbContext;
+                    dbContext = queryable.GetPrivateFieldValue("_context") as DbContext;
                 }
-                else if ((querable as EntityQueryable<T>) != null)
+                else if ((queryable as EntityQueryable<T>) != null)
                 {
-                    var queryCompiler = querable.Provider.GetPrivateFieldValue("_queryCompiler");
+                    var queryCompiler = queryable.Provider.GetPrivateFieldValue("_queryCompiler");
                     var contextFactory = queryCompiler.GetPrivateFieldValue("_queryContextFactory");
                     var queryDependencies = contextFactory.GetPrivateFieldValue("Dependencies") as QueryContextDependencies;
                     dbContext = queryDependencies.CurrentContext.Context as DbContext;
                 }
                 else
                 {
-                    throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
+                    throw new Exception("This extension method could not find the DbContext for this type that implements IQueryable");
                 }
             }
             catch
             {
-                throw new Exception("This extension method could not find the DbContext for this type that implements IQuerable");
+                throw new Exception("This extension method could not find the DbContext for this type that implements IQueryable");
             }
             return dbContext;
         }

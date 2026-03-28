@@ -12,7 +12,7 @@ using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-public static class DabaseFacadeExtensions
+public static class DatabaseFacadeExtensions
 {
     public static SqlQuery FromSqlQuery(this DatabaseFacade database, string sqlText, params object[] parameters)
     {
@@ -24,7 +24,7 @@ public static class DabaseFacadeExtensions
         }
     internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
     {
-            return database.CloneTable(new string[] { sourceTable }, destinationTable, columnNames, internalIdColumnName);
+            return database.CloneTable([sourceTable], destinationTable, columnNames, internalIdColumnName);
         }
     internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
     {
