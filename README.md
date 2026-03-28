@@ -73,7 +73,7 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
-This registers an EF Core `DbCommandInterceptor` that enables the `UsingTable()` extension method to redirect queries to a different physical table at execution time. It is required when you use `UsingTable()`; all other bulk operations work without it.
+This registers an EF Core `DbCommandInterceptor` used internally by bulk operations. It is required for operations that rewrite table names at execution time (e.g. `InsertFromQuery` targeting a new table); all other operations work without it.
 
 ---
 
@@ -307,12 +307,6 @@ Async:
 await dbContext.Products
     .Where(x => x.Price < 10M)
     .InsertFromQueryAsync("ProductsUnderTen", o => new { o.Id, o.Price });
-```
-
-Use `UsingTable` to query data from a table different from the entity's default mapped table:
-
-```csharp
-int count = dbContext.Orders.UsingTable("OrdersArchive").Count();
 ```
 
 ### UpdateFromQuery
@@ -605,8 +599,6 @@ catch
 | `QueryToCsvFileAsync<T>(stream, cancellationToken)` | Async export to stream. |
 | `QueryToCsvFileAsync<T>(filePath, options, cancellationToken)` | Async export to file with options. |
 | `QueryToCsvFileAsync<T>(stream, options, cancellationToken)` | Async export to stream with options. |
-| **UsingTable** | |
-| `UsingTable<T>(tableName)` | Override the table name used by the query (useful with `InsertFromQuery`). |
 
 ### DatabaseFacade Extensions
 

@@ -689,7 +689,7 @@ public static class DbContextExtensions
                 TotalRowCount = totalRowCount
             };
         }
-    public static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
+    internal static IQueryable<T> UsingTable<T>(this IQueryable<T> querable, string tableName) where T : class
     {
             var dbContext = querable.GetDbContext();
             var tableMapping = dbContext.GetTableMapping(typeof(T));
