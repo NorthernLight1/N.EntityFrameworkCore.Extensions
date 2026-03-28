@@ -38,7 +38,7 @@ internal static class DbDataReaderExtensions
     }
     internal static IProperty[] GetProperties(this DbDataReader reader, TableMapping tableMapping)
     {
-        var properties = new List<IProperty>();
+        List<IProperty> properties = [];
 
         for (var i = 0; i < reader.FieldCount; i++)
         {

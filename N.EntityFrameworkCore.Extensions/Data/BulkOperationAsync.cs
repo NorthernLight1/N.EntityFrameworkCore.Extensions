@@ -12,7 +12,7 @@ using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-internal partial class BulkOperation<T>
+internal sealed partial class BulkOperation<T>
 {
     internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false, CancellationToken cancellationToken = default)
     {
@@ -26,11 +26,11 @@ internal partial class BulkOperation<T>
     internal async Task<BulkMergeResult<T>> ExecuteMergeAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
         bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update = false, bool delete = false, CancellationToken cancellationToken = default)
     {
-        var rowsInserted = new Dictionary<IEntityType, int>();
-        var rowsUpdated = new Dictionary<IEntityType, int>();
-        var rowsDeleted = new Dictionary<IEntityType, int>();
-        var rowsAffected = new Dictionary<IEntityType, int>();
-        var outputRows = new List<BulkMergeOutputRow<T>>();
+        Dictionary<IEntityType, int> rowsInserted = [];
+        Dictionary<IEntityType, int> rowsUpdated = [];
+        Dictionary<IEntityType, int> rowsDeleted = [];
+        Dictionary<IEntityType, int> rowsAffected = [];
+        List<BulkMergeOutputRow<T>> outputRows = [];
 
         foreach (var entityType in TableMapping.EntityTypes)
         {

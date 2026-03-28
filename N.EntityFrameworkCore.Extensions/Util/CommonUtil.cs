@@ -18,7 +18,7 @@ internal static class CommonUtil
     private static string FormatColumn(string column)
     {
         var parts = column.Split('.');
-        return string.Join(".", parts.Select(p => p.StartsWith("$") || (p.StartsWith("[") && p.EndsWith("]")) ? p : $"[{p}]"));
+        return string.Join(".", parts.Select(p => p.StartsWith('$') || (p.StartsWith('[') && p.EndsWith(']')) ? p : $"[{p}]"));
     }
     internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
     {
@@ -26,7 +26,7 @@ internal static class CommonUtil
     }
     internal static IEnumerable<string> FormatColumns(string tableAlias, IEnumerable<string> columns)
     {
-        return columns.Select(s => s.StartsWith("[") && s.EndsWith("]") ? $"[{tableAlias}].{s}" : $"[{tableAlias}].[{s}]");
+        return columns.Select(s => s.StartsWith('[') && s.EndsWith(']') ? $"[{tableAlias}].{s}" : $"[{tableAlias}].[{s}]");
     }
     internal static IEnumerable<string> FilterColumns<T>(IEnumerable<string> columnNames, string[] primaryKeyColumnNames, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
     {
@@ -65,20 +65,20 @@ internal static class CommonUtil<T>
 {
     internal static string[] GetColumns(Expression<Func<T, T, bool>> expression, string[] tableNames)
     {
-        List<string> foundColumns = new List<string>();
+        List<string> foundColumns = [];
         string sqlText = (string)expression.Body.GetPrivateFieldValue("DebugView");
 
-        int startIndex = sqlText.IndexOf("$");
+        int startIndex = sqlText.IndexOf('$');
         while (startIndex != -1)
         {
-            int endIndex = sqlText.IndexOf(" ", startIndex);
-            string column = endIndex == -1 ? sqlText.Substring(startIndex) : sqlText.Substring(startIndex, endIndex - startIndex);
+            int endIndex = sqlText.IndexOf(' ', startIndex);
+            string column = endIndex == -1 ? sqlText[startIndex..] : sqlText[startIndex..endIndex];
             string[] columnParts = column.Split('.');
             if (tableNames == null || tableNames.Contains(columnParts[0].Remove(0, 1)))
             {
                 foundColumns.Add(columnParts[1]);
             }
-            startIndex = sqlText.IndexOf("$", startIndex + 1);
+            startIndex = sqlText.IndexOf('$', startIndex + 1);
         }
 
         return foundColumns.ToArray();

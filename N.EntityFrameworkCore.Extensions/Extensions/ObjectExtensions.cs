@@ -22,7 +22,7 @@ internal static class ObjectExtensions
             t = t.BaseType;
         }
         if (fieldInfo == null && propertyInfo == null)
-            throw new ArgumentOutOfRangeException("propName", $"Field {propName} was not found in Type {obj.GetType().FullName}");
+            throw new ArgumentOutOfRangeException(nameof(propName), $"Field {propName} was not found in Type {obj.GetType().FullName}");
 
         if (fieldInfo != null)
             return fieldInfo.GetValue(obj);

@@ -160,7 +160,7 @@ public static class DbContextExtensions
         int batch = 1;
         int count = 0;
         int totalCount = 0;
-        var entities = new List<T>();
+        List<T> entities = [];
         while (reader.Read())
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
@@ -428,8 +428,8 @@ public static class DbContextExtensions
 
     internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
     {
-        var results = new List<object[]>();
-        var columns = new List<string>();
+        List<object[]> results = [];
+        List<string> columns = [];
         var command = context.Database.CreateCommand();
         command.CommandText = sqlText;
         if (options.CommandTimeout.HasValue)

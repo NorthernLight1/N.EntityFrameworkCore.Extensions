@@ -2,7 +2,7 @@
 
 internal static class SqlMergeAction
 {
-    public static string Insert = "INSERT";
-    public static string Update = "UPDATE";
-    public static string Delete = "DELETE";
+    public const string Insert = "INSERT";
+    public const string Update = "UPDATE";
+    public const string Delete = "DELETE";
 }

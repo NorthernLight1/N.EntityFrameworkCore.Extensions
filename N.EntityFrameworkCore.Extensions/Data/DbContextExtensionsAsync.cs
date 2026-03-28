@@ -90,7 +90,7 @@ public static class DbContextExtensionsAsync
         int batch = 1;
         int count = 0;
         int totalCount = 0;
-        var entities = new List<T>();
+        List<T> entities = [];
         while (await reader.ReadAsync(cancellationToken))
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
@@ -284,8 +284,8 @@ public static class DbContextExtensionsAsync
     }
     internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, SqlConnection dbConnection, SqlTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
     {
-        var results = new List<object[]>();
-        var columns = new List<string>();
+        List<object[]> results = [];
+        List<string> columns = [];
         var command = new SqlCommand(sqlText, dbConnection, transaction);
         if (options.CommandTimeout.HasValue)
         {

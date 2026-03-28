@@ -7,7 +7,7 @@ using Microsoft.Data.SqlClient;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlBuilder
+internal sealed class SqlBuilder
 {
     private static readonly string[] keywords = { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
     public string Sql => ToString();
@@ -15,8 +15,8 @@ internal class SqlBuilder
     public List<SqlParameter> Parameters { get; private set; }
     private SqlBuilder(string sql)
     {
-        Clauses = new List<SqlClause>();
-        Parameters = new List<SqlParameter>();
+        Clauses = [];
+        Parameters = [];
         Initialize(sql);
     }
 
@@ -28,20 +28,20 @@ internal class SqlBuilder
         {
             //Find new Sql clause
             int maxLenToSearch = sqlText.Length - i >= 10 ? 10 : sqlText.Length - i;
-            string keyword = StartsWithString(sqlText.Substring(i, maxLenToSearch), keywords, StringComparison.OrdinalIgnoreCase);
-            bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText.Substring(i - 2, 2) == "\r\n") : true;
+            string keyword = StartsWithString(sqlText[i..(i + maxLenToSearch)], keywords, StringComparison.OrdinalIgnoreCase);
+            bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText[(i - 2)..i] == "\r\n") : true;
             //Process Sql clause
             if (keyword != null && isWordStart)
             {
-                string inputText = sqlText.Substring(curClauseIndex, i - curClauseIndex);
+                string inputText = sqlText[curClauseIndex..i];
                 if (!string.IsNullOrEmpty(curClause))
                 {
                     if (curClause == "DECLARE")
                     {
-                        var declareParts = inputText.Substring(0, inputText.IndexOf(";")).Trim().Split(" ");
-                        int sizeStartIndex = declareParts[1].IndexOf("(");
-                        int sizeLength = declareParts[1].IndexOf(")") - (sizeStartIndex + 1);
-                        string dbTypeString = sizeStartIndex != -1 ? declareParts[1].Substring(0, sizeStartIndex) : declareParts[1];
+                        var declareParts = inputText[..inputText.IndexOf(';')].Trim().Split(' ');
+                        int sizeStartIndex = declareParts[1].IndexOf('(');
+                        int sizeLength = declareParts[1].IndexOf(')') - (sizeStartIndex + 1);
+                        string dbTypeString = sizeStartIndex != -1 ? declareParts[1][..sizeStartIndex] : declareParts[1];
                         SqlDbType dbType = (SqlDbType)Enum.Parse(typeof(SqlDbType), dbTypeString, true);
                         int size = sizeStartIndex != -1 ?
                             Convert.ToInt32(declareParts[1].Substring(sizeStartIndex + 1, sizeLength)) : 0;
@@ -63,22 +63,22 @@ internal class SqlBuilder
             }
         }
         if (!string.IsNullOrEmpty(curClause))
-            Clauses.Add(SqlClause.Parse(curClause, sqlText.Substring(curClauseIndex)));
+            Clauses.Add(SqlClause.Parse(curClause, sqlText[curClauseIndex..]));
     }
 
     private string GetDeclareValue(string value)
     {
-        if (value.StartsWith("'"))
+        if (value.StartsWith('\''))
         {
-            return value.Substring(1, value.Length - 2);
+            return value[1..^1];
         }
         else if (value.StartsWith("N'"))
         {
-            return value.Substring(2, value.Length - 3);
+            return value[2..^1];
         }
         else if (value.StartsWith("CAST("))
         {
-            return value.Substring(5, value.Length - 5);
+            return value[5..];
         }
         else
         {
@@ -108,7 +108,7 @@ internal class SqlBuilder
     {
         var sqlFromClause = Clauses.First(o => o.Name == "FROM");
         var startIndex = sqlFromClause.InputText.LastIndexOf(" AS ");
-        return startIndex > 0 ? sqlFromClause.InputText.Substring(startIndex + 4) : "";
+        return startIndex > 0 ? sqlFromClause.InputText[(startIndex + 4)..] : "";
     }
     public void ChangeToDelete()
     {
@@ -119,7 +119,7 @@ internal class SqlBuilder
         {
             sqlClause.Name = "DELETE";
             int aliasStartIndex = sqlFromClause.InputText.IndexOf("AS ") + 3;
-            int aliasLength = sqlFromClause.InputText.IndexOf("]", aliasStartIndex) - aliasStartIndex + 1;
+            int aliasLength = sqlFromClause.InputText.IndexOf(']', aliasStartIndex) - aliasStartIndex + 1;
             sqlClause.InputText = sqlFromClause.InputText.Substring(aliasStartIndex, aliasLength);
         }
     }

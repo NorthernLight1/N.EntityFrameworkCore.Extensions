@@ -5,7 +5,7 @@ using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlExpression
+internal sealed class SqlExpression
 {
     internal SqlExpressionType ExpressionType { get; }
     List<object> Items { get; set; }
@@ -16,7 +16,7 @@ internal class SqlExpression
     SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
     {
         ExpressionType = expressionType;
-        Items = new List<object>();
+        Items = [];
         if (item is IEnumerable<string> values)
         {
             Items.AddRange(values.ToArray());
@@ -30,7 +30,7 @@ internal class SqlExpression
     SqlExpression(SqlExpressionType expressionType, object[] items, string alias = null)
     {
         ExpressionType = expressionType;
-        Items = new List<object>();
+        Items = [];
         Items.AddRange(items);
         Alias = alias;
     }

@@ -87,7 +87,7 @@ public class TableMapping
     }
     public IEnumerable<string> GetColumns(bool includePrimaryKeyColumns = false)
     {
-        var columns = new List<string>();
+        List<string> columns = [];
         foreach (var entityType in EntityTypes)
         {
             var storeObjectIdentifier = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table).GetValueOrDefault();

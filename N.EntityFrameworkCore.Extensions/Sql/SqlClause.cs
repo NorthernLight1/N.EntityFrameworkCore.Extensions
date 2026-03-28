@@ -1,6 +1,6 @@
 ﻿namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlClause
+internal sealed class SqlClause
 {
     internal string Name { get; set; }
     internal string InputText { get; set; }

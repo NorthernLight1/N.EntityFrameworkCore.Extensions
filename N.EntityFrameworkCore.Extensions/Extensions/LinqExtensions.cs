@@ -10,16 +10,17 @@ namespace N.EntityFrameworkCore.Extensions;
 
 internal static class LinqExtensions
 {
-    static Dictionary<ExpressionType, string> sqlExpressionTypes = new()
+    internal static string ToSql(this ExpressionType expressionType) => expressionType switch
     {
-        { ExpressionType.AndAlso, "AND" },
-        { ExpressionType.Or, "OR" },
-        { ExpressionType.Add, "+" },
-        { ExpressionType.Subtract, "-" },
-        { ExpressionType.Multiply, "*" },
-        { ExpressionType.Divide, "/" },
-        { ExpressionType.Modulo, "%" },
-        { ExpressionType.Equal, "=" }
+        ExpressionType.AndAlso => "AND",
+        ExpressionType.Or => "OR",
+        ExpressionType.Add => "+",
+        ExpressionType.Subtract => "-",
+        ExpressionType.Multiply => "*",
+        ExpressionType.Divide => "/",
+        ExpressionType.Modulo => "%",
+        ExpressionType.Equal => "=",
+        _ => string.Empty
     };
 
     internal static string ToSql(this MemberBinding binding)
@@ -57,7 +58,7 @@ internal static class LinqExtensions
         else if (expression.NodeType == ExpressionType.Call)
         {
             var methodCallExpression = expression as MethodCallExpression;
-            List<string> argValues = new List<string>();
+            List<string> argValues = [];
             foreach (var argument in methodCallExpression.Arguments)
             {
                 argValues.Add(GetExpressionValueAsString(argument));
@@ -90,15 +91,15 @@ internal static class LinqExtensions
         if (value == null)
             return "NULL";
         if (value is string str)
-            return "'" + str.Replace("'", "''") + "'";
+            return $"'{str.Replace("'", "''")}'";
         if (value is Guid guid)
             return $"'{guid}'";
         if (value is bool b)
             return b ? "1" : "0";
         if (value is DateTime dt)
-            return "'" + dt.ToString("yyyy-MM-ddTHH:mm:ss.fffffff") + "'"; // Convert to ISO-8601
+            return $"'{dt:yyyy-MM-dd'T'HH:mm:ss.fffffff}'"; // Convert to ISO-8601
         if (value is DateTimeOffset dto)
-            return "'" + dto.ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzzz") + "'"; // Convert to ISO-8601
+            return $"'{dto:yyyy-MM-dd'T'HH:mm:ss.fffffffzzzz}'"; // Convert to ISO-8601
         var valueType = value.GetType();
         if (valueType.IsEnum)
             return Convert.ToString((int)value);
@@ -111,11 +112,11 @@ internal static class LinqExtensions
     {
         if (expression == null)
         {
-            return new List<string>();
+            return [];
         }
         else if (expression.Body is MemberExpression propertyExpression)
         {
-            return new List<string>() { propertyExpression.Member.Name };
+            return [propertyExpression.Member.Name];
         }
         else if (expression.Body is NewExpression newExpression)
         {
@@ -123,7 +124,7 @@ internal static class LinqExtensions
         }
         else if ((expression.Body is UnaryExpression unaryExpression) && (unaryExpression.Operand.GetPrivateFieldValue("Member") is PropertyInfo propertyInfo))
         {
-            return new List<string>() { propertyInfo.Name };
+            return [propertyInfo.Name];
         }
         else
         {
@@ -166,12 +167,6 @@ internal static class LinqExtensions
 
         var right = ToSqlString(b.Right, sql);
         return left + " AND " + right;
-    }
-    internal static string ToSql(this ExpressionType expressionType)
-    {
-        string value = string.Empty;
-        sqlExpressionTypes.TryGetValue(expressionType, out value);
-        return value;
     }
     internal static string ToSql(this Expression expression)
     {
@@ -216,7 +211,7 @@ internal static class LinqExtensions
     }
     internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
     {
-        List<string> setValues = new List<string>();
+        List<string> setValues = [];
         var memberInitExpression = expression.Body as MemberInitExpression;
         foreach (var binding in memberInitExpression.Bindings)
         {

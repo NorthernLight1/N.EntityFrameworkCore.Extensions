@@ -1,6 +1,6 @@
 ﻿namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlPart
+internal sealed class SqlPart
 {
     internal SqlKeyword Keyword { get; }
     internal SqlExpression Expression { get; }
