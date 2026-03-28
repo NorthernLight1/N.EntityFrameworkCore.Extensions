@@ -35,7 +35,8 @@ public class BulkInsert : DbContextExtensionsBase
         var orders = new List<OrderWithComplexType>();
         for (int i = 1; i < 1000; i++)
         {
-            orders.Add(new OrderWithComplexType {
+            orders.Add(new OrderWithComplexType
+            {
                 Id = i,
                 ShippingAddress = new Address
                 {
@@ -408,17 +409,18 @@ public class BulkInsert : DbContextExtensionsBase
         var products = new List<ProductWithTrigger>();
         for (int i = 1; i < 1000; i++)
         {
-            products.Add(new ProductWithTrigger { Id = i.ToString(), Price = 1.57M, StatusString="InStock" });
+            products.Add(new ProductWithTrigger { Id = i.ToString(), Price = 1.57M, StatusString = "InStock" });
         }
 
         //The return int from BulkInsert() will be off when using triggers
-        dbContext.BulkInsert(products, options => { 
-            options.AutoMapOutput = false; 
-            options.BulkCopyOptions = SqlBulkCopyOptions.FireTriggers;  
+        dbContext.BulkInsert(products, options =>
+        {
+            options.AutoMapOutput = false;
+            options.BulkCopyOptions = SqlBulkCopyOptions.FireTriggers;
         });
         var rowsInserted = dbContext.ProductsWithTrigger.Count();
 
-        Assert.IsTrue(rowsInserted == products.Count , $"The number of rows inserted must match the count of products ({rowsInserted}!={products.Count})");
+        Assert.IsTrue(rowsInserted == products.Count, $"The number of rows inserted must match the count of products ({rowsInserted}!={products.Count})");
     }
     [TestMethod]
     public void With_ValueGenerated_Default()

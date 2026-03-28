@@ -6,6 +6,6 @@ public static class IPropertyExtensions
 {
     public static IEntityType GetDeclaringEntityType(this IProperty property)
     {
-            return property.DeclaringType as IEntityType;
-        }
+        return property.DeclaringType as IEntityType;
+    }
 }

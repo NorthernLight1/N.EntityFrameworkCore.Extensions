@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-class EfExtensionsCommand
+internal class EfExtensionsCommand
 {
     public EfExtensionsCommandType CommandType { get; set; }
     public string OldValue { get; set; }
@@ -13,11 +13,11 @@ class EfExtensionsCommand
 
     internal bool Execute(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
     {
-            if (CommandType == EfExtensionsCommandType.ChangeTableName)
-            {
-                command.CommandText = command.CommandText.Replace(OldValue, NewValue);
-            }
-
-            return true;
+        if (CommandType == EfExtensionsCommandType.ChangeTableName)
+        {
+            command.CommandText = command.CommandText.Replace(OldValue, NewValue);
         }
+
+        return true;
+    }
 }

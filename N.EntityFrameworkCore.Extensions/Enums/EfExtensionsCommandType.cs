@@ -1,6 +1,6 @@
 ﻿namespace N.EntityFrameworkCore.Extensions;
 
-enum EfExtensionsCommandType
+internal enum EfExtensionsCommandType
 {
     ChangeTableName
 }

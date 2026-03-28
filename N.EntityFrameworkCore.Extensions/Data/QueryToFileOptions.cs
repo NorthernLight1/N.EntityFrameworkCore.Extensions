@@ -10,9 +10,9 @@ public class QueryToFileOptions
 
     public QueryToFileOptions()
     {
-            ColumnDelimiter = ",";
-            IncludeHeaderRow = true;
-            RowDelimiter = "\r\n";
-            TextQualifer = "";
-        }
+        ColumnDelimiter = ",";
+        IncludeHeaderRow = true;
+        RowDelimiter = "\r\n";
+        TextQualifer = "";
+    }
 }

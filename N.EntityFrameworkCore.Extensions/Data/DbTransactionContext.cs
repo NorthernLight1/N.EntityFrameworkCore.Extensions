@@ -22,52 +22,48 @@ internal class DbTransactionContext : IDisposable
     public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
     {
 
-        }
+    }
     public DbTransactionContext(DbContext context, int? commandTimeout = null, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default, bool openConnection = true)
     {
-            this.context = context;
-            this.Connection = context.GetSqlConnection(connectionBehavior);
-            if (openConnection)
+        this.context = context;
+        Connection = context.GetSqlConnection(connectionBehavior);
+        if (openConnection)
+        {
+            if (Connection.State == System.Data.ConnectionState.Closed)
             {
-                if (this.Connection.State == System.Data.ConnectionState.Closed)
-                {
-                    this.Connection.Open();
-                    this.closeConnection = true;
-                }
+                Connection.Open();
+                closeConnection = true;
             }
-            if (connectionBehavior == ConnectionBehavior.Default)
-            {
-                this.ownsTransaction = context.Database.CurrentTransaction == null;
-                this.transaction = context.Database.CurrentTransaction; //?? context.Database.BeginTransaction();
-                this.defaultCommandTimeout = context.Database.GetCommandTimeout();
-                if (this.transaction != null)
-                    this.CurrentTransaction = transaction.GetDbTransaction() as SqlTransaction;
-            }
-            else
-            {
-                //this.CurrentTransaction = this.Connection.BeginTransaction();
-            }
-
-            context.Database.SetCommandTimeout(commandTimeout);
         }
+        if (connectionBehavior == ConnectionBehavior.Default)
+        {
+            ownsTransaction = context.Database.CurrentTransaction == null;
+            transaction = context.Database.CurrentTransaction;
+            defaultCommandTimeout = context.Database.GetCommandTimeout();
+            if (transaction != null)
+                CurrentTransaction = transaction.GetDbTransaction() as SqlTransaction;
+        }
+
+        context.Database.SetCommandTimeout(commandTimeout);
+    }
 
     public void Dispose()
     {
-            context.Database.SetCommandTimeout(defaultCommandTimeout);
-            if (closeConnection)
-            {
-                this.Connection.Close();
-            }
+        context.Database.SetCommandTimeout(defaultCommandTimeout);
+        if (closeConnection)
+        {
+            Connection.Close();
         }
+    }
 
     internal void Commit()
     {
-            if (this.ownsTransaction && this.transaction != null)
-                transaction.Commit();
-        }
+        if (ownsTransaction && transaction != null)
+            transaction.Commit();
+    }
     internal void Rollback()
     {
-            if (this.transaction != null)
-                transaction.Rollback();
-        }
+        if (transaction != null)
+            transaction.Rollback();
+    }
 }
