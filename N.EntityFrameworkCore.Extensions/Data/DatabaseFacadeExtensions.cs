@@ -28,7 +28,7 @@ public static class DabaseFacadeExtensions
         }
     internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
     {
-            string columns = columnNames != null && columnNames.Count() > 0 ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
+            string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
             columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
             return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)));
         }
@@ -45,12 +45,12 @@ public static class DabaseFacadeExtensions
         }
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
-            bool deleteTable = !ifExists || (ifExists && database.TableExists(tableName)) ? true : false;
+            bool deleteTable = !ifExists || database.TableExists(tableName);
             return deleteTable ? database.ExecuteSqlInternal(string.Format("DROP TABLE {0}", tableName), null, ConnectionBehavior.Default) : -1;
         }
     public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
-            bool truncateTable = !ifExists || (ifExists && database.TableExists(tableName)) ? true : false;
+            bool truncateTable = !ifExists || database.TableExists(tableName);
             if (truncateTable)
             {
                 database.ExecuteSqlRaw(string.Format("TRUNCATE TABLE {0}", tableName));

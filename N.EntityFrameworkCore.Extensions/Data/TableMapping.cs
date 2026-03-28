@@ -142,16 +142,6 @@ public class TableMapping
                 return value => value;
             }
         }
-    internal IEnumerable<Func<object, object>> GetValuesFromProvider()
-    {
-            var propertyGetters = new List<Func<object, object>>();
-            foreach (var property in this.Properties)
-            {
-                propertyGetters.Add(value => GetValueFromProvider(property));
-            }
-            return propertyGetters.AsEnumerable();
-        }
-
     internal IEnumerable<string> GetSchemaQualifiedTableNames()
     {
             return EntityTypes

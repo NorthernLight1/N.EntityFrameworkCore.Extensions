@@ -165,9 +165,7 @@ internal partial class BulkOperation<T> : IDisposable
     internal void ValidateBulkMerge(Expression<Func<T, T, bool>> mergeOnCondition)
     {
             if (PrimaryKeyColumnNames.Length == 0 && mergeOnCondition == null)
-                throw new InvalidDataException("BulkMerge requires that the entity have a primary key");
-            if (PrimaryKeyColumnNames.Length == 0 && mergeOnCondition == null)
-                throw new InvalidDataException("BulkMerge requires that Options.MergeOnCondition be set");
+                throw new InvalidDataException("BulkMerge requires that the entity have a primary key or that Options.MergeOnCondition be set");
         }
     internal void ValidateBulkUpdate(Expression<Func<T, T, bool>> updateOnCondition)
     {

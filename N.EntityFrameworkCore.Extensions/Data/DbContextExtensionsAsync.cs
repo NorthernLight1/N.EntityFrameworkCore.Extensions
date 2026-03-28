@@ -130,7 +130,7 @@ public static class DbContextExtensionsAsync
                 {
                     var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true);
                     var bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.InsertOnCondition,
-                        options.AutoMapOutput, options.InsertIfNotExists);
+                        options.AutoMapOutput, options.KeepIdentity, options.InsertIfNotExists);
                     rowsAffected = bulkMergeResult.RowsAffected;
                     bulkOperation.DbTransactionContext.Commit();
                 }
@@ -159,7 +159,7 @@ public static class DbContextExtensionsAsync
             foreach (var property in dataReader.TableMapping.Properties)
             {
                 var columnName = dataReader.TableMapping.GetColumnName(property);
-                if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
+                if (inputColumns == null || inputColumns.Contains(columnName))
                     sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
             }
             if (useInteralId)
@@ -244,7 +244,7 @@ public static class DbContextExtensionsAsync
                     bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
                     var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true, cancellationToken);
                     bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
-                        true, true, options.DeleteIfNotMatched, cancellationToken);
+                        false, true, true, options.DeleteIfNotMatched, cancellationToken);
                     bulkOperation.DbTransactionContext.Commit();
                 }
                 catch (Exception)

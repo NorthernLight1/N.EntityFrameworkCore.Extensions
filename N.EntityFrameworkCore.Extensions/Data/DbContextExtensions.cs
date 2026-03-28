@@ -255,14 +255,7 @@ public static class DbContextExtensions
                       updateEntry.EntityState == EntityState.Detached
                     )
                     {
-                        try
-                        {
-                            updateEntry.SetStoreGeneratedValue(property, values[index]);
-                        }
-                        catch
-                        {
-                            throw;
-                        }
+                        updateEntry.SetStoreGeneratedValue(property, values[index]);
                     }
                     index++;
                 }
@@ -300,7 +293,7 @@ public static class DbContextExtensions
                 foreach (var property in dataReader.TableMapping.Properties)
                 {
                     var columnName = dataReader.TableMapping.GetColumnName(property);
-                    if (inputColumns == null || (inputColumns != null && inputColumns.Contains(columnName)))
+                    if (inputColumns == null || inputColumns.Contains(columnName))
                         sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
                 }
                 if (useInteralId)
