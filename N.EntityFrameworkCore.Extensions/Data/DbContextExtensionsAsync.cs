@@ -40,7 +40,7 @@ public static class DbContextExtensionsAsync
                 try
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
+                    string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
 
@@ -50,8 +50,7 @@ public static class DbContextExtensionsAsync
                     await context.Database.CloneTableAsync(destinationTableName, stagingTableName, keyColumnNames, null, cancellationToken);
                     await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity,
                         false, cancellationToken);
-                    string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
-                        CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
+                    string deleteSql = $"DELETE t FROM {stagingTableName} s JOIN {destinationTableName} t ON {CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames)}";
                     rowsAffected = await context.Database.ExecuteSqlRawAsync(deleteSql, cancellationToken);
                     context.Database.DropTable(stagingTableName);
                     dbTransactionContext.Commit();
@@ -366,7 +365,7 @@ public static class DbContextExtensionsAsync
                     }
                     else
                     {
-                        sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
+                        sqlQuery.Clauses.First().InputText += $" INTO {tableName}";
                         rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                     }
 

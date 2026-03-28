@@ -20,10 +20,8 @@ public class BulkOptions
 
     public BulkOptions()
     {
-            this.BulkCopyOptions = SqlBulkCopyOptions.Default;
-            this.ColumnOrderHints = new SqlBulkCopyColumnOrderHintCollection();
-            this.EnableStreaming = false;
-            this.NotifyAfter = 0;
-            this.ConnectionBehavior = ConnectionBehavior.Default;
+            BulkCopyOptions = SqlBulkCopyOptions.Default;
+            ColumnOrderHints = new SqlBulkCopyColumnOrderHintCollection();
+            ConnectionBehavior = ConnectionBehavior.Default;
         }
 }

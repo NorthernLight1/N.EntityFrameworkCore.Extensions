@@ -9,11 +9,8 @@ namespace N.EntityFrameworkCore.Extensions.Sql;
 
 class SqlBuilder
 {
-    private static IEnumerable<string> keywords = new string[] { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
-    public string Sql
-    {
-        get { return this.ToString(); }
-    }
+    private static readonly string[] keywords = { "DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY" };
+    public string Sql => ToString();
     public List<SqlClause> Clauses { get; private set; }
     public List<SqlParameter> Parameters { get; private set; }
     private SqlBuilder(string sql)
@@ -91,7 +88,7 @@ class SqlBuilder
 
     public string Count()
     {
-            return string.Format("SELECT COUNT(*) FROM ({0}) s", string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString())));
+            return $"SELECT COUNT(*) FROM ({string.Join("\r\n", Clauses.Where(o => o.Name != "ORDER BY").Select(o => o.ToString()))}) s";
         }
     public override string ToString()
     {
@@ -150,7 +147,7 @@ class SqlBuilder
             Validate();
             var sqlSelectClause = Clauses.FirstOrDefault();
             string columnsToInsert = string.Join(",", insertObjectExpression.GetObjectProperties());
-            string insertValueExpression = string.Format("INTO {0} ({1})", tableName, columnsToInsert);
+            string insertValueExpression = $"INTO {tableName} ({columnsToInsert})";
             Clauses.Insert(0, new SqlClause { Name = "INSERT", InputText = insertValueExpression });
             sqlSelectClause.InputText = columnsToInsert;
 
@@ -161,7 +158,7 @@ class SqlBuilder
             var sqlClause = Clauses.FirstOrDefault();
             if (sqlClause.Name == "SELECT")
             {
-                sqlClause.InputText = string.Join(",", columns.Select(c => string.Format("{0}.{1}", tableAlias, c)));
+                sqlClause.InputText = string.Join(",", columns.Select(c => $"{tableAlias}.{c}"));
             }
         }
     private void Validate()

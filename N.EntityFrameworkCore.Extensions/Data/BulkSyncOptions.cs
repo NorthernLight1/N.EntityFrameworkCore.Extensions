@@ -5,6 +5,6 @@ public class BulkSyncOptions<T> : BulkMergeOptions<T>
 {
     public BulkSyncOptions()
     {
-            this.DeleteIfNotMatched = true;
+            DeleteIfNotMatched = true;
         }
 }

@@ -6,6 +6,6 @@ public class BulkMergeOutputRow<T>
 
     public BulkMergeOutputRow(string action)
     {
-            this.Action = action;
+            Action = action;
         }
 }

@@ -13,37 +13,20 @@ internal class SqlStatement
     {
             SqlParts = new List<SqlPart>();
         }
-    //static SqlStatement CreateSelectInto(TableMapping souceTableMapping, string targetTable, string[] columns)
-    //{
-    //    foreach(var property in souceTableMapping.Properties)
-    //    {
-    //        var t = property;
-    //    }
-    //    var statement = new SqlStatement();
-    //    statement.CreatePart(SqlKeyword.Select, SqlPartExpression.Columns("column1","column2"));
-    //    statement.CreatePart(SqlKeyword.Into, SqlPartExpression.Table(targetTable));
-    //    statement.CreatePart(SqlKeyword.From, SqlPartExpression.Table("Table"));
-    //    return null;
-    //}
     internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null)
     {
             SqlParts.Add(new SqlPart(keyword, expression));
         }
     internal void SetIdentityInsert(string tableName, bool enable)
     {
-            this.CreatePart(SqlKeyword.Set);
-            this.CreatePart(SqlKeyword.Identity_Insert, SqlExpression.Table(tableName));
+            CreatePart(SqlKeyword.Set);
+            CreatePart(SqlKeyword.Identity_Insert, SqlExpression.Table(tableName));
             if (enable)
-                this.CreatePart(SqlKeyword.On);
+                CreatePart(SqlKeyword.On);
             else
-                this.CreatePart(SqlKeyword.Off);
-            this.CreatePart(SqlKeyword.Semicolon);
+                CreatePart(SqlKeyword.Off);
+            CreatePart(SqlKeyword.Semicolon);
         }
-    //internal static SqlStatement CreateMergeInsert(string sourceTableName, string targetTableName, string mergeOnCondition,
-    //    IEnumerable<string> insertColumns, IEnumerable<string> outputColumns, bool deleteIfNotMatched = false)
-    //{
-
-    //}
     internal static SqlStatement CreateMerge(string sourceTableName, string targetTableName, string joinOnCondition,
         IEnumerable<string> insertColumns, IEnumerable<string> updateColumns, IEnumerable<string> outputColumns,
         bool deleteIfNotMatched = false, bool hasIdentityColumn = false)
@@ -114,16 +97,12 @@ internal class SqlStatement
 
                     if (part.Expression != null)
                     {
-                        sbSql.Append(string.Format(format, part.Expression.Sql));
+                        string expressionSql = useParenthese ? $"({part.Expression.Sql})" : part.Expression.Sql;
+                        sbSql.Append(expressionSql);
                         sbSql.Append(" ");
                     }
                 }
             }
-            //Output a semicolon for certain SQL Statments
-            //if(SqlParts.First().Keyword == SqlKeyword.Merge)
-            //{
-            //    sbSql.Append(";");
-            //}
             return sbSql.ToString();
         }
 }

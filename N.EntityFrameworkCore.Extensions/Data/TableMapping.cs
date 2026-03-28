@@ -20,10 +20,7 @@ public class TableMapping
     public bool HasIdentityColumn => EntityType.FindPrimaryKey().Properties.Any(o => o.ValueGenerated != ValueGenerated.Never);
     public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema());
     private Dictionary<string, IProperty> ColumnMap { get; set; }
-    public string FullQualifedTableName
-    {
-        get { return string.Format("[{0}].[{1}]", this.Schema, this.TableName); }
-    }
+    public string FullQualifedTableName => $"[{Schema}].[{TableName}]";
 
     public TableMapping(DbContext dbContext, IEntityType entityType)
     {

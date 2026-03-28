@@ -52,7 +52,7 @@ public static class DbContextExtensions
                 try
                 {
                     string stagingTableName = CommonUtil.GetStagingTableName(tableMapping, options.UsePermanentTable, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
+                    string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
                     string[] keyColumnNames = options.DeleteOnCondition != null ? CommonUtil<T>.GetColumns(options.DeleteOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
 
@@ -62,8 +62,7 @@ public static class DbContextExtensions
                     context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
 
-                    string deleteSql = string.Format("DELETE t FROM {0} s JOIN {1} t ON {2}", stagingTableName, destinationTableName,
-                    CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames));
+                    string deleteSql = $"DELETE t FROM {stagingTableName} s JOIN {destinationTableName} t ON {CommonUtil<T>.GetJoinConditionSql(options.DeleteOnCondition, keyColumnNames)}";
                     rowsAffected = context.Database.ExecuteSqlInternal(deleteSql, options.CommandTimeout);
 
                     context.Database.DropTable(stagingTableName);
@@ -98,7 +97,7 @@ public static class DbContextExtensions
                 try
                 {
                     stagingTableName = CommonUtil.GetStagingTableName(tableMapping, true, dbConnection);
-                    string destinationTableName = string.Format("[{0}].[{1}]", tableMapping.Schema, tableMapping.TableName);
+                    string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
                     string[] keyColumnNames = options.JoinOnCondition != null ? CommonUtil<T>.GetColumns(options.JoinOnCondition, new[] { "s" })
                         : tableMapping.GetPrimaryKeyColumns().ToArray();
                     IEnumerable<string> columnNames = CommonUtil.FilterColumns<T>(tableMapping.GetColumns(true), keyColumnNames, options.InputColumns, options.IgnoreColumns);
@@ -109,8 +108,7 @@ public static class DbContextExtensions
 
                     context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
                     BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
-                    selectSql = string.Format("SELECT {0} FROM {1} s JOIN {2} t ON {3}", SqlUtil.ConvertToColumnString(columnsToFetch), stagingTableName, destinationTableName,
-                        CommonUtil<T>.GetJoinConditionSql(options.JoinOnCondition, keyColumnNames));
+                    selectSql = $"SELECT {SqlUtil.ConvertToColumnString(columnsToFetch)} FROM {stagingTableName} s JOIN {destinationTableName} t ON {CommonUtil<T>.GetJoinConditionSql(options.JoinOnCondition, keyColumnNames)}";
 
 
                     dbTransactionContext.Commit();
@@ -507,7 +505,7 @@ public static class DbContextExtensions
                     }
                     else
                     {
-                        sqlQuery.Clauses.First().InputText += string.Format(" INTO {0}", tableName);
+                        sqlQuery.Clauses.First().InputText += $" INTO {tableName}";
                         rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                     }
 

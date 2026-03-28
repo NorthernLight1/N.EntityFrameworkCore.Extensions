@@ -24,7 +24,7 @@ public static class DatabaseFacadeExtensionsAsync
     internal static async Task<int> CloneTableAsync(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
     {
             string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
-            columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
+            columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
             return await database.ExecuteSqlRawAsync(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)), cancellationToken);
         }
     public static async Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)

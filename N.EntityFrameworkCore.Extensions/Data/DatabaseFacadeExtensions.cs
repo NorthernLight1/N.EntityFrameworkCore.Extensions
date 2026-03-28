@@ -29,7 +29,7 @@ public static class DatabaseFacadeExtensions
     internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
     {
             string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
-            columns = !string.IsNullOrEmpty(internalIdColumnName) ? string.Format("{0},CAST( NULL AS INT) AS {1}", columns, internalIdColumnName) : columns;
+            columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
             return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)));
         }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
@@ -46,7 +46,7 @@ public static class DatabaseFacadeExtensions
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
             bool deleteTable = !ifExists || database.TableExists(tableName);
-            return deleteTable ? database.ExecuteSqlInternal(string.Format("DROP TABLE {0}", tableName), null, ConnectionBehavior.Default) : -1;
+            return deleteTable ? database.ExecuteSqlInternal($"DROP TABLE {tableName}", null, ConnectionBehavior.Default) : -1;
         }
     public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
@@ -58,7 +58,7 @@ public static class DatabaseFacadeExtensions
         }
     public static bool TableExists(this DatabaseFacade database, string tableName)
     {
-            return Convert.ToBoolean(database.ExecuteScalar(string.Format("SELECT CASE WHEN OBJECT_ID(N'{0}', N'U') IS NOT NULL THEN 1 ELSE 0 END", tableName)));
+            return Convert.ToBoolean(database.ExecuteScalar($"SELECT CASE WHEN OBJECT_ID(N'{tableName}', N'U') IS NOT NULL THEN 1 ELSE 0 END"));
         }
     public static bool TableHasIdentity(this DatabaseFacade database, string tableName)
     {

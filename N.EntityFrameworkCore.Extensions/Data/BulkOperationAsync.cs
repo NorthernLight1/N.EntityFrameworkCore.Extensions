@@ -115,10 +115,8 @@ internal partial class BulkOperation<T>
             foreach (var entityType in TableMapping.EntityTypes)
             {
                 IEnumerable<string> columnsToUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
-                string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => string.Format("t.{0}=s.{0}", o)));
-                string updateSql = string.Format("UPDATE t SET {0} FROM {1} AS s JOIN {2} AS t ON {3}; SELECT @@RowCount;",
-                    updateSetExpression, StagingTableName, CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName()),
-                    CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t"));
+                string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => $"t.{o}=s.{o}"));
+                string updateSql = $"UPDATE t SET {updateSetExpression} FROM {StagingTableName} AS s JOIN {CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName())} AS t ON {CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t")}; SELECT @@RowCount;";
                 rowsUpdated = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
             }
             return rowsUpdated;

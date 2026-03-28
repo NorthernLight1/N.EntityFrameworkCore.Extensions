@@ -73,7 +73,6 @@ internal class SqlExpression
                 sbSql.Append(" ");
                 sbSql.Append(Alias);
             }
-            //var test = Items.Select(o => o.ToString()).ToArray();
             return sbSql.ToString();
         }
 }

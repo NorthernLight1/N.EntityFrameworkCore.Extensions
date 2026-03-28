@@ -8,9 +8,6 @@ namespace N.EntityFrameworkCore.Extensions;
 public class BulkMergeOptions<T> : BulkOptions
 {
     public Expression<Func<T, T, bool>> MergeOnCondition { get; set; }
-    //public Func<T, T, bool> NotMatchedBySourceCondition { get; set; }
-    //public Func<T, T, bool> NotMatchedByTargetCondition { get; set; }
-    //public Func<T, T, bool> MatchedCondition { get; set; }
     public Expression<Func<T, object>> IgnoreColumnsOnInsert { get; set; }
     public Expression<Func<T, object>> IgnoreColumnsOnUpdate { get; set; }
     public bool AutoMapOutput { get; set; }
@@ -18,14 +15,14 @@ public class BulkMergeOptions<T> : BulkOptions
 
     public BulkMergeOptions()
     {
-            this.AutoMapOutput = true;
+            AutoMapOutput = true;
         }
     public List<string> GetIgnoreColumnsOnInsert()
     {
-            return this.IgnoreColumnsOnInsert == null ? new List<string>() : this.IgnoreColumnsOnInsert.Body.Type.GetProperties().Select(o => o.Name).ToList();
+            return IgnoreColumnsOnInsert == null ? new List<string>() : IgnoreColumnsOnInsert.Body.Type.GetProperties().Select(o => o.Name).ToList();
         }
     public List<string> GetIgnoreColumnsOnUpdate()
     {
-            return this.IgnoreColumnsOnUpdate == null ? new List<string>() : this.IgnoreColumnsOnUpdate.Body.Type.GetProperties().Select(o => o.Name).ToList();
+            return IgnoreColumnsOnUpdate == null ? new List<string>() : IgnoreColumnsOnUpdate.Body.Type.GetProperties().Select(o => o.Name).ToList();
         }
 }

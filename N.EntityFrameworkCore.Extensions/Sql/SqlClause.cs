@@ -4,10 +4,7 @@ class SqlClause
 {
     internal string Name { get; set; }
     internal string InputText { get; set; }
-    public string Sql
-    {
-        get { return this.ToString(); }
-    }
+    public string Sql => ToString();
     public static SqlClause Parse(string name, string inputText)
     {
             string cleanText = inputText.Replace("\r\n", "").Trim();
@@ -15,6 +12,6 @@ class SqlClause
         }
     public override string ToString()
     {
-            return string.Format("{0} {1}", Name, InputText);
+            return $"{Name} {InputText}";
         }
 }
