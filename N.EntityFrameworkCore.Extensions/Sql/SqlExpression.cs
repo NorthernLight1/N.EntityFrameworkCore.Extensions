@@ -49,7 +49,7 @@ internal sealed class SqlExpression
     private string ToSql()
     {
         var values = Items.Select(o => o.ToString()).ToArray();
-        StringBuilder sbSql = new StringBuilder();
+        var sbSql = new StringBuilder();
         if (ExpressionType == SqlExpressionType.Columns)
         {
             sbSql.Append(string.Join(",", CommonUtil.FormatColumns(values)));

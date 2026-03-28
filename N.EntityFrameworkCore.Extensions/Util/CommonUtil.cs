@@ -15,11 +15,6 @@ internal static class CommonUtil
             return $"[{tableMapping.Schema}].[tmp_be_xx_{tableMapping.TableName}_{sqlConnection.ClientConnectionId}]";
         return $"[{tableMapping.Schema}].[#tmp_be_xx_{tableMapping.TableName}]";
     }
-    private static string FormatColumn(string column)
-    {
-        var parts = column.Split('.');
-        return string.Join(".", parts.Select(p => p.StartsWith('$') || (p.StartsWith('[') && p.EndsWith(']')) ? p : $"[{p}]"));
-    }
     internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
     {
         return columns.Select(s => FormatColumn(s));
@@ -50,12 +45,15 @@ internal static class CommonUtil
         }
         return filteredColumnNames;
     }
-
     internal static string FormatTableName(string tableName)
     {
         return string.Join(".", tableName.Split('.').Select(s => $"[{RemoveQualifier(s)}]"));
     }
-
+    private static string FormatColumn(string column)
+    {
+        var parts = column.Split('.');
+        return string.Join(".", parts.Select(p => p.StartsWith('$') || (p.StartsWith('[') && p.EndsWith(']')) ? p : $"[{p}]"));
+    }
     private static string RemoveQualifier(string name)
     {
         return name.TrimStart('[').TrimEnd(']');
@@ -74,7 +72,7 @@ internal static class CommonUtil<T>
             int endIndex = sqlText.IndexOf(' ', startIndex);
             string column = endIndex == -1 ? sqlText[startIndex..] : sqlText[startIndex..endIndex];
             string[] columnParts = column.Split('.');
-            if (tableNames == null || tableNames.Contains(columnParts[0].Remove(0, 1)))
+            if (tableNames == null || tableNames.Contains(columnParts[0][1..]))
             {
                 foundColumns.Add(columnParts[1]);
             }

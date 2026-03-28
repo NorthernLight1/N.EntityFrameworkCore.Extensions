@@ -216,7 +216,7 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     private EntityEntry FindEntry(object entity)
     {
-        return entity is InternalEntityEntry ? ((InternalEntityEntry)entity).ToEntityEntry() : this.TableMapping.DbContext.Entry(entity);
+        return entity is InternalEntityEntry internalEntry ? internalEntry.ToEntityEntry() : TableMapping.DbContext.Entry(entity);
     }
 
     public int GetValues(object[] values)

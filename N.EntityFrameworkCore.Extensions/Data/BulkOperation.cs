@@ -42,6 +42,13 @@ internal sealed partial class BulkOperation<T> : IDisposable
         StagingTableName = CommonUtil.GetStagingTableName(TableMapping, options.UsePermanentTable, Connection);
         PrimaryKeyColumnNames = TableMapping.GetPrimaryKeyColumns().ToArray();
     }
+    public void Dispose()
+    {
+        if (StagingTableCreated)
+        {
+            Context.Database.DropTable(StagingTableName);
+        }
+    }
     internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
     {
         IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
@@ -170,13 +177,6 @@ internal sealed partial class BulkOperation<T> : IDisposable
         if (PrimaryKeyColumnNames.Length == 0 && updateOnCondition == null)
             throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
 
-    }
-    public void Dispose()
-    {
-        if (StagingTableCreated)
-        {
-            Context.Database.DropTable(StagingTableName);
-        }
     }
     internal IEnumerable<string> GetColumnNames(bool includePrimaryKeys = false)
     {

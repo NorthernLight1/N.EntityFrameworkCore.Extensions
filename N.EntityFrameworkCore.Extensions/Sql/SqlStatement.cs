@@ -70,7 +70,7 @@ internal sealed class SqlStatement
 
     private string ToSql()
     {
-        StringBuilder sbSql = new StringBuilder();
+        var sbSql = new StringBuilder();
         foreach (var part in SqlParts)
         {
             if (part.Keyword == SqlKeyword.Semicolon)
