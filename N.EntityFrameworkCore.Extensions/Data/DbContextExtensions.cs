@@ -126,13 +126,6 @@ public static class DbContextExtensions
             context.Database.DropTable(stagingTableName);
         }
     }
-    private static void Validate(TableMapping tableMapping)
-    {
-        if (!tableMapping.GetPrimaryKeyColumns().Any())
-        {
-            throw new Exception("You must have a primary key on this table to use this function.");
-        }
-    }
     public static void Fetch<T>(this IQueryable<T> queryable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
     {
         Fetch(queryable, action, optionsAction.Build());
@@ -156,7 +149,6 @@ public static class DbContextExtensions
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
-        //Read data
         int batch = 1;
         int count = 0;
         int totalCount = 0;
@@ -178,26 +170,6 @@ public static class DbContextExtensions
 
         if (entities.Count > 0)
             action(new FetchResult<T> { Results = entities, Batch = batch });
-
-        reader.Close();
-    }
-    private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
-    {
-        using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
-        command.CommandText = sqlText;
-        if (parameters != null)
-            command.Parameters.AddRange(parameters);
-
-        var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = command.ExecuteReader();
-        var properties = reader.GetProperties(tableMapping);
-        var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
-
-        while (reader.Read())
-        {
-            var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
-            yield return entity;
-        }
 
         reader.Close();
     }
@@ -229,82 +201,6 @@ public static class DbContextExtensions
             }
         }
         return rowsAffected;
-    }
-
-    internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
-    {
-        int index = 0;
-        var updateEntry = entity as InternalEntityEntry;
-        if (updateEntry == null)
-        {
-            var entry = context.Entry(entity);
-            updateEntry = entry.GetInfrastructure();
-        }
-
-        if (updateEntry != null)
-        {
-            foreach (var property in properties)
-            {
-                if ((updateEntry.EntityState == EntityState.Added &&
-                    (property.ValueGenerated == ValueGenerated.OnAdd || property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
-                  (updateEntry.EntityState == EntityState.Modified &&
-                    (property.ValueGenerated == ValueGenerated.OnUpdate || property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
-                  updateEntry.EntityState == EntityState.Detached
-                )
-                {
-                    updateEntry.SetStoreGeneratedValue(property, values[index]);
-                }
-                index++;
-            }
-            if (updateEntry.EntityState == EntityState.Detached)
-                updateEntry.AcceptChanges();
-        }
-        else
-        {
-            throw new InvalidOperationException("SetStoreValues() failed because an instance of InternalEntityEntry was not found.");
-        }
-    }
-
-    internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
-        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false)
-    {
-        using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId))
-        {
-
-            var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions | options.BulkCopyOptions, transaction)
-            {
-                DestinationTableName = tableName,
-                BatchSize = options.BatchSize,
-                NotifyAfter = options.NotifyAfter,
-                EnableStreaming = options.EnableStreaming,
-            };
-            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.HasValue ? options.CommandTimeout.Value : sqlBulkCopy.BulkCopyTimeout;
-            if (options.SqlRowsCopied != null)
-            {
-                sqlBulkCopy.SqlRowsCopied += options.SqlRowsCopied;
-            }
-            foreach (SqlBulkCopyColumnOrderHint columnOrderHint in options.ColumnOrderHints)
-            {
-                sqlBulkCopy.ColumnOrderHints.Add(columnOrderHint);
-            }
-            foreach (var property in dataReader.TableMapping.Properties)
-            {
-                var columnName = dataReader.TableMapping.GetColumnName(property);
-                if (inputColumns == null || inputColumns.Contains(columnName))
-                    sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
-            }
-            if (useInternalId)
-            {
-                sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
-            }
-            sqlBulkCopy.WriteToServer(dataReader);
-
-            return new BulkInsertResult<T>
-            {
-                RowsAffected = sqlBulkCopy.RowsCopied,
-                EntityMap = dataReader.EntityMap
-            };
-        }
     }
     public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
     {
@@ -366,27 +262,6 @@ public static class DbContextExtensions
     {
         return BulkSyncResult<T>.Map(InternalBulkMerge(context, entities, options));
     }
-    private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
-    {
-        BulkMergeResult<T> bulkMergeResult;
-        using (var bulkOperation = new BulkOperation<T>(context, options))
-        {
-            try
-            {
-                bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
-                var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
-                bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
-                    false, true, true, options.DeleteIfNotMatched);
-                bulkOperation.DbTransactionContext.Commit();
-            }
-            catch (Exception)
-            {
-                bulkOperation.DbTransactionContext.Rollback();
-                throw;
-            }
-        }
-        return bulkMergeResult;
-    }
     public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities)
     {
         return BulkUpdate<T>(context, entities, new BulkUpdateOptions<T>());
@@ -414,56 +289,6 @@ public static class DbContextExtensions
             }
         }
         return rowsUpdated;
-    }
-
-    private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
-    {
-        foreach (var entity in entities)
-        {
-            var entry = dbContext.Entry(entity);
-            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
-                dbContext.Entry(entity).State = EntityState.Unchanged;
-        }
-    }
-
-    internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
-    {
-        List<object[]> results = [];
-        List<string> columns = [];
-        var command = context.Database.CreateCommand();
-        command.CommandText = sqlText;
-        if (options.CommandTimeout.HasValue)
-        {
-            command.CommandTimeout = options.CommandTimeout.Value;
-        }
-        var reader = command.ExecuteReader();
-        //Get column names
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
-        try
-        {
-            //Read data
-            while (reader.Read())
-            {
-                object[] values = new object[reader.FieldCount];
-                reader.GetValues(values);
-                results.Add(values);
-            }
-        }
-        finally
-        {
-            //close the DataReader
-            reader.Close();
-        }
-
-        return new BulkQueryResult
-        {
-            Columns = columns,
-            Results = results,
-            RowsAffected = reader.RecordsAffected
-        };
     }
     public static int DeleteFromQuery<T>(this IQueryable<T> queryable, int? commandTimeout = null) where T : class
     {
@@ -604,81 +429,6 @@ public static class DbContextExtensions
         var tableMapping = dbContext.GetTableMapping(typeof(T));
         dbContext.Database.TruncateTable(tableMapping.FullQualifedTableName);
     }
-    private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
-    {
-        var dbContext = queryable.GetDbContext();
-        var dbConnection = dbContext.GetSqlConnection();
-        return InternalQueryToFile(dbConnection, stream, options, queryable.ToQueryString());
-    }
-    private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
-    {
-        int dataRowCount = 0;
-        int totalRowCount = 0;
-        long bytesWritten = 0;
-
-        //Open datbase connection
-        if (dbConnection.State == ConnectionState.Closed)
-            dbConnection.Open();
-
-        var command = new SqlCommand(sqlText, dbConnection);
-        if (parameters != null)
-        {
-            command.Parameters.AddRange(parameters);
-        }
-        if (options.CommandTimeout.HasValue)
-        {
-            command.CommandTimeout = options.CommandTimeout.Value;
-        }
-
-        var streamWriter = new StreamWriter(stream);
-        using (var reader = command.ExecuteReader())
-        {
-            //Header row
-            if (options.IncludeHeaderRow)
-            {
-                for (int i = 0; i < reader.FieldCount; i++)
-                {
-                    streamWriter.Write(options.TextQualifer);
-                    streamWriter.Write(reader.GetName(i));
-                    streamWriter.Write(options.TextQualifer);
-                    if (i != reader.FieldCount - 1)
-                    {
-                        streamWriter.Write(options.ColumnDelimiter);
-                    }
-                }
-                totalRowCount++;
-                streamWriter.Write(options.RowDelimiter);
-            }
-            //Write data rows to file
-            while (reader.Read())
-            {
-                object[] values = new object[reader.FieldCount];
-                reader.GetValues(values);
-                for (int i = 0; i < values.Length; i++)
-                {
-                    streamWriter.Write(options.TextQualifer);
-                    streamWriter.Write(values[i]);
-                    streamWriter.Write(options.TextQualifer);
-                    if (i != values.Length - 1)
-                    {
-                        streamWriter.Write(options.ColumnDelimiter);
-                    }
-                }
-                streamWriter.Write(options.RowDelimiter);
-                dataRowCount++;
-                totalRowCount++;
-            }
-            streamWriter.Flush();
-            bytesWritten = streamWriter.BaseStream.Length;
-            streamWriter.Close();
-        }
-        return new QueryToFileResult()
-        {
-            BytesWritten = bytesWritten,
-            DataRowCount = dataRowCount,
-            TotalRowCount = totalRowCount
-        };
-    }
     public static IQueryable<T> UsingTable<T>(this IQueryable<T> queryable, string tableName) where T : class
     {
         var dbContext = queryable.GetDbContext();
@@ -692,6 +442,120 @@ public static class DbContextExtensions
                 Connection = dbContext.GetSqlConnection()
             });
         return queryable;
+    }
+    public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
+    {
+        entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
+        return new TableMapping(dbContext, entityType);
+    }
+    internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
+    {
+        int index = 0;
+        var updateEntry = entity as InternalEntityEntry;
+        if (updateEntry == null)
+        {
+            var entry = context.Entry(entity);
+            updateEntry = entry.GetInfrastructure();
+        }
+
+        if (updateEntry != null)
+        {
+            foreach (var property in properties)
+            {
+                if ((updateEntry.EntityState == EntityState.Added &&
+                    (property.ValueGenerated == ValueGenerated.OnAdd || property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
+                  (updateEntry.EntityState == EntityState.Modified &&
+                    (property.ValueGenerated == ValueGenerated.OnUpdate || property.ValueGenerated == ValueGenerated.OnAddOrUpdate)) ||
+                  updateEntry.EntityState == EntityState.Detached
+                )
+                {
+                    updateEntry.SetStoreGeneratedValue(property, values[index]);
+                }
+                index++;
+            }
+            if (updateEntry.EntityState == EntityState.Detached)
+                updateEntry.AcceptChanges();
+        }
+        else
+        {
+            throw new InvalidOperationException("SetStoreValues() failed because an instance of InternalEntityEntry was not found.");
+        }
+    }
+    internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
+        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false)
+    {
+        using (var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId))
+        {
+            var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions | options.BulkCopyOptions, transaction)
+            {
+                DestinationTableName = tableName,
+                BatchSize = options.BatchSize,
+                NotifyAfter = options.NotifyAfter,
+                EnableStreaming = options.EnableStreaming,
+            };
+            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.HasValue ? options.CommandTimeout.Value : sqlBulkCopy.BulkCopyTimeout;
+            if (options.SqlRowsCopied != null)
+            {
+                sqlBulkCopy.SqlRowsCopied += options.SqlRowsCopied;
+            }
+            foreach (SqlBulkCopyColumnOrderHint columnOrderHint in options.ColumnOrderHints)
+            {
+                sqlBulkCopy.ColumnOrderHints.Add(columnOrderHint);
+            }
+            foreach (var property in dataReader.TableMapping.Properties)
+            {
+                var columnName = dataReader.TableMapping.GetColumnName(property);
+                if (inputColumns == null || inputColumns.Contains(columnName))
+                    sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
+            }
+            if (useInternalId)
+            {
+                sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
+            }
+            sqlBulkCopy.WriteToServer(dataReader);
+
+            return new BulkInsertResult<T>
+            {
+                RowsAffected = sqlBulkCopy.RowsCopied,
+                EntityMap = dataReader.EntityMap
+            };
+        }
+    }
+    internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
+    {
+        List<object[]> results = [];
+        List<string> columns = [];
+        var command = context.Database.CreateCommand();
+        command.CommandText = sqlText;
+        if (options.CommandTimeout.HasValue)
+        {
+            command.CommandTimeout = options.CommandTimeout.Value;
+        }
+        var reader = command.ExecuteReader();
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            columns.Add(reader.GetName(i));
+        }
+        try
+        {
+            while (reader.Read())
+            {
+                object[] values = new object[reader.FieldCount];
+                reader.GetValues(values);
+                results.Add(values);
+            }
+        }
+        finally
+        {
+            reader.Close();
+        }
+
+        return new BulkQueryResult
+        {
+            Columns = columns,
+            Results = results,
+            RowsAffected = reader.RecordsAffected
+        };
     }
     internal static DbContext GetDbContext<T>(this IQueryable<T> queryable) where T : class
     {
@@ -725,9 +589,133 @@ public static class DbContextExtensions
         var dbConnection = context.Database.GetDbConnection();
         return connectionBehavior == ConnectionBehavior.New ? ((ICloneable)dbConnection).Clone() as SqlConnection : dbConnection as SqlConnection;
     }
-    public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
+    private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
     {
-        entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
-        return new TableMapping(dbContext, entityType);
+        using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+        command.CommandText = sqlText;
+        if (parameters != null)
+            command.Parameters.AddRange(parameters);
+
+        var tableMapping = dbContext.GetTableMapping(typeof(T), null);
+        var reader = command.ExecuteReader();
+        var properties = reader.GetProperties(tableMapping);
+        var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
+
+        while (reader.Read())
+        {
+            var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
+            yield return entity;
+        }
+
+        reader.Close();
+    }
+    private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+    {
+        BulkMergeResult<T> bulkMergeResult;
+        using (var bulkOperation = new BulkOperation<T>(context, options))
+        {
+            try
+            {
+                bulkOperation.ValidateBulkMerge(options.MergeOnCondition);
+                var bulkInsertResult = bulkOperation.BulkInsertStagingData(entities, true, true);
+                bulkMergeResult = bulkOperation.ExecuteMerge(bulkInsertResult.EntityMap, options.MergeOnCondition, options.AutoMapOutput,
+                    false, true, true, options.DeleteIfNotMatched);
+                bulkOperation.DbTransactionContext.Commit();
+            }
+            catch (Exception)
+            {
+                bulkOperation.DbTransactionContext.Rollback();
+                throw;
+            }
+        }
+        return bulkMergeResult;
+    }
+    private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
+    {
+        foreach (var entity in entities)
+        {
+            var entry = dbContext.Entry(entity);
+            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
+                dbContext.Entry(entity).State = EntityState.Unchanged;
+        }
+    }
+    private static void Validate(TableMapping tableMapping)
+    {
+        if (!tableMapping.GetPrimaryKeyColumns().Any())
+        {
+            throw new Exception("You must have a primary key on this table to use this function.");
+        }
+    }
+    private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
+    {
+        var dbContext = queryable.GetDbContext();
+        var dbConnection = dbContext.GetSqlConnection();
+        return InternalQueryToFile(dbConnection, stream, options, queryable.ToQueryString());
+    }
+    private static QueryToFileResult InternalQueryToFile(SqlConnection dbConnection, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters = null)
+    {
+        int dataRowCount = 0;
+        int totalRowCount = 0;
+        long bytesWritten = 0;
+
+        if (dbConnection.State == ConnectionState.Closed)
+            dbConnection.Open();
+
+        var command = new SqlCommand(sqlText, dbConnection);
+        if (parameters != null)
+        {
+            command.Parameters.AddRange(parameters);
+        }
+        if (options.CommandTimeout.HasValue)
+        {
+            command.CommandTimeout = options.CommandTimeout.Value;
+        }
+
+        var streamWriter = new StreamWriter(stream);
+        using (var reader = command.ExecuteReader())
+        {
+            if (options.IncludeHeaderRow)
+            {
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    streamWriter.Write(options.TextQualifer);
+                    streamWriter.Write(reader.GetName(i));
+                    streamWriter.Write(options.TextQualifer);
+                    if (i != reader.FieldCount - 1)
+                    {
+                        streamWriter.Write(options.ColumnDelimiter);
+                    }
+                }
+                totalRowCount++;
+                streamWriter.Write(options.RowDelimiter);
+            }
+            while (reader.Read())
+            {
+                object[] values = new object[reader.FieldCount];
+                reader.GetValues(values);
+                for (int i = 0; i < values.Length; i++)
+                {
+                    streamWriter.Write(options.TextQualifer);
+                    streamWriter.Write(values[i]);
+                    streamWriter.Write(options.TextQualifer);
+                    if (i != values.Length - 1)
+                    {
+                        streamWriter.Write(options.ColumnDelimiter);
+                    }
+                }
+                streamWriter.Write(options.RowDelimiter);
+                dataRowCount++;
+                totalRowCount++;
+            }
+            streamWriter.Flush();
+            bytesWritten = streamWriter.BaseStream.Length;
+            streamWriter.Close();
+        }
+        return new QueryToFileResult()
+        {
+            BytesWritten = bytesWritten,
+            DataRowCount = dataRowCount,
+            TotalRowCount = totalRowCount
+        };
     }
 }

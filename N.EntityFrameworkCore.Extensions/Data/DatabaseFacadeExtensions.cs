@@ -20,7 +20,7 @@ public static class DatabaseFacadeExtensions
     }
     public static int ClearTable(this DatabaseFacade database, string tableName)
     {
-        return database.ExecuteSqlRaw(string.Format("DELETE FROM {0}", tableName));
+        return database.ExecuteSqlRaw($"DELETE FROM {tableName}");
     }
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
@@ -32,7 +32,7 @@ public static class DatabaseFacadeExtensions
         bool truncateTable = !ifExists || database.TableExists(tableName);
         if (truncateTable)
         {
-            database.ExecuteSqlRaw(string.Format("TRUNCATE TABLE {0}", tableName));
+            database.ExecuteSqlRaw($"TRUNCATE TABLE {tableName}");
         }
     }
     public static bool TableExists(this DatabaseFacade database, string tableName)
@@ -51,7 +51,7 @@ public static class DatabaseFacadeExtensions
     {
         string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
         columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
-        return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)));
+        return database.ExecuteSqlRaw($"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}");
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
     {

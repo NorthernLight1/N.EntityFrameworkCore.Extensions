@@ -86,7 +86,6 @@ public static class DbContextExtensionsAsync
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
-        //Read data
         int batch = 1;
         int count = 0;
         int totalCount = 0;
@@ -292,14 +291,12 @@ public static class DbContextExtensionsAsync
             command.CommandTimeout = options.CommandTimeout.Value;
         }
         var reader = await command.ExecuteReaderAsync(cancellationToken);
-        //Get column names
         for (int i = 0; i < reader.FieldCount; i++)
         {
             columns.Add(reader.GetName(i));
         }
         try
         {
-            //Read data
             while (await reader.ReadAsync(cancellationToken))
             {
                 object[] values = new object[reader.FieldCount];
@@ -309,7 +306,6 @@ public static class DbContextExtensionsAsync
         }
         finally
         {
-            //close the DataReader
             await reader.CloseAsync();
         }
 
@@ -491,7 +487,6 @@ public static class DbContextExtensionsAsync
         int totalRowCount = 0;
         long bytesWritten = 0;
 
-        //Open datbase connection
         if (dbConnection.State == ConnectionState.Closed)
             dbConnection.Open();
 
@@ -508,7 +503,6 @@ public static class DbContextExtensionsAsync
         StreamWriter streamWriter = new StreamWriter(stream);
         using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            //Header row
             if (options.IncludeHeaderRow)
             {
                 for (int i = 0; i < reader.FieldCount; i++)
@@ -524,7 +518,6 @@ public static class DbContextExtensionsAsync
                 totalRowCount++;
                 await streamWriter.WriteAsync(options.RowDelimiter);
             }
-            //Write data rows to file
             while (await reader.ReadAsync(cancellationToken))
             {
                 object[] values = new object[reader.FieldCount];
