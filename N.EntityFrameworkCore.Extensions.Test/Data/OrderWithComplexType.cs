@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data;
+
 public class OrderWithComplexType
 {
     [Key]

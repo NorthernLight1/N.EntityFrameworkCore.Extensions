@@ -13,18 +13,15 @@ public class BulkInsertOptions<T> : BulkOptions
     public Expression<Func<T, T, bool>> InsertOnCondition { get; set; }
     public bool KeepIdentity { get; set; }
 
-    public string[] GetInputColumns()
-    {
-        return this.InputColumns == null ? null : this.InputColumns.Body.Type.GetProperties().Select(o => o.Name).ToArray();
-    }
+    public string[] GetInputColumns() =>
+        InputColumns?.Body.Type.GetProperties().Select(o => o.Name).ToArray();
 
     public BulkInsertOptions()
     {
-        this.AutoMapOutput = true;
-        this.InsertIfNotExists = false;
+        AutoMapOutput = true;
     }
     internal BulkInsertOptions(BulkOptions options)
     {
-        this.EntityType = options.EntityType;
+        EntityType = options.EntityType;
     }
 }

@@ -92,7 +92,7 @@ public class ToSqlPredicateTests
         public string TesterVar4 { get; set; }
         public string TesterVar5 { get; set; }
     }
-    
+
     enum EntityType
     {
         One,
