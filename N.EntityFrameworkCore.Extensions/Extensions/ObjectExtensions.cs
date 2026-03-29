@@ -5,7 +5,7 @@ namespace N.EntityFrameworkCore.Extensions;
 
 internal static class ObjectExtensions
 {
-    public static object GetPrivateFieldValue(this object obj, string propName)
+    internal static object GetPrivateFieldValue(this object obj, string propName)
     {
         if (obj == null) throw new ArgumentNullException(nameof(obj));
         Type t = obj.GetType();

@@ -1,6 +1,6 @@
 ﻿namespace N.EntityFrameworkCore.Extensions.Sql;
 
-public enum SqlKeyword
+internal enum SqlKeyword
 {
     Select,
     Delete,

@@ -10,7 +10,7 @@ namespace N.EntityFrameworkCore.Extensions;
 
 internal static class LinqExtensions
 {
-    public static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
+    internal static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
     {
         if (expression == null)
         {
