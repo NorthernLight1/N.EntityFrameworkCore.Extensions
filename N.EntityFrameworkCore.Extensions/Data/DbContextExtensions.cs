@@ -151,14 +151,12 @@ public static class DbContextExtensions
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
         int batch = 1;
         int count = 0;
-        int totalCount = 0;
         List<T> entities = [];
         while (reader.Read())
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             entities.Add(entity);
             count++;
-            totalCount++;
             if (count == options.BatchSize)
             {
                 action(new FetchResult<T> { Results = entities, Batch = batch });
@@ -384,7 +382,7 @@ public static class DbContextExtensions
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options) where T : class
     {
-        var fileStream = File.Create(filePath);
+        using var fileStream = File.Create(filePath);
         return QueryToCsvFile<T>(queryable, fileStream, options);
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
@@ -409,7 +407,7 @@ public static class DbContextExtensions
     }
     public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
     {
-        var fileStream = File.Create(filePath);
+        using var fileStream = File.Create(filePath);
         return SqlQueryToCsvFile(database, fileStream, options, sqlText, parameters);
     }
     public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
@@ -445,7 +443,7 @@ public static class DbContextExtensions
     }
     public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
     {
-        entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
+        entityType ??= dbContext.Model.FindEntityType(type);
         return new TableMapping(dbContext, entityType);
     }
     internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
@@ -525,7 +523,7 @@ public static class DbContextExtensions
     {
         List<object[]> results = [];
         List<string> columns = [];
-        var command = context.Database.CreateCommand();
+        using var command = context.Database.CreateCommand();
         command.CommandText = sqlText;
         if (options.CommandTimeout.HasValue)
         {
@@ -671,7 +669,7 @@ public static class DbContextExtensions
             command.CommandTimeout = options.CommandTimeout.Value;
         }
 
-        var streamWriter = new StreamWriter(stream);
+        using var streamWriter = new StreamWriter(stream, leaveOpen: true);
         using (var reader = command.ExecuteReader())
         {
             if (options.IncludeHeaderRow)
@@ -709,7 +707,6 @@ public static class DbContextExtensions
             }
             streamWriter.Flush();
             bytesWritten = streamWriter.BaseStream.Length;
-            streamWriter.Close();
         }
         return new QueryToFileResult()
         {

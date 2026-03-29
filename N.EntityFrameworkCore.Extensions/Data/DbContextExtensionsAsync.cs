@@ -88,14 +88,12 @@ public static class DbContextExtensionsAsync
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
         int batch = 1;
         int count = 0;
-        int totalCount = 0;
         List<T> entities = [];
         while (await reader.ReadAsync(cancellationToken))
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             entities.Add(entity);
             count++;
-            totalCount++;
             if (count == options.BatchSize)
             {
                 await action(new FetchResult<T> { Results = entities, Batch = batch });
@@ -234,8 +232,6 @@ public static class DbContextExtensionsAsync
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
@@ -259,8 +255,6 @@ public static class DbContextExtensionsAsync
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
@@ -294,8 +288,6 @@ public static class DbContextExtensionsAsync
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
@@ -333,7 +325,7 @@ public static class DbContextExtensionsAsync
     public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options,
         CancellationToken cancellationToken = default) where T : class
     {
-        var fileStream = File.Create(filePath);
+        await using var fileStream = File.Create(filePath);
         return await QueryToCsvFileAsync<T>(queryable, fileStream, options, cancellationToken);
     }
     public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options,
@@ -364,7 +356,7 @@ public static class DbContextExtensionsAsync
     public static async Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, object[] parameters,
         CancellationToken cancellationToken = default)
     {
-        var fileStream = File.Create(filePath);
+        await using var fileStream = File.Create(filePath);
         return await SqlQueryToCsvFileAsync(database, fileStream, options, sqlText, parameters, cancellationToken);
     }
     public static async Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters,
@@ -421,7 +413,7 @@ public static class DbContextExtensionsAsync
     {
         List<object[]> results = [];
         List<string> columns = [];
-        var command = new SqlCommand(sqlText, dbConnection, transaction);
+        await using var command = new SqlCommand(sqlText, dbConnection, transaction);
         if (options.CommandTimeout.HasValue)
         {
             command.CommandTimeout = options.CommandTimeout.Value;
@@ -500,7 +492,7 @@ public static class DbContextExtensionsAsync
             command.CommandTimeout = options.CommandTimeout.Value;
         }
 
-        StreamWriter streamWriter = new StreamWriter(stream);
+        await using var streamWriter = new StreamWriter(stream, leaveOpen: true);
         using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             if (options.IncludeHeaderRow)
@@ -538,7 +530,6 @@ public static class DbContextExtensionsAsync
             }
             await streamWriter.FlushAsync();
             bytesWritten = streamWriter.BaseStream.Length;
-            streamWriter.Close();
         }
         return new QueryToFileResult()
         {
