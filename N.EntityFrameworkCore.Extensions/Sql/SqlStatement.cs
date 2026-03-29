@@ -5,13 +5,13 @@ using N.EntityFrameworkCore.Extensions.Extensions;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlStatement
+internal sealed class SqlStatement
 {
     internal string Sql => ToSql();
     List<SqlPart> SqlParts { get; }
     SqlStatement()
     {
-        SqlParts = new List<SqlPart>();
+        SqlParts = [];
     }
     internal void CreatePart(SqlKeyword keyword, SqlExpression expression = null) =>
         SqlParts.Add(new SqlPart(keyword, expression));
@@ -70,7 +70,7 @@ internal class SqlStatement
 
     private string ToSql()
     {
-        StringBuilder sbSql = new StringBuilder();
+        var sbSql = new StringBuilder();
         foreach (var part in SqlParts)
         {
             if (part.Keyword == SqlKeyword.Semicolon)

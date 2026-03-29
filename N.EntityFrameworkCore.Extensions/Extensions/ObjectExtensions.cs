@@ -5,7 +5,7 @@ namespace N.EntityFrameworkCore.Extensions;
 
 internal static class ObjectExtensions
 {
-    public static object GetPrivateFieldValue(this object obj, string propName)
+    internal static object GetPrivateFieldValue(this object obj, string propName)
     {
         if (obj == null) throw new ArgumentNullException(nameof(obj));
         Type t = obj.GetType();
@@ -22,7 +22,7 @@ internal static class ObjectExtensions
             t = t.BaseType;
         }
         if (fieldInfo == null && propertyInfo == null)
-            throw new ArgumentOutOfRangeException("propName", $"Field {propName} was not found in Type {obj.GetType().FullName}");
+            throw new ArgumentOutOfRangeException(nameof(propName), $"Field {propName} was not found in Type {obj.GetType().FullName}");
 
         if (fieldInfo != null)
             return fieldInfo.GetValue(obj);

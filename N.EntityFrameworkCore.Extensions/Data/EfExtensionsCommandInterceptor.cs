@@ -7,7 +7,7 @@ namespace N.EntityFrameworkCore.Extensions;
 
 public class EfExtensionsCommandInterceptor : DbCommandInterceptor
 {
-    private ConcurrentDictionary<Guid, EfExtensionsCommand> extensionCommands = new ConcurrentDictionary<Guid, EfExtensionsCommand>();
+    private ConcurrentDictionary<Guid, EfExtensionsCommand> extensionCommands = new();
     public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
     {
         foreach (var extensionCommand in extensionCommands)

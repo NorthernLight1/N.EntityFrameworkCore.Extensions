@@ -7,7 +7,7 @@ using N.EntityFrameworkCore.Extensions.Enums;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-internal class DbTransactionContext : IDisposable
+internal sealed class DbTransactionContext : IDisposable
 {
     private bool closeConnection;
     private bool ownsTransaction;

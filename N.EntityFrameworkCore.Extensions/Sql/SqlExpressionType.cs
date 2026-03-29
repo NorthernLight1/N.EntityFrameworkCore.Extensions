@@ -1,6 +1,6 @@
 ﻿namespace N.EntityFrameworkCore.Extensions.Sql;
 
-public enum SqlExpressionType
+internal enum SqlExpressionType
 {
     String,
     Table,

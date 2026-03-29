@@ -15,18 +15,13 @@ internal static class CommonUtil
             return $"[{tableMapping.Schema}].[tmp_be_xx_{tableMapping.TableName}_{sqlConnection.ClientConnectionId}]";
         return $"[{tableMapping.Schema}].[#tmp_be_xx_{tableMapping.TableName}]";
     }
-    private static string FormatColumn(string column)
-    {
-        var parts = column.Split('.');
-        return string.Join(".", parts.Select(p => p.StartsWith("$") || (p.StartsWith("[") && p.EndsWith("]")) ? p : $"[{p}]"));
-    }
     internal static IEnumerable<string> FormatColumns(IEnumerable<string> columns)
     {
         return columns.Select(s => FormatColumn(s));
     }
     internal static IEnumerable<string> FormatColumns(string tableAlias, IEnumerable<string> columns)
     {
-        return columns.Select(s => s.StartsWith("[") && s.EndsWith("]") ? $"[{tableAlias}].{s}" : $"[{tableAlias}].[{s}]");
+        return columns.Select(s => s.StartsWith('[') && s.EndsWith(']') ? $"[{tableAlias}].{s}" : $"[{tableAlias}].[{s}]");
     }
     internal static IEnumerable<string> FilterColumns<T>(IEnumerable<string> columnNames, string[] primaryKeyColumnNames, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
     {
@@ -50,12 +45,15 @@ internal static class CommonUtil
         }
         return filteredColumnNames;
     }
-
     internal static string FormatTableName(string tableName)
     {
         return string.Join(".", tableName.Split('.').Select(s => $"[{RemoveQualifier(s)}]"));
     }
-
+    private static string FormatColumn(string column)
+    {
+        var parts = column.Split('.');
+        return string.Join(".", parts.Select(p => p.StartsWith('$') || (p.StartsWith('[') && p.EndsWith(']')) ? p : $"[{p}]"));
+    }
     private static string RemoveQualifier(string name)
     {
         return name.TrimStart('[').TrimEnd(']');
@@ -65,20 +63,33 @@ internal static class CommonUtil<T>
 {
     internal static string[] GetColumns(Expression<Func<T, T, bool>> expression, string[] tableNames)
     {
-        List<string> foundColumns = new List<string>();
+        List<string> foundColumns = [];
         string sqlText = (string)expression.Body.GetPrivateFieldValue("DebugView");
+        var sqlSpan = sqlText.AsSpan();
 
-        int startIndex = sqlText.IndexOf("$");
-        while (startIndex != -1)
+        int offset = 0;
+        while (offset < sqlSpan.Length)
         {
-            int endIndex = sqlText.IndexOf(" ", startIndex);
-            string column = endIndex == -1 ? sqlText.Substring(startIndex) : sqlText.Substring(startIndex, endIndex - startIndex);
-            string[] columnParts = column.Split('.');
-            if (tableNames == null || tableNames.Contains(columnParts[0].Remove(0, 1)))
+            int startIndex = sqlSpan[offset..].IndexOf('$');
+            if (startIndex == -1) break;
+            startIndex += offset;
+
+            var remaining = sqlSpan[startIndex..];
+            int spaceIndex = remaining.IndexOf(' ');
+            var columnSpan = spaceIndex == -1 ? remaining : remaining[..spaceIndex];
+
+            int dotIndex = columnSpan.IndexOf('.');
+            if (dotIndex >= 0)
             {
-                foundColumns.Add(columnParts[1]);
+                var tablePart = columnSpan[1..dotIndex]; // skip leading '$'
+                var columnPart = columnSpan[(dotIndex + 1)..];
+                if (tableNames == null || tableNames.Contains(tablePart.ToString()))
+                {
+                    foundColumns.Add(columnPart.ToString());
+                }
             }
-            startIndex = sqlText.IndexOf("$", startIndex + 1);
+
+            offset = startIndex + 1;
         }
 
         return foundColumns.ToArray();

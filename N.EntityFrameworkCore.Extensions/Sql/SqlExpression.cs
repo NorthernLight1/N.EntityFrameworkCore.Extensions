@@ -5,18 +5,18 @@ using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
-internal class SqlExpression
+internal sealed class SqlExpression
 {
     internal SqlExpressionType ExpressionType { get; }
     List<object> Items { get; set; }
     internal string Sql => ToSql();
     string Alias { get; }
-    public bool IsEmpty => Items.Count == 0;
+    internal bool IsEmpty => Items.Count == 0;
 
     SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
     {
         ExpressionType = expressionType;
-        Items = new List<object>();
+        Items = [];
         if (item is IEnumerable<string> values)
         {
             Items.AddRange(values.ToArray());
@@ -30,7 +30,7 @@ internal class SqlExpression
     SqlExpression(SqlExpressionType expressionType, object[] items, string alias = null)
     {
         ExpressionType = expressionType;
-        Items = new List<object>();
+        Items = [];
         Items.AddRange(items);
         Alias = alias;
     }
@@ -48,10 +48,10 @@ internal class SqlExpression
 
     private string ToSql()
     {
-        var values = Items.Select(o => o.ToString()).ToArray();
-        StringBuilder sbSql = new StringBuilder();
+        var sbSql = new StringBuilder();
         if (ExpressionType == SqlExpressionType.Columns)
         {
+            var values = Items.Select(o => o.ToString()).ToArray();
             sbSql.Append(string.Join(",", CommonUtil.FormatColumns(values)));
         }
         else

@@ -8,7 +8,7 @@ using N.EntityFrameworkCore.Extensions.Common;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-internal class EntityDataReader<T> : IDataReader
+internal sealed class EntityDataReader<T> : IDataReader
 {
     public TableMapping TableMapping { get; set; }
     public Dictionary<long, T> EntityMap { get; set; }
@@ -22,14 +22,14 @@ internal class EntityDataReader<T> : IDataReader
 
     public EntityDataReader(TableMapping tableMapping, IEnumerable<T> entities, bool useInternalId)
     {
-        this.columnIndexes = new Dictionary<string, int>();
+        this.columnIndexes = [];
         this.currentId = 0;
         this.useInternalId = useInternalId;
         this.tableFieldCount = tableMapping.Properties.Length;
         this.entities = entities;
         this.enumerator = entities.GetEnumerator();
-        this.selectors = new Dictionary<int, Func<EntityEntry, object>>();
-        this.EntityMap = new Dictionary<long, T>();
+        this.selectors = [];
+        this.EntityMap = [];
         this.FieldCount = tableMapping.Properties.Length;
         this.TableMapping = tableMapping;
 
@@ -216,7 +216,7 @@ internal class EntityDataReader<T> : IDataReader
 
     private EntityEntry FindEntry(object entity)
     {
-        return entity is InternalEntityEntry ? ((InternalEntityEntry)entity).ToEntityEntry() : this.TableMapping.DbContext.Entry(entity);
+        return entity is InternalEntityEntry internalEntry ? internalEntry.ToEntityEntry() : TableMapping.DbContext.Entry(entity);
     }
 
     public int GetValues(object[] values)

@@ -20,28 +20,7 @@ public static class DatabaseFacadeExtensions
     }
     public static int ClearTable(this DatabaseFacade database, string tableName)
     {
-        return database.ExecuteSqlRaw(string.Format("DELETE FROM {0}", tableName));
-    }
-    internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
-    {
-        return database.CloneTable([sourceTable], destinationTable, columnNames, internalIdColumnName);
-    }
-    internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
-    {
-        string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
-        columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
-        return database.ExecuteSqlRaw(string.Format("SELECT TOP 0 {0} INTO {1} FROM {2}", columns, destinationTable, string.Join(",", sourceTables)));
-    }
-    internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
-    {
-        var dbConnection = database.GetDbConnection(connectionBehavior);
-        if (dbConnection.State != ConnectionState.Open)
-            dbConnection.Open();
-        var command = dbConnection.CreateCommand();
-        if (database.CurrentTransaction != null && connectionBehavior == ConnectionBehavior.Default)
-            command.Transaction = database.CurrentTransaction.GetDbTransaction();
-        return command;
-
+        return database.ExecuteSqlRaw($"DELETE FROM {tableName}");
     }
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
@@ -53,7 +32,7 @@ public static class DatabaseFacadeExtensions
         bool truncateTable = !ifExists || database.TableExists(tableName);
         if (truncateTable)
         {
-            database.ExecuteSqlRaw(string.Format("TRUNCATE TABLE {0}", tableName));
+            database.ExecuteSqlRaw($"TRUNCATE TABLE {tableName}");
         }
     }
     public static bool TableExists(this DatabaseFacade database, string tableName)
@@ -63,6 +42,26 @@ public static class DatabaseFacadeExtensions
     public static bool TableHasIdentity(this DatabaseFacade database, string tableName)
     {
         return Convert.ToBoolean(database.ExecuteScalar($"SELECT ISNULL(OBJECTPROPERTY(OBJECT_ID('{tableName}'), 'TableHasIdentity'), 0)"));
+    }
+    internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
+    {
+        return database.CloneTable([sourceTable], destinationTable, columnNames, internalIdColumnName);
+    }
+    internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
+    {
+        string columns = columnNames != null && columnNames.Any() ? string.Join(",", CommonUtil.FormatColumns(columnNames)) : "*";
+        columns = !string.IsNullOrEmpty(internalIdColumnName) ? $"{columns},CAST( NULL AS INT) AS {internalIdColumnName}" : columns;
+        return database.ExecuteSqlRaw($"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}");
+    }
+    internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
+    {
+        var dbConnection = database.GetDbConnection(connectionBehavior);
+        if (dbConnection.State != ConnectionState.Open)
+            dbConnection.Open();
+        var command = dbConnection.CreateCommand();
+        if (database.CurrentTransaction != null && connectionBehavior == ConnectionBehavior.Default)
+            command.Transaction = database.CurrentTransaction.GetDbTransaction();
+        return command;
     }
     internal static int ExecuteSqlInternal(this DatabaseFacade database, string sql, int? commandTimeout = null, ConnectionBehavior connectionBehavior = default)
     {
