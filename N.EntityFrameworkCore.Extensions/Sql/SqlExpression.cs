@@ -48,10 +48,10 @@ internal sealed class SqlExpression
 
     private string ToSql()
     {
-        var values = Items.Select(o => o.ToString()).ToArray();
         var sbSql = new StringBuilder();
         if (ExpressionType == SqlExpressionType.Columns)
         {
+            var values = Items.Select(o => o.ToString()).ToArray();
             sbSql.Append(string.Join(",", CommonUtil.FormatColumns(values)));
         }
         else

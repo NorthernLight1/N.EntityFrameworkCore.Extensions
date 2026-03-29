@@ -65,18 +65,31 @@ internal static class CommonUtil<T>
     {
         List<string> foundColumns = [];
         string sqlText = (string)expression.Body.GetPrivateFieldValue("DebugView");
+        var sqlSpan = sqlText.AsSpan();
 
-        int startIndex = sqlText.IndexOf('$');
-        while (startIndex != -1)
+        int offset = 0;
+        while (offset < sqlSpan.Length)
         {
-            int endIndex = sqlText.IndexOf(' ', startIndex);
-            string column = endIndex == -1 ? sqlText[startIndex..] : sqlText[startIndex..endIndex];
-            string[] columnParts = column.Split('.');
-            if (tableNames == null || tableNames.Contains(columnParts[0][1..]))
+            int startIndex = sqlSpan[offset..].IndexOf('$');
+            if (startIndex == -1) break;
+            startIndex += offset;
+
+            var remaining = sqlSpan[startIndex..];
+            int spaceIndex = remaining.IndexOf(' ');
+            var columnSpan = spaceIndex == -1 ? remaining : remaining[..spaceIndex];
+
+            int dotIndex = columnSpan.IndexOf('.');
+            if (dotIndex >= 0)
             {
-                foundColumns.Add(columnParts[1]);
+                var tablePart = columnSpan[1..dotIndex]; // skip leading '$'
+                var columnPart = columnSpan[(dotIndex + 1)..];
+                if (tableNames == null || tableNames.Contains(tablePart.ToString()))
+                {
+                    foundColumns.Add(columnPart.ToString());
+                }
             }
-            startIndex = sqlText.IndexOf('$', startIndex + 1);
+
+            offset = startIndex + 1;
         }
 
         return foundColumns.ToArray();

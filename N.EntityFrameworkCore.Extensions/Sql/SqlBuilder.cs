@@ -78,9 +78,8 @@ internal sealed class SqlBuilder
         int curClauseIndex = 0;
         for (int i = 0; i < sqlText.Length;)
         {
-            int maxLenToSearch = sqlText.Length - i >= 10 ? 10 : sqlText.Length - i;
-            string keyword = StartsWithString(sqlText[i..(i + maxLenToSearch)], keywords, StringComparison.OrdinalIgnoreCase);
-            bool isWordStart = i > 0 ? sqlText[i - 1] == ' ' || (i > 1 && sqlText[(i - 2)..i] == "\r\n") : true;
+            string keyword = StartsWithString(sqlText.AsSpan(i), keywords, StringComparison.OrdinalIgnoreCase);
+            bool isWordStart = i == 0 || sqlText[i - 1] == ' ' || (i > 1 && sqlText[i - 2] == '\r' && sqlText[i - 1] == '\n');
             if (keyword != null && isWordStart)
             {
                 string inputText = sqlText[curClauseIndex..i];
@@ -134,19 +133,15 @@ internal sealed class SqlBuilder
             return value;
         }
     }
-    private static string StartsWithString(string textToSearch, IEnumerable<string> valuesToFind, StringComparison stringComparison)
+    private static string StartsWithString(ReadOnlySpan<char> textToSearch, string[] valuesToFind, StringComparison stringComparison)
     {
-        string value = null;
         foreach (var valueToFind in valuesToFind)
         {
             if (textToSearch.StartsWith(valueToFind, stringComparison))
-            {
-                value = valueToFind;
-                break;
-            }
+                return valueToFind;
         }
 
-        return value;
+        return null;
     }
     private void Validate()
     {
