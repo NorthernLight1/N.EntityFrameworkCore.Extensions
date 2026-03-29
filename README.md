@@ -44,6 +44,12 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
   - [FetchOptions](#fetchoptions)
   - [QueryToFileOptions](#querytofileoptions)
 - [Result Objects](#result-objects)
+  - [BulkMergeResult\<T\>](#bulkmergeresultt)
+  - [BulkMergeOutputRow\<T\>](#bulkmergeoutputrowt)
+  - [BulkSyncResult\<T\>](#bulksyncresultt)
+  - [FetchResult\<T\>](#fetchresultt)
+  - [QueryToFileResult](#querytofileresult)
+  - [SqlQuery](#sqlquery)
 - [Transactions](#transactions)
 - [API Reference](#api-reference)
 - [Donations](#donations)
@@ -124,6 +130,15 @@ Async:
 await dbContext.BulkDeleteAsync(orders);
 ```
 
+With options (custom match condition):
+
+```csharp
+dbContext.BulkDelete(orders, options =>
+{
+    options.DeleteOnCondition = (s, t) => s.Id == t.Id;
+});
+```
+
 ### BulkFetch
 
 Retrieves entities from the database that match objects in a local list (useful for key-based lookups).
@@ -196,6 +211,17 @@ Async:
 var result = await dbContext.BulkMergeAsync(products);
 ```
 
+With options (custom match condition and ignore columns):
+
+```csharp
+var result = dbContext.BulkMerge(products, options =>
+{
+    options.MergeOnCondition = (s, t) => s.Id == t.Id;
+    options.IgnoreColumnsOnInsert = o => new { o.CreatedDate };
+    options.IgnoreColumnsOnUpdate = o => new { o.CreatedDate };
+});
+```
+
 ### BulkSync
 
 Synchronizes the database table with the provided list. Entities not in the source list are deleted by default.
@@ -221,6 +247,16 @@ Async:
 
 ```csharp
 var result = await dbContext.BulkSyncAsync(products);
+```
+
+With options (custom match condition):
+
+```csharp
+var result = dbContext.BulkSync(products, options =>
+{
+    options.MergeOnCondition = (s, t) => s.Id == t.Id;
+    options.IgnoreColumnsOnUpdate = o => new { o.CreatedDate };
+});
 ```
 
 ### BulkSaveChanges
@@ -282,6 +318,9 @@ dbContext.Products.DeleteFromQuery();
 
 // Delete all products priced under $5.35
 dbContext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery();
+
+// With a custom command timeout (seconds)
+dbContext.Products.Where(x => x.Price < 5.35M).DeleteFromQuery(commandTimeout: 120);
 ```
 
 Async:
@@ -299,6 +338,11 @@ Inserts rows into a target table by selecting from a LINQ query, without loading
 dbContext.Products
     .Where(x => x.Price < 10M)
     .InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
+
+// With a custom command timeout (seconds)
+dbContext.Products
+    .Where(x => x.Price < 10M)
+    .InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price }, commandTimeout: 120);
 ```
 
 Async:
@@ -318,6 +362,11 @@ Updates rows directly in the database using a LINQ query, without loading entiti
 dbContext.Products
     .Where(x => x.Price == 5.35M)
     .UpdateFromQuery(o => new Product { Price = 5.75M });
+
+// With a custom command timeout (seconds)
+dbContext.Products
+    .Where(x => x.Price == 5.35M)
+    .UpdateFromQuery(o => new Product { Price = 5.75M }, commandTimeout: 120);
 ```
 
 Async:
@@ -433,7 +482,7 @@ All bulk operations accept options that derive from `BulkOptions`:
 
 ### BulkSyncOptions
 
-Inherits all `BulkMergeOptions` properties. By default, `DeleteIfNotMatched` is `true`, meaning rows not present in the source list will be removed from the target table.
+Inherits all `BulkMergeOptions` properties. `DeleteIfNotMatched` is always `true` for `BulkSync`, meaning rows not present in the source list are always removed from the target table. Use `BulkMerge` if you do not want rows deleted.
 
 ### BulkFetchOptions
 
@@ -477,6 +526,24 @@ Returned by `BulkMerge` and `BulkMergeAsync`.
 | `RowsDeleted` | `int` | Number of rows deleted (populated by `BulkSync`). |
 | `Output` | `IEnumerable<BulkMergeOutputRow<T>>` | Per-row output with merge action details. |
 
+### BulkMergeOutputRow\<T\>
+
+Each element in `BulkMergeResult<T>.Output`.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `Action` | `string` | The merge action performed. One of `"INSERT"`, `"UPDATE"`, or `"DELETE"`. |
+
+Example — inspecting per-row results after a merge:
+
+```csharp
+var result = dbContext.BulkMerge(products);
+foreach (var row in result.Output)
+{
+    Console.WriteLine(row.Action); // "INSERT", "UPDATE", or "DELETE"
+}
+```
+
 ### BulkSyncResult\<T\>
 
 Inherits `BulkMergeResult<T>`. Returned by `BulkSync` and `BulkSyncAsync`. `RowsDeleted` is always populated.
@@ -499,6 +566,26 @@ Returned by `QueryToCsvFile`, `SqlQueryToCsvFile`, and their async variants.
 | `DataRowCount` | `int` | Number of data rows written (excludes header). |
 | `TotalRowCount` | `int` | Total rows written including header. |
 | `BytesWritten` | `long` | Bytes written to the file or stream. |
+
+### SqlQuery
+
+Returned by `DatabaseFacade.FromSqlQuery(...)`. Allows counting or executing raw SQL without loading entities.
+
+| Member | Description |
+| --- | --- |
+| `Count()` | Returns the number of rows matched by the query. |
+| `CountAsync(cancellationToken)` | Async version of `Count()`. |
+| `ExecuteNonQuery()` | Executes the SQL statement and returns the number of rows affected. |
+| `SqlText` | The SQL text of the query. |
+| `Parameters` | The parameters passed to the query. |
+
+Example:
+
+```csharp
+var sqlQuery = dbContext.Database.FromSqlQuery("SELECT * FROM Products WHERE Price > @p0", 5M);
+int count = sqlQuery.Count();
+Console.WriteLine($"Matching rows: {count}");
+```
 
 ---
 
