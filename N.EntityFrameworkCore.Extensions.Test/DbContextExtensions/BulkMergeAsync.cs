@@ -254,7 +254,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
     }
     [TestMethod]
-    public async Task With_merge_Should_include_all_auto_generated_properties()
+    public async Task With_Options_AutoMapOutput()
     {
         var dbContext = SetupDbContext(true);
         int ordersToUpdate = 3;

@@ -9,7 +9,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions;
 public class BulkUpdate : DbContextExtensionsBase
 {
     [TestMethod]
-    public void With_ComplexKey()
+    public void With_Complex_Key()
     {
         var dbContext = SetupDbContext(true);
         var products = dbContext.ProductsWithComplexKey.Where(o => o.Price == 1.25M).ToList();

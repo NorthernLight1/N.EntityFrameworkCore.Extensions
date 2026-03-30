@@ -228,7 +228,6 @@ public static class DbContextExtensions
         {
             var key = saveEntryGroup.Key;
             var entities = saveEntryGroup.AsEnumerable();
-            var options = new BulkOptions { EntityType = saveEntryGroup.Key.EntityType };
             if (key.EntityState == EntityState.Added)
             {
                 rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; });
@@ -290,7 +289,7 @@ public static class DbContextExtensions
     }
     public static int DeleteFromQuery<T>(this IQueryable<T> queryable, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -298,7 +297,7 @@ public static class DbContextExtensions
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 sqlQuery.ChangeToDelete();
-                rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
 
                 dbTransactionContext.Commit();
             }
@@ -308,11 +307,11 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static int InsertFromQuery<T>(this IQueryable<T> queryable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -323,13 +322,13 @@ public static class DbContextExtensions
                 {
                     sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                     dbContext.Database.ToggleIdentityInsert(tableName, true);
-                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                    rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                     dbContext.Database.ToggleIdentityInsert(tableName, false);
                 }
                 else
                 {
                     sqlQuery.Clauses.First().InputText += $" INTO {tableName}";
-                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                    rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                 }
 
                 dbTransactionContext.Commit();
@@ -340,11 +339,11 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static int UpdateFromQuery<T>(this IQueryable<T> queryable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -353,7 +352,7 @@ public static class DbContextExtensions
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                 sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                 dbTransactionContext.Commit();
             }
             catch (Exception)
@@ -362,7 +361,7 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath) where T : class
     {

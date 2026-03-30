@@ -12,7 +12,7 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions;
 public class BulkSaveChangesAsync : DbContextExtensionsBase
 {
     [TestMethod]
-    public async Task With_All_Changes()
+    public async Task With_Default_Options()
     {
         var dbContext = SetupDbContext(true);
         var totalCount = dbContext.Orders.Count();
@@ -226,7 +226,7 @@ public class BulkSaveChangesAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsAffected == expectedRowsAffected, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
-    public async Task with_Schema()
+    public async Task With_Schema()
     {
         var dbContext = SetupDbContext(true, PopulateDataMode.Schema);
         var totalCount = await dbContext.ProductsWithCustomSchema.CountAsync();

@@ -9,8 +9,8 @@ namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions;
 [TestClass]
 public class BulkUpdateAsync : DbContextExtensionsBase
 {
-    [TestMethod()]
-    public async Task With_ComplexKey()
+    [TestMethod]
+    public async Task With_Complex_Key()
     {
         var dbContext = SetupDbContext(true);
         var products = dbContext.ProductsWithComplexKey.Where(o => o.Price == 1.25M).ToList();
