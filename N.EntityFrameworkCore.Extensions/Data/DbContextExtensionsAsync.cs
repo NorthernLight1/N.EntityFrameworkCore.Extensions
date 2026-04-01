@@ -63,6 +63,54 @@ public static class DbContextExtensionsAsync
             return rowsAffected;
         }
     }
+    public static async Task<IEnumerable<T>> BulkFetchAsync<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, CancellationToken cancellationToken = default) where T : class, new()
+    {
+        return await dbSet.BulkFetchAsync(entities, new BulkFetchOptions<T>(), cancellationToken);
+    }
+    public static async Task<IEnumerable<T>> BulkFetchAsync<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, Action<BulkFetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
+    {
+        return await dbSet.BulkFetchAsync(entities, optionsAction.Build(), cancellationToken);
+    }
+    public static async Task<IEnumerable<T>> BulkFetchAsync<T, U>(this DbSet<T> dbSet, IEnumerable<U> entities, BulkFetchOptions<T> options, CancellationToken cancellationToken = default) where T : class, new()
+    {
+        var context = dbSet.GetDbContext();
+        var tableMapping = context.GetTableMapping(typeof(T));
+
+        using (var dbTransactionContext = new DbTransactionContext(context, options.CommandTimeout, ConnectionBehavior.New))
+        {
+            string selectSql;
+            var dbConnection = dbTransactionContext.Connection;
+            var transaction = dbTransactionContext.CurrentTransaction;
+            string stagingTableName = string.Empty;
+            try
+            {
+                stagingTableName = CommonUtil.GetStagingTableName(tableMapping, true, dbConnection);
+                string destinationTableName = $"[{tableMapping.Schema}].[{tableMapping.TableName}]";
+                string[] keyColumnNames = options.JoinOnCondition != null ? CommonUtil<T>.GetColumns(options.JoinOnCondition, ["s"])
+                    : tableMapping.GetPrimaryKeyColumns().ToArray();
+                IEnumerable<string> columnNames = CommonUtil.FilterColumns<T>(tableMapping.GetColumns(true), keyColumnNames, options.InputColumns, options.IgnoreColumns);
+                IEnumerable<string> columnsToFetch = CommonUtil.FormatColumns("t", columnNames);
+
+                if (keyColumnNames.Length == 0 && options.JoinOnCondition == null)
+                    throw new InvalidDataException("BulkFetch requires that the entity have a primary key or the Options.JoinOnCondition must be set.");
+
+                await context.Database.CloneTableAsync(destinationTableName, stagingTableName, keyColumnNames, null, cancellationToken);
+                await BulkInsertAsync(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false, cancellationToken);
+                selectSql = $"SELECT {SqlUtil.ConvertToColumnString(columnsToFetch)} FROM {stagingTableName} s JOIN {destinationTableName} t ON {CommonUtil<T>.GetJoinConditionSql(options.JoinOnCondition, keyColumnNames)}";
+
+                dbTransactionContext.Commit();
+            }
+            catch
+            {
+                dbTransactionContext.Rollback();
+                throw;
+            }
+
+            var results = await context.FetchInternalAsync<T>(selectSql, cancellationToken: cancellationToken);
+            context.Database.DropTable(stagingTableName);
+            return results;
+        }
+    }
     public static async Task FetchAsync<T>(this IQueryable<T> queryable, Func<FetchResult<T>, Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
     {
         await FetchAsync(queryable, action, optionsAction.Build(), cancellationToken);
@@ -546,5 +594,27 @@ public static class DbContextExtensionsAsync
             DataRowCount = dataRowCount,
             TotalRowCount = totalRowCount
         };
+    }
+    private static async Task<IEnumerable<T>> FetchInternalAsync<T>(this DbContext dbContext, string sqlText, object[] parameters = null, CancellationToken cancellationToken = default) where T : class, new()
+    {
+        List<T> results = [];
+        await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+        command.CommandText = sqlText;
+        if (parameters != null)
+            command.Parameters.AddRange(parameters);
+
+        var tableMapping = dbContext.GetTableMapping(typeof(T), null);
+        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        var properties = reader.GetProperties(tableMapping);
+        var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
+            results.Add(entity);
+        }
+
+        await reader.CloseAsync();
+        return results;
     }
 }
