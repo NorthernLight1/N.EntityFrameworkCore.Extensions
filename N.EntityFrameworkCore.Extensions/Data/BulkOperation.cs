@@ -152,7 +152,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
     }
     private object[] GetMergeOutputValues(IEnumerable<string> columns, object[] values, IEnumerable<IProperty> properties)
     {
-        var valuesIndex = properties.Select(o => columns.ToList().IndexOf($"[inserted].[{o.GetColumnName()}]"));
+        var columnList = columns.ToList();
+        var valuesIndex = properties.Select(o => columnList.IndexOf($"[inserted].[{o.GetColumnName()}]"));
         return valuesIndex.Select(i => values[i]).ToArray();
     }
     internal int ExecuteUpdate(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition)

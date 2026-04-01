@@ -34,7 +34,7 @@ public class DeleteFromQuery : DbContextExtensionsBase
         Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
     }
     [TestMethod]
-    public void With_Decimal_Using_IQuerable()
+    public void With_Decimal_Using_IQueryable()
     {
         var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price <= 10);

@@ -82,20 +82,18 @@ public static class DbContextExtensionsAsync
         await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
         command.CommandText = sqlQuery.Sql;
         command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
         int batch = 1;
         int count = 0;
-        int totalCount = 0;
         List<T> entities = [];
         while (await reader.ReadAsync(cancellationToken))
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             entities.Add(entity);
             count++;
-            totalCount++;
             if (count == options.BatchSize)
             {
                 await action(new FetchResult<T> { Results = entities, Batch = batch });
@@ -108,8 +106,6 @@ public static class DbContextExtensionsAsync
 
         if (entities.Count > 0)
             await action(new FetchResult<T> { Results = entities, Batch = batch });
-
-        await reader.CloseAsync();
     }
     public static async Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
@@ -168,7 +164,6 @@ public static class DbContextExtensionsAsync
         {
             var key = saveEntryGroup.Key;
             var entities = saveEntryGroup.AsEnumerable();
-            var options = new BulkOptions { EntityType = saveEntryGroup.Key.EntityType };
             if (key.EntityState == EntityState.Added)
             {
                 rowsAffected += await dbContext.BulkInsertAsync(entities, o => { o.EntityType = key.EntityType; });
@@ -230,17 +225,15 @@ public static class DbContextExtensionsAsync
     }
     public static async Task<int> DeleteFromQueryAsync<T>(this IQueryable<T> queryable, int? commandTimeout = null, CancellationToken cancellationToken = default) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 sqlQuery.ChangeToDelete();
-                rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters, cancellationToken);
+                rowsAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters, cancellationToken);
 
                 dbTransactionContext.Commit();
             }
@@ -250,17 +243,15 @@ public static class DbContextExtensionsAsync
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static async Task<int> InsertFromQueryAsync<T>(this IQueryable<T> queryable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
@@ -268,13 +259,13 @@ public static class DbContextExtensionsAsync
                 {
                     sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                     await dbContext.Database.ToggleIdentityInsertAsync(tableName, true);
-                    rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
+                    rowsAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                     await dbContext.Database.ToggleIdentityInsertAsync(tableName, false);
                 }
                 else
                 {
                     sqlQuery.Clauses.First().InputText += $" INTO {tableName}";
-                    rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
+                    rowsAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                 }
 
                 dbTransactionContext.Commit();
@@ -285,23 +276,21 @@ public static class DbContextExtensionsAsync
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static async Task<int> UpdateFromQueryAsync<T>(this IQueryable<T> queryable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         var dbContext = queryable.GetDbContext();
         using (var dbTransactionContext = new DbTransactionContext(dbContext, commandTimeout))
         {
-            var dbConnection = dbTransactionContext.Connection;
-            var dbTransaction = dbTransactionContext.CurrentTransaction;
             try
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                 sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                rowAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
+                rowsAffected = await dbContext.Database.ExecuteSqlRawAsync(sqlQuery.Sql, sqlQuery.Parameters.ToArray(), cancellationToken);
                 dbTransactionContext.Commit();
             }
             catch (Exception)
@@ -310,7 +299,7 @@ public static class DbContextExtensionsAsync
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, CancellationToken cancellationToken = default) where T : class
     {
@@ -333,7 +322,7 @@ public static class DbContextExtensionsAsync
     public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options,
         CancellationToken cancellationToken = default) where T : class
     {
-        var fileStream = File.Create(filePath);
+        await using var fileStream = File.Create(filePath);
         return await QueryToCsvFileAsync<T>(queryable, fileStream, options, cancellationToken);
     }
     public static async Task<QueryToFileResult> QueryToCsvFileAsync<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options,
@@ -364,7 +353,7 @@ public static class DbContextExtensionsAsync
     public static async Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, object[] parameters,
         CancellationToken cancellationToken = default)
     {
-        var fileStream = File.Create(filePath);
+        await using var fileStream = File.Create(filePath);
         return await SqlQueryToCsvFileAsync(database, fileStream, options, sqlText, parameters, cancellationToken);
     }
     public static async Task<QueryToFileResult> SqlQueryToCsvFileAsync(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, object[] parameters,
@@ -421,18 +410,18 @@ public static class DbContextExtensionsAsync
     {
         List<object[]> results = [];
         List<string> columns = [];
-        var command = new SqlCommand(sqlText, dbConnection, transaction);
+        await using var command = new SqlCommand(sqlText, dbConnection, transaction);
         if (options.CommandTimeout.HasValue)
         {
             command.CommandTimeout = options.CommandTimeout.Value;
         }
         var reader = await command.ExecuteReaderAsync(cancellationToken);
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
         try
         {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(reader.GetName(i));
+            }
             while (await reader.ReadAsync(cancellationToken))
             {
                 object[] values = new object[reader.FieldCount];
@@ -500,7 +489,7 @@ public static class DbContextExtensionsAsync
             command.CommandTimeout = options.CommandTimeout.Value;
         }
 
-        StreamWriter streamWriter = new StreamWriter(stream);
+        await using var streamWriter = new StreamWriter(stream, leaveOpen: true);
         using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             if (options.IncludeHeaderRow)
@@ -538,7 +527,6 @@ public static class DbContextExtensionsAsync
             }
             await streamWriter.FlushAsync();
             bytesWritten = streamWriter.BaseStream.Length;
-            streamWriter.Close();
         }
         return new QueryToFileResult()
         {

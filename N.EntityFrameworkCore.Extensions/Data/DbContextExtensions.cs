@@ -145,20 +145,18 @@ public static class DbContextExtensions
         using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
         command.CommandText = sqlQuery.Sql;
         command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-        var reader = command.ExecuteReader();
+        using var reader = command.ExecuteReader();
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
         int batch = 1;
         int count = 0;
-        int totalCount = 0;
         List<T> entities = [];
         while (reader.Read())
         {
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             entities.Add(entity);
             count++;
-            totalCount++;
             if (count == options.BatchSize)
             {
                 action(new FetchResult<T> { Results = entities, Batch = batch });
@@ -170,8 +168,6 @@ public static class DbContextExtensions
 
         if (entities.Count > 0)
             action(new FetchResult<T> { Results = entities, Batch = batch });
-
-        reader.Close();
     }
     public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
     {
@@ -230,7 +226,6 @@ public static class DbContextExtensions
         {
             var key = saveEntryGroup.Key;
             var entities = saveEntryGroup.AsEnumerable();
-            var options = new BulkOptions { EntityType = saveEntryGroup.Key.EntityType };
             if (key.EntityState == EntityState.Added)
             {
                 rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; });
@@ -292,7 +287,7 @@ public static class DbContextExtensions
     }
     public static int DeleteFromQuery<T>(this IQueryable<T> queryable, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -300,7 +295,7 @@ public static class DbContextExtensions
             {
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 sqlQuery.ChangeToDelete();
-                rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
 
                 dbTransactionContext.Commit();
             }
@@ -310,11 +305,11 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static int InsertFromQuery<T>(this IQueryable<T> queryable, string tableName, Expression<Func<T, object>> insertObjectExpression, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -325,13 +320,13 @@ public static class DbContextExtensions
                 {
                     sqlQuery.ChangeToInsert(tableName, insertObjectExpression);
                     dbContext.Database.ToggleIdentityInsert(tableName, true);
-                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                    rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                     dbContext.Database.ToggleIdentityInsert(tableName, false);
                 }
                 else
                 {
                     sqlQuery.Clauses.First().InputText += $" INTO {tableName}";
-                    rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                    rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                 }
 
                 dbTransactionContext.Commit();
@@ -342,11 +337,11 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static int UpdateFromQuery<T>(this IQueryable<T> queryable, Expression<Func<T, T>> updateExpression, int? commandTimeout = null) where T : class
     {
-        int rowAffected = 0;
+        int rowsAffected = 0;
         using (var dbTransactionContext = new DbTransactionContext(queryable.GetDbContext(), commandTimeout))
         {
             var dbContext = dbTransactionContext.DbContext;
@@ -355,7 +350,7 @@ public static class DbContextExtensions
                 var sqlQuery = SqlBuilder.Parse(queryable.ToQueryString());
                 string setSqlExpression = updateExpression.ToSqlUpdateSetExpression(sqlQuery.GetTableAlias());
                 sqlQuery.ChangeToUpdate(sqlQuery.GetTableAlias(), setSqlExpression);
-                rowAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
+                rowsAffected = dbContext.Database.ExecuteSql(sqlQuery.Sql, sqlQuery.Parameters.ToArray());
                 dbTransactionContext.Commit();
             }
             catch (Exception)
@@ -364,7 +359,7 @@ public static class DbContextExtensions
                 throw;
             }
         }
-        return rowAffected;
+        return rowsAffected;
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath) where T : class
     {
@@ -384,7 +379,7 @@ public static class DbContextExtensions
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, string filePath, QueryToFileOptions options) where T : class
     {
-        var fileStream = File.Create(filePath);
+        using var fileStream = File.Create(filePath);
         return QueryToCsvFile<T>(queryable, fileStream, options);
     }
     public static QueryToFileResult QueryToCsvFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
@@ -409,7 +404,7 @@ public static class DbContextExtensions
     }
     public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, string filePath, QueryToFileOptions options, string sqlText, params object[] parameters)
     {
-        var fileStream = File.Create(filePath);
+        using var fileStream = File.Create(filePath);
         return SqlQueryToCsvFile(database, fileStream, options, sqlText, parameters);
     }
     public static QueryToFileResult SqlQueryToCsvFile(this DatabaseFacade database, Stream stream, QueryToFileOptions options, string sqlText, params object[] parameters)
@@ -445,7 +440,7 @@ public static class DbContextExtensions
     }
     public static TableMapping GetTableMapping(this DbContext dbContext, Type type, IEntityType entityType = null)
     {
-        entityType = entityType != null ? entityType : dbContext.Model.FindEntityType(type);
+        entityType ??= dbContext.Model.FindEntityType(type);
         return new TableMapping(dbContext, entityType);
     }
     internal static void SetStoreGeneratedValues<T>(this DbContext context, T entity, IEnumerable<IProperty> properties, object[] values)
@@ -525,19 +520,19 @@ public static class DbContextExtensions
     {
         List<object[]> results = [];
         List<string> columns = [];
-        var command = context.Database.CreateCommand();
+        using var command = context.Database.CreateCommand();
         command.CommandText = sqlText;
         if (options.CommandTimeout.HasValue)
         {
             command.CommandTimeout = options.CommandTimeout.Value;
         }
         var reader = command.ExecuteReader();
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
         try
         {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(reader.GetName(i));
+            }
             while (reader.Read())
             {
                 object[] values = new object[reader.FieldCount];
@@ -597,7 +592,7 @@ public static class DbContextExtensions
             command.Parameters.AddRange(parameters);
 
         var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = command.ExecuteReader();
+        using var reader = command.ExecuteReader();
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
@@ -606,8 +601,6 @@ public static class DbContextExtensions
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             yield return entity;
         }
-
-        reader.Close();
     }
     private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
     {
@@ -671,7 +664,7 @@ public static class DbContextExtensions
             command.CommandTimeout = options.CommandTimeout.Value;
         }
 
-        var streamWriter = new StreamWriter(stream);
+        using var streamWriter = new StreamWriter(stream, leaveOpen: true);
         using (var reader = command.ExecuteReader())
         {
             if (options.IncludeHeaderRow)
@@ -709,7 +702,6 @@ public static class DbContextExtensions
             }
             streamWriter.Flush();
             bytesWritten = streamWriter.BaseStream.Length;
-            streamWriter.Close();
         }
         return new QueryToFileResult()
         {

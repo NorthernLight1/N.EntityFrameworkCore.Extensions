@@ -30,6 +30,39 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public async Task With_Complex_Type()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = new List<OrderWithComplexType>();
+        for (int i = 1; i < 1000; i++)
+        {
+            orders.Add(new OrderWithComplexType
+            {
+                Id = i,
+                ShippingAddress = new Address
+                {
+                    Line1 = $"123 Main St, {i}",
+                    City = "Atlanta",
+                    Country = "USA",
+                    PostCode = "30303"
+                },
+                BillingAddress = new Address
+                {
+                    Line1 = $"456 Oak St, {i}",
+                    City = "Atlanta",
+                    Country = "USA",
+                    PostCode = "30303"
+                }
+            });
+        }
+        int oldTotal = dbContext.OrdersWithComplexType.Count();
+        int rowsInserted = await dbContext.BulkInsertAsync(orders);
+        int newTotal = dbContext.OrdersWithComplexType.Count();
+
+        Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
     public async Task With_Default_Options()
     {
         var dbContext = SetupDbContext(false);
@@ -321,6 +354,26 @@ public class BulkInsertAsync : DbContextExtensionsBase
 
         Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of products list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
+    public async Task With_Trigger()
+    {
+        var dbContext = SetupDbContext(false);
+        var products = new List<ProductWithTrigger>();
+        for (int i = 1; i < 1000; i++)
+        {
+            products.Add(new ProductWithTrigger { Id = i.ToString(), Price = 1.57M, StatusString = "InStock" });
+        }
+
+        //The return int from BulkInsertAsync() will be off when using triggers
+        await dbContext.BulkInsertAsync(products, options =>
+        {
+            options.AutoMapOutput = false;
+            options.BulkCopyOptions = SqlBulkCopyOptions.FireTriggers;
+        });
+        var rowsInserted = dbContext.ProductsWithTrigger.Count();
+
+        Assert.IsTrue(rowsInserted == products.Count, $"The number of rows inserted must match the count of products ({rowsInserted}!={products.Count})");
     }
     [TestMethod]
     public async Task With_Schema()
