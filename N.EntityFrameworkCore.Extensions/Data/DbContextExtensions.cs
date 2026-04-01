@@ -145,7 +145,7 @@ public static class DbContextExtensions
         using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
         command.CommandText = sqlQuery.Sql;
         command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-        var reader = command.ExecuteReader();
+        using var reader = command.ExecuteReader();
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
@@ -168,8 +168,6 @@ public static class DbContextExtensions
 
         if (entities.Count > 0)
             action(new FetchResult<T> { Results = entities, Batch = batch });
-
-        reader.Close();
     }
     public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities)
     {
@@ -529,12 +527,12 @@ public static class DbContextExtensions
             command.CommandTimeout = options.CommandTimeout.Value;
         }
         var reader = command.ExecuteReader();
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
         try
         {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(reader.GetName(i));
+            }
             while (reader.Read())
             {
                 object[] values = new object[reader.FieldCount];
@@ -594,7 +592,7 @@ public static class DbContextExtensions
             command.Parameters.AddRange(parameters);
 
         var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = command.ExecuteReader();
+        using var reader = command.ExecuteReader();
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
@@ -603,8 +601,6 @@ public static class DbContextExtensions
             var entity = reader.MapEntity<T>(dbContext, properties, valuesFromProvider);
             yield return entity;
         }
-
-        reader.Close();
     }
     private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
     {

@@ -82,7 +82,7 @@ public static class DbContextExtensionsAsync
         await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
         command.CommandText = sqlQuery.Sql;
         command.Parameters.AddRange(sqlQuery.Parameters.ToArray());
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
@@ -106,8 +106,6 @@ public static class DbContextExtensionsAsync
 
         if (entities.Count > 0)
             await action(new FetchResult<T> { Results = entities, Batch = batch });
-
-        await reader.CloseAsync();
     }
     public static async Task<int> BulkInsertAsync<T>(this DbContext context, IEnumerable<T> entities, CancellationToken cancellationToken = default)
     {
@@ -418,12 +416,12 @@ public static class DbContextExtensionsAsync
             command.CommandTimeout = options.CommandTimeout.Value;
         }
         var reader = await command.ExecuteReaderAsync(cancellationToken);
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            columns.Add(reader.GetName(i));
-        }
         try
         {
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                columns.Add(reader.GetName(i));
+            }
             while (await reader.ReadAsync(cancellationToken))
             {
                 object[] values = new object[reader.FieldCount];

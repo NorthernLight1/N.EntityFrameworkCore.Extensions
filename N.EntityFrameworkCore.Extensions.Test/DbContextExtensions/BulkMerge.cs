@@ -253,6 +253,32 @@ public class BulkMerge : DbContextExtensionsBase
         Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
     }
     [TestMethod]
+    public void With_Options_AutoMapOutput()
+    {
+        var dbContext = SetupDbContext(true);
+        int ordersToUpdate = 3;
+        int ordersToAdd = 2;
+        var orders = new List<Order>
+        {
+            new Order { ExternalId = "id-1", Price=7.10M },
+            new Order { ExternalId = "id-2", Price=9.33M },
+            new Order { ExternalId = "id-3", Price=3.25M },
+            new Order { ExternalId = "id-1000001", Price=2.15M },
+            new Order { ExternalId = "id-1000002", Price=5.75M },
+        };
+        var result = dbContext.BulkMerge(orders, new BulkMergeOptions<Order>
+        {
+            MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId,
+            AutoMapOutput = true
+        });
+        var autoMapIdentityMatched = orders.All(x => x.Id != 0);
+
+        Assert.IsTrue(result.RowsAffected == ordersToAdd + ordersToUpdate, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(result.RowsUpdated == ordersToUpdate, "The number of rows updated must match");
+        Assert.IsTrue(result.RowsInserted == ordersToAdd, "The number of rows added must match");
+        Assert.IsTrue(autoMapIdentityMatched, "The auto mapping of ids of entities that were merged failed to match up");
+    }
+    [TestMethod]
     public void With_Key()
     {
         var dbContext = SetupDbContext(true);
@@ -358,5 +384,22 @@ public class BulkMerge : DbContextExtensionsBase
 
         Assert.IsTrue(result.RowsInserted == orders.Count(), "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == result.RowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
+    public void With_Merge_On_Enum()
+    {
+        var dbContext = SetupDbContext(true);
+        dbContext.BulkSaveChanges();
+        var nowDateTime = DateTime.Now;
+        var orders = new List<Order>();
+        for (int i = 0; i < 20; i++)
+        {
+            orders.Add(new Order { Id = i, Price = 1.57M, DbModifiedDateTime = nowDateTime, Status = OrderStatus.Completed });
+        }
+
+        var result = dbContext.BulkMerge(orders, options => options.MergeOnCondition = (s, t) => s.Id == t.Id && s.Status == t.Status);
+
+        Assert.AreEqual(1, result.RowsInserted);
+        Assert.AreEqual(19, result.RowsUpdated);
     }
 }
