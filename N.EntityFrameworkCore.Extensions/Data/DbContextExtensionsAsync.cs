@@ -436,7 +436,7 @@ public static class DbContextExtensionsAsync
     internal static async Task<BulkInsertResult<T>> BulkInsertAsync<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, SqlConnection dbConnection, SqlTransaction transaction, string tableName,
         IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false, CancellationToken cancellationToken = default)
     {
-        var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
+        using var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
 
         var sqlBulkCopy = new SqlBulkCopy(dbConnection, bulkCopyOptions, transaction)
         {
@@ -615,6 +615,7 @@ public static class DbContextExtensionsAsync
         }
 
         await reader.CloseAsync();
+        await command.Connection.CloseAsync();
         return results;
     }
 }
