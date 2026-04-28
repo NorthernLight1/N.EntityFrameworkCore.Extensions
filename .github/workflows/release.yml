@@ -44,8 +44,11 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Pack (ensure .nupkg output)
-        run: dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out
         id: pack
+        run: |
+          dotnet pack N.EntityFramework.Extensions.SqlServer/N.EntityFramework.Extensions.SqlServer.csproj --no-build -c Release -o out
+          dotnet pack N.EntityFramework.Extensions.PostgreSql/N.EntityFramework.Extensions.PostgreSql.csproj --no-build -c Release -o out
+          dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out
 
       - name: Publish to NuGet
         if: ${{ inputs.nuget_publish }}
@@ -60,13 +63,6 @@ jobs:
           echo "SOURCE_ZIP=source-$tag.zip" >> $env:GITHUB_ENV
           echo "ARCHIVE_NAME=source-$tag.zip" >> $env:GITHUB_ENV
 
-      - name: Get .nupkg path
-        id: nupkg
-        run: |
-          $nupkg = Get-ChildItem -Path out -Filter "*.nupkg" | Select-Object -First 1
-          echo "path=$($nupkg.FullName)" >> $env:GITHUB_OUTPUT
-          echo "name=$($nupkg.Name)" >> $env:GITHUB_OUTPUT
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -75,6 +71,6 @@ jobs:
           generate_release_notes: true
           files: |
             ${{ env.ARCHIVE_NAME }}
-            ${{ steps.nupkg.outputs.path }}
+            out/*.nupkg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

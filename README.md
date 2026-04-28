@@ -10,7 +10,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 **Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
 
-**Databases:** SQL Server
+**Database:** SQL Server · PostgreSql
 
 ---
 
@@ -58,17 +58,29 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 ## Installation
 
+### SQL Server
+
 The latest stable version is available on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions).
 
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions
 ```
 
+### PostgreSql
+
+A separate package is available for PostgreSql on [NuGet](https://www.nuget.org/packages/N.EntityFramework.Extensions.PostgreSql).
+
+```sh
+dotnet add package N.EntityFramework.Extensions.PostgreSql
+```
+
 ---
 
 ## Setup
 
-Call `SetupEfCoreExtensions()` in your `DbContext.OnConfiguring` override:
+Call `SetupEfCoreExtensions()` in your `DbContext.OnConfiguring` override.
+
+### SQL Server
 
 ```csharp
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -79,7 +91,22 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
+### PostgreSql
+
+```csharp
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseNpgsql("your-connection-string")
+        .SetupEfCoreExtensions();
+}
+```
+
 This registers an EF Core `DbCommandInterceptor` used internally by bulk operations. It is required for operations that rewrite table names at execution time (e.g. `InsertFromQuery` targeting a new table); all other operations work without it.
+
+### Test configuration
+
+The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFramework.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
 
 ---
 

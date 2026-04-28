@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Version>10.0.5.1</Version>
+    <PackageId>N.EntityFramework.Extensions.SqlServer</PackageId>
+    <AssemblyName>N.EntityFramework.Extensions.SqlServer</AssemblyName>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/</PackageProjectUrl>
+    <Authors>Northern25</Authors>
+    <Copyright>Copyright © 2026</Copyright>
+    <Company />
+    <Description>N.EntityFrameworkCore.Extensions extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.
+
+Inheritance models supported: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>5</WarningLevel>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="N.EntityFramework.Extensions.SqlServer.Test" />
+  </ItemGroup>
+
+
+</Project>
