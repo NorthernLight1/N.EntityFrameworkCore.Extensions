@@ -35,8 +35,7 @@ internal static class MySqlContainerManager
     {
         try
         {
-            container = new MySqlBuilder()
-                .WithImage("mysql:8.0")
+            container = new MySqlBuilder("mysql:8.0")
                 .WithDatabase("NEntityFrameworkCoreExtensions")
                 .WithUsername("root")
                 .WithPassword("mysql")
