@@ -43,6 +43,7 @@ public class TestDbContext : DbContext
         modelBuilder.Entity<Order>().Property<DateTime>("DbModifiedDateTime").HasDefaultValueSql("CURRENT_TIMESTAMP(6)").ValueGeneratedOnAddOrUpdate();
         modelBuilder.Entity<Order>().Property<bool>(p => p.DbActive).HasDefaultValueSql("TRUE");
         modelBuilder.Entity<Order>().Property(p => p.Status).HasConversion<string>();
+        modelBuilder.Entity<Order>().HasIndex(o => o.ExternalId);
         modelBuilder.Entity<OrderWithComplexType>(b =>
         {
             b.ComplexProperty(e => e.BillingAddress);

@@ -336,6 +336,7 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(rowsInserted == products.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
+    [DoNotParallelize]
     [TestMethod]
     public void With_Transaction()
     {

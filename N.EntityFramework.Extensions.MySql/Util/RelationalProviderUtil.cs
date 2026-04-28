@@ -85,17 +85,30 @@ internal static class RelationalProviderUtil
     }
 
     internal static string UnwrapIdentifier(string value) =>
-        value.Trim().Trim('[', ']', '"');
+        value.Trim().Trim('[', ']', '"', '`');
 
     internal static string GetTemporaryTableName(this DatabaseFacade database, string baseName)
     {
-        string temporaryName = $"tmp_be_xx_{UnwrapIdentifier(baseName)}_{Guid.NewGuid():N}";
+        const string prefix = "tmp_be_xx_";
+        const int guidSuffixLength = 33; // "_" + 32 hex chars (Guid:N)
+        const int maxIdentifierLength = 64; // MySQL identifier limit
+        string unwrapped = UnwrapIdentifier(baseName);
+        int maxNameLength = maxIdentifierLength - prefix.Length - guidSuffixLength;
+        if (unwrapped.Length > maxNameLength)
+            unwrapped = unwrapped[..maxNameLength];
+        string temporaryName = $"{prefix}{unwrapped}_{Guid.NewGuid():N}";
         return database.DelimitIdentifier(temporaryName);
     }
 
     internal static string GetPermanentStagingTableName(this DatabaseFacade database, string schema, string tableName, string uniqueSuffix)
     {
-        string stagingName = $"tmp_be_xx_{UnwrapIdentifier(tableName)}_{uniqueSuffix}";
+        const string prefix = "tmp_be_xx_";
+        const int maxIdentifierLength = 64; // MySQL identifier limit
+        string unwrapped = UnwrapIdentifier(tableName);
+        int maxNameLength = maxIdentifierLength - prefix.Length - 1 - uniqueSuffix.Length; // 1 for "_"
+        if (unwrapped.Length > maxNameLength)
+            unwrapped = unwrapped[..maxNameLength];
+        string stagingName = $"{prefix}{unwrapped}_{uniqueSuffix}";
         return database.DelimitIdentifier(stagingName, schema);
     }
 

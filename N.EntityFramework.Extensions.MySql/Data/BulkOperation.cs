@@ -71,7 +71,9 @@ internal sealed partial class BulkOperation<T> : IDisposable
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
         Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, isTemporary: !Options.UsePermanentTable);
         StagingTableCreated = true;
-        if (keepIdentity && PrimaryKeyColumnNames.Length > 0 && Context.Database.IsMySql())
+        // ALTER TABLE on temporary tables causes an implicit commit in MySQL, which would break
+        // any active user transaction. Skip adding the index when inside a user-provided transaction.
+        if (keepIdentity && PrimaryKeyColumnNames.Length > 0 && Context.Database.IsMySql() && DbTransactionContext.OwnsTransaction)
         {
             string indexColumns = string.Join(",", PrimaryKeyColumnNames.Select(c => Context.DelimitIdentifier(c)));
             Context.Database.ExecuteSqlInternal($"ALTER TABLE {StagingTableName} ADD INDEX idx_pk ({indexColumns})");

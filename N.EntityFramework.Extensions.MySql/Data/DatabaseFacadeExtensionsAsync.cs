@@ -26,18 +26,19 @@ public static class DatabaseFacadeExtensionsAsync
             : $"TRUNCATE TABLE {formattedTableName}";
         await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
-    internal static async Task<int> CloneTableAsync(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
+    internal static async Task<int> CloneTableAsync(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default, bool isTemporary = false)
     {
-        return await database.CloneTableAsync([sourceTable], destinationTable, columnNames, internalIdColumnName, cancellationToken);
+        return await database.CloneTableAsync([sourceTable], destinationTable, columnNames, internalIdColumnName, cancellationToken, isTemporary);
     }
-    internal static async Task<int> CloneTableAsync(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
+    internal static async Task<int> CloneTableAsync(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default, bool isTemporary = false)
     {
         string columns = columnNames != null && columnNames.Any() ? string.Join(",", columnNames.Select(database.FormatSelectColumn)) : "*";
         if (!string.IsNullOrEmpty(internalIdColumnName))
-            columns = $"{columns},CAST(NULL AS INT) AS {database.DelimitIdentifier(internalIdColumnName)}";
+            columns = $"{columns},CAST(NULL AS SIGNED) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
+        string temporaryKeyword = isTemporary && database.IsMySql() ? "TEMPORARY " : "";
         string sql = database.IsMySql()
-            ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
+            ? $"CREATE {temporaryKeyword}TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
             : database.IsPostgreSql()
                 ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
                 : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";

@@ -322,6 +322,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         Assert.IsTrue(areAddedOrdersMerged, "The orders that were added did not merge correctly");
         Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
     }
+    [DoNotParallelize]
     [TestMethod]
     public async Task With_Transaction()
     {

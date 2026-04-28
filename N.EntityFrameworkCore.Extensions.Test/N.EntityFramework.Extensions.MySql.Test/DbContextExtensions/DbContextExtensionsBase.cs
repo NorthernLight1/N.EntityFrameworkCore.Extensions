@@ -151,7 +151,7 @@ public class DbContextExtensionsBase
                 //TPH Customers & Vendors
                 var tphCustomers = new List<TphCustomer>();
                 var tphVendors = new List<TphVendor>();
-                for (int i = 0; i < 2000; i++)
+                for (int i = 1; i < 2000; i++)
                 {
                     tphCustomers.Add(new TphCustomer
                     {

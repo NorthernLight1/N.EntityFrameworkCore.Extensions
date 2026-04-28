@@ -60,7 +60,7 @@ public static class DbContextExtensions
                 if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
                     throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
-                context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
+                context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames, isTemporary: !options.UsePermanentTable);
                 BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, false);
 
                 string joinCondition = CommonUtil<T>.GetJoinConditionSql(context, options.DeleteOnCondition, keyColumnNames);
@@ -68,7 +68,7 @@ public static class DbContextExtensions
                 string deleteSql = $"DELETE t FROM {stagingTableName} s JOIN {destinationTableName} t ON {joinCondition}";
                 rowsAffected = context.Database.ExecuteSqlInternal(deleteSql, options.CommandTimeout);
 
-                context.Database.DropTable(stagingTableName);
+                context.Database.DropTable(stagingTableName, isTemporary: !options.UsePermanentTable);
                 dbTransactionContext.Commit();
             }
             catch (Exception)
@@ -458,32 +458,78 @@ public static class DbContextExtensions
         using var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
         if (dbConnection is MySqlConnection mySqlConnection)
         {
-            var bulkCopy = new MySqlBulkCopy(mySqlConnection, transaction as MySqlTransaction);
-            bulkCopy.DestinationTableName = UnwrapTableName(tableName);
+            var includeColumns = BuildIncludeColumns(dataReader, inputColumns, useInternalId);
+            if (includeColumns.Count == 0)
+                return new BulkInsertResult<T> { RowsAffected = 0, EntityMap = dataReader.EntityMap };
+
+            string destTable = UnwrapTableName(tableName);
+            string columnList = string.Join(",", includeColumns.Select(c => $"`{c.name}`"));
+            const int batchSize = 500;
+            int totalInserted = 0;
+            var rowBuffer = new List<object[]>(batchSize);
+
+            using var cmd = mySqlConnection.CreateCommand();
+            cmd.Transaction = transaction as MySqlTransaction;
             if (options.CommandTimeout.HasValue)
-                bulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
+                cmd.CommandTimeout = options.CommandTimeout.Value;
 
-            int colIndex = 0;
-            foreach (var property in dataReader.TableMapping.Properties)
+            void FlushBatch()
             {
-                var columnName = dataReader.TableMapping.GetColumnName(property);
-                if (inputColumns == null || inputColumns.Contains(columnName))
-                    bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(colIndex++, columnName));
-                else
-                    colIndex++;
+                if (rowBuffer.Count == 0) return;
+                cmd.Parameters.Clear();
+                var sb = new System.Text.StringBuilder($"INSERT INTO `{destTable}` ({columnList}) VALUES ");
+                for (int r = 0; r < rowBuffer.Count; r++)
+                {
+                    if (r > 0) sb.Append(',');
+                    sb.Append('(');
+                    for (int c = 0; c < includeColumns.Count; c++)
+                    {
+                        if (c > 0) sb.Append(',');
+                        string paramName = $"@p{r}_{c}";
+                        sb.Append(paramName);
+                        cmd.Parameters.AddWithValue(paramName, rowBuffer[r][c] ?? DBNull.Value);
+                    }
+                    sb.Append(')');
+                }
+                cmd.CommandText = sb.ToString();
+                totalInserted += cmd.ExecuteNonQuery();
+                rowBuffer.Clear();
             }
-            if (useInternalId)
-                bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(colIndex, Constants.InternalId_ColumnName));
 
-            var result = bulkCopy.WriteToServer(dataReader);
+            while (dataReader.Read())
+            {
+                var rowData = new object[includeColumns.Count];
+                for (int i = 0; i < includeColumns.Count; i++)
+                    rowData[i] = dataReader.GetValue(includeColumns[i].ordinal) ?? DBNull.Value;
+                rowBuffer.Add(rowData);
+                if (rowBuffer.Count >= batchSize)
+                    FlushBatch();
+            }
+            FlushBatch();
+
             return new BulkInsertResult<T>
             {
-                RowsAffected = result.RowsInserted,
+                RowsAffected = totalInserted,
                 EntityMap = dataReader.EntityMap
             };
         }
 
         throw new NotSupportedException($"The connection type '{dbConnection.GetType().Name}' is not supported for BulkInsert. Use a MySqlConnection.");
+    }
+    internal static List<(int ordinal, string name)> BuildIncludeColumns<T>(EntityDataReader<T> dataReader, IEnumerable<string> inputColumns, bool useInternalId)
+    {
+        var includeColumns = new List<(int ordinal, string name)>();
+        int colIdx = 0;
+        foreach (var property in dataReader.TableMapping.Properties)
+        {
+            var columnName = dataReader.TableMapping.GetColumnName(property);
+            if (inputColumns == null || inputColumns.Contains(columnName))
+                includeColumns.Add((colIdx, columnName));
+            colIdx++;
+        }
+        if (useInternalId)
+            includeColumns.Add((colIdx, Constants.InternalId_ColumnName));
+        return includeColumns;
     }
     internal static string UnwrapTableName(string tableName) => tableName.Replace("`", "");
     internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)

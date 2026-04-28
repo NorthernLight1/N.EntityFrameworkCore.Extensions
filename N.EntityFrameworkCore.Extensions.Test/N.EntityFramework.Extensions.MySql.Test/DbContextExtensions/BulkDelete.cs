@@ -68,6 +68,7 @@ public class BulkDelete : DbContextExtensionsBase
         Assert.IsTrue(rowsDeleted == orders.Count, "The number of rows deleted must match the count of existing rows in database");
         Assert.IsTrue(newTotal == oldTotal - rowsDeleted, "Must be 0 to indicate all records were deleted");
     }
+    [DoNotParallelize]
     [TestMethod]
     public void With_Transaction()
     {

@@ -226,6 +226,7 @@ public class UpdateFromQueryAsync : DbContextExtensionsBase
         Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (ExternalId == null)");
         Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
     }
+    [DoNotParallelize]
     [TestMethod]
     public async Task With_Transaction()
     {

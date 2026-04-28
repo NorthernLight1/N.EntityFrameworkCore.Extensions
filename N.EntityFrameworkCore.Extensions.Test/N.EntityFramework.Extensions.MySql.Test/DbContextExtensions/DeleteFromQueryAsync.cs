@@ -126,6 +126,7 @@ public class DeleteFromQueryAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsDeleted == oldTotal, "The number of rows deleted must match the count of existing rows in database");
         Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were deleted");
     }
+    [DoNotParallelize]
     [TestMethod]
     public async Task With_Transaction()
     {

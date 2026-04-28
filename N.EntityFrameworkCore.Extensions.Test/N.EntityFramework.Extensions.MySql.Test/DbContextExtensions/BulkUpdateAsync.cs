@@ -215,6 +215,7 @@ public class BulkUpdateAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsUpdated == products.Count, "The number of rows updated must match the count of entities that were retrieved");
         Assert.IsTrue(newProducts == rowsUpdated, "The count of new products must be equal the number of rows updated in the database.");
     }
+    [DoNotParallelize]
     [TestMethod]
     public async Task With_Transaction()
     {

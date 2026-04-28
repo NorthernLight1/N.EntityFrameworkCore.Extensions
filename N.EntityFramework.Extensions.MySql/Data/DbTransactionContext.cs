@@ -19,6 +19,7 @@ internal sealed class DbTransactionContext : IDisposable
     public DbConnection Connection { get; internal set; }
     public DbTransaction CurrentTransaction { get; private set; }
     public DbContext DbContext => context;
+    internal bool OwnsTransaction => ownsTransaction;
 
     public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
     {

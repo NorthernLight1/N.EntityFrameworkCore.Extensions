@@ -21,10 +21,12 @@ public static class DatabaseFacadeExtensions
     {
         return database.ExecuteSqlRaw($"DELETE FROM {database.DelimitTableName(tableName)}");
     }
-    public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
+    public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false, bool isTemporary = false)
     {
         string formattedTableName = database.DelimitTableName(tableName);
-        string sql = ifExists ? $"DROP TABLE IF EXISTS {formattedTableName}" : $"DROP TABLE {formattedTableName}";
+        // Use DROP TEMPORARY TABLE for MySQL temporary staging tables to avoid implicit transaction commit
+        string temporaryKeyword = isTemporary ? "TEMPORARY " : "";
+        string sql = ifExists ? $"DROP {temporaryKeyword}TABLE IF EXISTS {formattedTableName}" : $"DROP {temporaryKeyword}TABLE {formattedTableName}";
         return database.ExecuteSqlInternal(sql, null, ConnectionBehavior.Default);
     }
     public static void TruncateTable(this DatabaseFacade database, string tableName, bool ifExists = false)
@@ -82,22 +84,24 @@ public static class DatabaseFacadeExtensions
 
         return Convert.ToBoolean(database.ExecuteScalar(sql, parameters));
     }
-    internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
+    internal static int CloneTable(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, bool isTemporary = false)
     {
-        return database.CloneTable([sourceTable], destinationTable, columnNames, internalIdColumnName);
+        return database.CloneTable([sourceTable], destinationTable, columnNames, internalIdColumnName, isTemporary);
     }
-    internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null)
+    internal static int CloneTable(this DatabaseFacade database, IEnumerable<string> sourceTables, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, bool isTemporary = false)
     {
         string columns = columnNames != null && columnNames.Any() ? string.Join(",", columnNames.Select(database.FormatSelectColumn)) : "*";
         if (!string.IsNullOrEmpty(internalIdColumnName))
-            columns = $"{columns},CAST(NULL AS INT) AS {database.DelimitIdentifier(internalIdColumnName)}";
+            columns = $"{columns},CAST(NULL AS SIGNED) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
+        // MySQL TEMPORARY tables do not cause implicit transaction commits (unlike regular DDL tables)
+        string createKeyword = database.IsMySql() && isTemporary ? "CREATE TEMPORARY TABLE" : "CREATE TABLE";
         string sql = database.IsMySql()
-            ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
+            ? $"{createKeyword} {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
             : database.IsPostgreSql()
                 ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
                 : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
-        return database.ExecuteSqlRaw(sql);
+        return database.ExecuteSqlInternal(sql);
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
     {
@@ -160,7 +164,7 @@ public static class DatabaseFacadeExtensions
     }
     internal static string FormatSelectColumn(this DatabaseFacade database, string columnName)
     {
-        if (columnName.Contains('[') || columnName.Contains('"') || columnName.Contains('(') || columnName.Contains(' '))
+        if (columnName.Contains('[') || columnName.Contains('"') || columnName.Contains('`') || columnName.Contains('(') || columnName.Contains(' '))
             return columnName;
 
         if (columnName.Contains('.'))

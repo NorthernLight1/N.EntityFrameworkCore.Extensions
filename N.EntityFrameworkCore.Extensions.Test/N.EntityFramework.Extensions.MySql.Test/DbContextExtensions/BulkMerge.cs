@@ -321,6 +321,7 @@ public class BulkMerge : DbContextExtensionsBase
         Assert.IsTrue(areAddedOrdersMerged, "The orders that were added did not merge correctly");
         Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
     }
+    [DoNotParallelize]
     [TestMethod]
     public void With_Transaction()
     {
