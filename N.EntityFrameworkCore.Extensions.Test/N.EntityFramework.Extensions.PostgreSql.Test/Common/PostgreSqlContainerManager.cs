@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Testcontainers.PostgreSql;
 
@@ -46,7 +46,7 @@ internal static class PostgreSqlContainerManager
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("PostgreSQL tests require Docker when UsePostgreSqlContainer is enabled.", ex);
+            throw new InvalidOperationException("PostgreSql tests require Docker when UsePostgreSqlContainer is enabled.", ex);
         }
     }
 

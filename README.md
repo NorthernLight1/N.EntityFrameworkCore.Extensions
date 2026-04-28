@@ -10,7 +10,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 **Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
 
-**Database:** SQL Server · PostgreSQL
+**Database:** SQL Server · PostgreSql
 
 ---
 
@@ -66,12 +66,12 @@ The latest stable version is available on [NuGet](https://www.nuget.org/packages
 dotnet add package N.EntityFrameworkCore.Extensions
 ```
 
-### PostgreSQL
+### PostgreSql
 
-A separate package is available for PostgreSQL on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.PostgreSQL.Extensions).
+A separate package is available for PostgreSql on [NuGet](https://www.nuget.org/packages/N.EntityFramework.Extensions.PostgreSql).
 
 ```sh
-dotnet add package N.EntityFrameworkCore.PostgreSQL.Extensions
+dotnet add package N.EntityFramework.Extensions.PostgreSql
 ```
 
 ---
@@ -91,7 +91,7 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
-### PostgreSQL
+### PostgreSql
 
 ```csharp
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -106,7 +106,7 @@ This registers an EF Core `DbCommandInterceptor` used internally by bulk operati
 
 ### Test configuration
 
-The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSQL test project uses `N.EntityFrameworkCore.PostgreSQL.Extensions.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
+The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFramework.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
 
 ---
 

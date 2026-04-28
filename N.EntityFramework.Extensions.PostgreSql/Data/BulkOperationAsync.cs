@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
@@ -14,110 +15,22 @@ using N.EntityFrameworkCore.Extensions.Util;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-internal sealed partial class BulkOperation<T> : IDisposable
+internal sealed partial class BulkOperation<T>
 {
-    internal DbConnection Connection => DbTransactionContext.Connection;
-    internal DbContext Context { get; }
-    internal bool StagingTableCreated { get; set; }
-    internal string StagingTableName { get; }
-    internal string[] PrimaryKeyColumnNames { get; }
-    internal BulkOptions Options { get; }
-    internal Expression<Func<T, object>> InputColumns { get; }
-    internal Expression<Func<T, object>> IgnoreColumns { get; }
-    internal DbTransactionContext DbTransactionContext { get; }
-    internal Type EntityType => typeof(T);
-    internal DbTransaction Transaction => DbTransactionContext.CurrentTransaction;
-    internal TableMapping TableMapping { get; }
-    internal IEnumerable<string> SchemaQualifiedTableNames => TableMapping.GetSchemaQualifiedTableNames();
-
-
-    public BulkOperation(DbContext dbContext, BulkOptions options, Expression<Func<T, object>> inputColumns = null, Expression<Func<T, object>> ignoreColumns = null)
-    {
-        Context = dbContext;
-        Options = options;
-        InputColumns = inputColumns;
-        IgnoreColumns = ignoreColumns;
-
-        DbTransactionContext = new DbTransactionContext(dbContext, options.CommandTimeout);
-        TableMapping = dbContext.GetTableMapping(typeof(T), options.EntityType);
-        StagingTableName = CommonUtil.GetStagingTableName(TableMapping, options.UsePermanentTable, Connection);
-        PrimaryKeyColumnNames = TableMapping.GetPrimaryKeyColumns().ToArray();
-    }
-    public void Dispose()
-    {
-        if (StagingTableCreated)
-        {
-            Context.Database.DropTable(StagingTableName, true);
-        }
-    }
-    internal bool ShouldKeepIdentityForPostgresMerge()
-    {
-        return Context.Database.IsPostgreSql()
-            && GetGeneratedPrimaryKeyProperty()?.PropertyInfo != null
-            && PrimaryKeyColumnNames.Length == 1;
-    }
-    internal bool ShouldPreallocateIdentityValues(bool autoMapOutput, bool keepIdentity, IEnumerable<T> entities)
-    {
-        if (!Context.Database.IsPostgreSql() || keepIdentity || !autoMapOutput)
-            return false;
-
-        var identityProperty = GetGeneratedPrimaryKeyProperty();
-        if (identityProperty?.PropertyInfo == null || PrimaryKeyColumnNames.Length != 1)
-            return false;
-
-        var entityList = entities as IList<T> ?? entities.ToList();
-        if (entityList.Count == 0)
-            return false;
-
-        // For BulkSaveChanges, entities are InternalEntityEntry (Added state) — always preallocate
-        if (entityList[0] is InternalEntityEntry)
-            return true;
-
-        // For regular POCOs, only preallocate if all entities have the default PK value
-        object defaultValue = identityProperty.ClrType.IsValueType ? Activator.CreateInstance(identityProperty.ClrType) : null;
-        return entityList.All(entity => Equals(identityProperty.PropertyInfo.GetValue(entity), defaultValue));
-    }
-    internal void PreallocateIdentityValues(IEnumerable<T> entities)
-    {
-        var identityProperty = GetGeneratedPrimaryKeyProperty();
-        if (identityProperty?.PropertyInfo == null)
-            return;
-
-        var entityList = entities.ToList();
-        if (entityList.Count == 0)
-            return;
-
-        string tableName = Context.DelimitIdentifier(TableMapping.EntityType.GetTableName(), TableMapping.EntityType.GetSchema() ?? Context.Database.GetDefaultSchema());
-        string sequenceSql = $"SELECT nextval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}')) FROM generate_series(1, {entityList.Count})";
-        using var command = Connection.CreateCommand();
-        command.CommandText = sequenceSql;
-        command.Transaction = Transaction;
-        using var reader = command.ExecuteReader();
-        foreach (var entity in entityList)
-        {
-            if (!reader.Read())
-                throw new InvalidDataException("Failed to allocate PostgreSQL identity values.");
-
-            object sequenceValue = Convert.ChangeType(reader.GetValue(0), identityProperty.ClrType);
-            if (entity is InternalEntityEntry internalEntry)
-                internalEntry.SetStoreGeneratedValue(identityProperty, sequenceValue);
-            else
-                identityProperty.PropertyInfo.SetValue(entity, sequenceValue);
-        }
-    }
-    internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
+    internal async Task<BulkInsertResult<T>> BulkInsertStagingDataAsync(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false, CancellationToken cancellationToken = default)
     {
         IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
-        Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn);
+        await Context.Database.CloneTableAsync(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, cancellationToken);
         StagingTableCreated = true;
-        return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId);
+        return await DbContextExtensionsAsync.BulkInsertAsync(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId, cancellationToken);
     }
-    internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
-        bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update = false, bool delete = false, bool preallocatedIds = false)
+
+    internal async Task<BulkMergeResult<T>> ExecuteMergeAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
+        bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update = false, bool delete = false, bool preallocatedIds = false, CancellationToken cancellationToken = default)
     {
         if (Context.Database.IsPostgreSql())
-            return ExecuteMergePostgreSql(entityMap, mergeOnCondition, autoMapOutput, keepIdentity, insertIfNotExists, update, delete, preallocatedIds);
+            return await ExecuteMergePostgreSqlAsync(entityMap, mergeOnCondition, autoMapOutput, keepIdentity, insertIfNotExists, update, delete, preallocatedIds, cancellationToken);
 
         Dictionary<IEntityType, int> rowsInserted = [];
         Dictionary<IEntityType, int> rowsUpdated = [];
@@ -151,7 +64,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
                         .. TableMapping.GetEntityProperties(entityType, ValueGenerated.OnAddOrUpdate).ToArray()
                 ];
 
-                var bulkQueryResult = Context.BulkQuery(mergeStatement.Sql, Options);
+                var bulkQueryResult = await Context.BulkQueryAsync(mergeStatement.Sql, Connection, Transaction, Options, cancellationToken);
                 rowsAffected[entityType] = bulkQueryResult.RowsAffected;
 
                 foreach (var result in bulkQueryResult.Results)
@@ -190,7 +103,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
             }
             else
             {
-                rowsAffected[entityType] = Context.Database.ExecuteSqlInternal(mergeStatement.Sql, Options.CommandTimeout);
+                rowsAffected[entityType] = await Context.Database.ExecuteSqlAsync(mergeStatement.Sql, Options.CommandTimeout, cancellationToken);
             }
         }
         return new BulkMergeResult<T>
@@ -202,23 +115,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
             RowsUpdated = rowsUpdated.Values.LastOrDefault()
         };
     }
-
-    private IEnumerable<string> GetMergeOutputColumns(IEnumerable<string> autoGeneratedColumns, bool delete = false)
-    {
-        List<string> columnsToOutput = ["$action", $"[s].[{Constants.InternalId_ColumnName}]"];
-        columnsToOutput.AddRange(autoGeneratedColumns.Select(o => $"[inserted].[{o}]"));
-        return columnsToOutput;
-    }
-    private object[] GetMergeOutputValues(IEnumerable<string> columns, object[] values, IEnumerable<IProperty> properties)
-    {
-        var columnList = columns.ToList();
-        var valuesIndex = properties.Select(o => columnList.IndexOf($"[inserted].[{o.GetColumnName()}]"));
-        return valuesIndex.Select(i => values[i]).ToArray();
-    }
-    internal int ExecuteUpdate(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition)
+    internal async Task<int> ExecuteUpdateAsync(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition, CancellationToken cancellationToken = default)
     {
         if (Context.Database.IsPostgreSql())
-            return ExecuteUpdatePostgreSql(updateOnCondition);
+            return await ExecuteUpdatePostgreSqlAsync(updateOnCondition, cancellationToken);
 
         int rowsUpdated = 0;
         foreach (var entityType in TableMapping.EntityTypes)
@@ -226,12 +126,12 @@ internal sealed partial class BulkOperation<T> : IDisposable
             IEnumerable<string> columnsToUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => $"t.{o}=s.{o}"));
             string updateSql = $"UPDATE t SET {updateSetExpression} FROM {StagingTableName} AS s JOIN {CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName())} AS t ON {CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t")}; SELECT @@RowCount;";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
         }
         return rowsUpdated;
     }
-    private BulkMergeResult<T> ExecuteMergePostgreSql(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
-        bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update, bool delete, bool preallocatedIds = false)
+    private async Task<BulkMergeResult<T>> ExecuteMergePostgreSqlAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
+        bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update, bool delete, bool preallocatedIds = false, CancellationToken cancellationToken = default)
     {
         Dictionary<IEntityType, int> rowsInserted = [];
         Dictionary<IEntityType, int> rowsUpdated = [];
@@ -253,7 +153,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
             string joinCondition = insertIfNotExists ? matchJoinCondition : "1=2";
 
             HashSet<int> matchedIds = autoMapOutput && update
-                ? GetMatchedInternalIds(targetTableName, matchJoinCondition)
+                ? await GetMatchedInternalIdsAsync(targetTableName, matchJoinCondition, cancellationToken)
                 : [];
 
             rowsUpdated[entityType] = 0;
@@ -261,25 +161,22 @@ internal sealed partial class BulkOperation<T> : IDisposable
             {
                 string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"{Context.DelimitIdentifier(c)}={Context.DelimitMemberAccess("s", c)}"));
                 string updateSql = $"UPDATE {targetTableName} AS t SET {updateSetExpression} FROM {StagingTableName} AS s WHERE {joinCondition}";
-                rowsUpdated[entityType] = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+                rowsUpdated[entityType] = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
             }
 
             string insertColumnsSql = string.Join(",", columnsToInsert.Select(Context.DelimitIdentifier));
             string sourceColumnsSql = string.Join(",", columnsToInsert.Select(c => Context.DelimitMemberAccess("s", c)));
             string insertSql = $"INSERT INTO {targetTableName} ({insertColumnsSql}) SELECT {sourceColumnsSql} FROM {StagingTableName} AS s WHERE NOT EXISTS (SELECT 1 FROM {targetTableName} AS t WHERE {joinCondition})";
-            rowsInserted[entityType] = Context.Database.ExecuteSqlInternal(insertSql, Options.CommandTimeout);
+            rowsInserted[entityType] = await Context.Database.ExecuteSqlAsync(insertSql, Options.CommandTimeout, cancellationToken);
             if (keepIdentity && rowsInserted[entityType] > 0)
-                SyncPostgreSqlIdentitySequence(entityType);
+                await SyncPostgreSqlIdentitySequenceAsync(entityType, cancellationToken);
 
             rowsDeleted[entityType] = 0;
             if (TableMapping.EntityType == entityType && delete)
             {
-                // When IDs were preallocated (entities had Id=0), staging PKs are new sequences that don't match
-                // existing target PKs (UPDATE excludes PK from SET). Use the merge condition to identify rows to keep.
-                // When entities had explicit IDs, staging PKs match inserted/updated target rows → use PK-based delete.
                 string deleteJoinCondition = (preallocatedIds && mergeOnCondition != null) ? matchJoinCondition : pkJoinCondition;
                 string deleteSql = $"DELETE FROM {targetTableName} AS t WHERE NOT EXISTS (SELECT 1 FROM {StagingTableName} AS s WHERE {deleteJoinCondition})";
-                rowsDeleted[entityType] = Context.Database.ExecuteSqlInternal(deleteSql, Options.CommandTimeout);
+                rowsDeleted[entityType] = await Context.Database.ExecuteSqlAsync(deleteSql, Options.CommandTimeout, cancellationToken);
                 for (int i = 0; i < rowsDeleted[entityType]; i++)
                     outputRows.Add(new BulkMergeOutputRow<T>(SqlMergeAction.Delete));
             }
@@ -289,14 +186,13 @@ internal sealed partial class BulkOperation<T> : IDisposable
                 string outputColumnsSql = autoGeneratedColumns.Any()
                     ? "," + string.Join(",", autoGeneratedColumns.Select(c => Context.DelimitMemberAccess("t", c)))
                     : string.Empty;
-                var outputQuery = $"SELECT {Context.DelimitMemberAccess("s", Constants.InternalId_ColumnName)}{outputColumnsSql} FROM {StagingTableName} AS s JOIN {targetTableName} AS t ON {matchJoinCondition}";
-                var bulkQueryResult = Context.BulkQuery(outputQuery, Options);
+                string outputQuery = $"SELECT {Context.DelimitMemberAccess("s", Constants.InternalId_ColumnName)}{outputColumnsSql} FROM {StagingTableName} AS s JOIN {targetTableName} AS t ON {matchJoinCondition}";
+                var bulkQueryResult = await Context.BulkQueryAsync(outputQuery, Connection, Transaction, Options, cancellationToken);
                 var autoGeneratedColumnList = autoGeneratedColumns.ToList();
                 foreach (var result in bulkQueryResult.Results)
                 {
                     int entityId = Convert.ToInt32(result[0]);
-                    bool wasMatched = matchedIds.Contains(entityId);
-                    string action = wasMatched ? SqlMergeAction.Update : SqlMergeAction.Insert;
+                    string action = matchedIds.Contains(entityId) ? SqlMergeAction.Update : SqlMergeAction.Insert;
                     outputRows.Add(new BulkMergeOutputRow<T>(action));
 
                     if (entityMap.TryGetValue(entityId, out var entity) && allProperties.Count > 0)
@@ -317,7 +213,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
             RowsUpdated = rowsUpdated.Values.LastOrDefault()
         };
     }
-    private int ExecuteUpdatePostgreSql(Expression<Func<T, T, bool>> updateOnCondition)
+    private async Task<int> ExecuteUpdatePostgreSqlAsync(Expression<Func<T, T, bool>> updateOnCondition, CancellationToken cancellationToken)
     {
         int rowsUpdated = 0;
         foreach (var entityType in TableMapping.EntityTypes)
@@ -326,22 +222,46 @@ internal sealed partial class BulkOperation<T> : IDisposable
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"{Context.DelimitIdentifier(c)}={Context.DelimitMemberAccess("s", c)}"));
             string targetTableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
             string updateSql = $"UPDATE {targetTableName} AS t SET {updateSetExpression} FROM {StagingTableName} AS s WHERE {CommonUtil<T>.GetJoinConditionSql(Context, updateOnCondition, PrimaryKeyColumnNames, "s", "t")}";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
         }
         return rowsUpdated;
     }
-    private HashSet<int> GetMatchedInternalIds(string targetTableName, string joinCondition)
+    private async Task<HashSet<int>> GetMatchedInternalIdsAsync(string targetTableName, string joinCondition, CancellationToken cancellationToken)
     {
-        var results = Context.BulkQuery(
+        var results = await Context.BulkQueryAsync(
             $"SELECT {Context.DelimitMemberAccess("s", Constants.InternalId_ColumnName)} FROM {StagingTableName} AS s JOIN {targetTableName} AS t ON {joinCondition}",
-            Options);
+            Connection, Transaction, Options, cancellationToken);
         return results.Results.Select(r => Convert.ToInt32(r[0])).ToHashSet();
     }
-    private IProperty GetGeneratedPrimaryKeyProperty()
+    internal async Task PreallocateIdentityValuesAsync(IEnumerable<T> entities, CancellationToken cancellationToken)
     {
-        return TableMapping.EntityType.GetProperties().SingleOrDefault(o => o.IsPrimaryKey() && o.ValueGenerated != ValueGenerated.Never);
+        var identityProperty = GetGeneratedPrimaryKeyProperty();
+        if (identityProperty?.PropertyInfo == null)
+            return;
+
+        var entityList = entities.ToList();
+        if (entityList.Count == 0)
+            return;
+
+        string tableName = Context.DelimitIdentifier(TableMapping.EntityType.GetTableName(), TableMapping.EntityType.GetSchema() ?? Context.Database.GetDefaultSchema());
+        string sequenceSql = $"SELECT nextval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}')) FROM generate_series(1, {entityList.Count})";
+        await using var command = Connection.CreateCommand();
+        command.CommandText = sequenceSql;
+        command.Transaction = Transaction;
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        foreach (var entity in entityList)
+        {
+            if (!await reader.ReadAsync(cancellationToken))
+                throw new InvalidDataException("Failed to allocate PostgreSql identity values.");
+
+            object sequenceValue = Convert.ChangeType(reader.GetValue(0), identityProperty.ClrType);
+            if (entity is InternalEntityEntry internalEntry)
+                internalEntry.SetStoreGeneratedValue(identityProperty, sequenceValue);
+            else
+                identityProperty.PropertyInfo.SetValue(entity, sequenceValue);
+        }
     }
-    private void SyncPostgreSqlIdentitySequence(IEntityType entityType)
+    private async Task SyncPostgreSqlIdentitySequenceAsync(IEntityType entityType, CancellationToken cancellationToken)
     {
         var identityProperty = entityType.GetProperties().SingleOrDefault(o => o.IsPrimaryKey() && o.ValueGenerated != ValueGenerated.Never);
         if (identityProperty == null)
@@ -350,25 +270,6 @@ internal sealed partial class BulkOperation<T> : IDisposable
         string tableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
         string columnName = Context.DelimitIdentifier(identityProperty.GetColumnName());
         string sequenceSql = $"SELECT setval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}'), COALESCE(MAX({columnName}), 0)) FROM {tableName}";
-        Context.Database.ExecuteSqlInternal(sequenceSql, Options.CommandTimeout);
-    }
-    internal void ValidateBulkMerge(Expression<Func<T, T, bool>> mergeOnCondition)
-    {
-        if (PrimaryKeyColumnNames.Length == 0 && mergeOnCondition == null)
-            throw new InvalidDataException("BulkMerge requires that the entity have a primary key or that Options.MergeOnCondition be set");
-    }
-    internal void ValidateBulkUpdate(Expression<Func<T, T, bool>> updateOnCondition)
-    {
-        if (PrimaryKeyColumnNames.Length == 0 && updateOnCondition == null)
-            throw new InvalidDataException("BulkUpdate requires that the entity have a primary key or the Options.UpdateOnCondition must be set.");
-
-    }
-    internal IEnumerable<string> GetColumnNames(bool includePrimaryKeys = false)
-    {
-        return GetColumnNames(null, includePrimaryKeys);
-    }
-    internal IEnumerable<string> GetColumnNames(IEntityType entityType, bool includePrimaryKeys = false)
-    {
-        return CommonUtil.FilterColumns(TableMapping.GetColumnNames(entityType, includePrimaryKeys), PrimaryKeyColumnNames, InputColumns, IgnoreColumns);
+        await Context.Database.ExecuteSqlAsync(sequenceSql, Options.CommandTimeout, cancellationToken);
     }
 }
