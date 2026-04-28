@@ -14,7 +14,7 @@ internal static class MySqlContainerManager
     internal static string GetConnectionString()
     {
         EnsureStarted();
-        return container.GetConnectionString();
+        return container.GetConnectionString() + ";AllowLoadLocalInfile=true;UseAffectedRows=false";
     }
 
     internal static void EnsureStarted()
@@ -35,7 +35,8 @@ internal static class MySqlContainerManager
     {
         try
         {
-            container = new MySqlBuilder("mysql:8.0")
+            container = new MySqlBuilder()
+                .WithImage("mysql:8.0")
                 .WithDatabase("NEntityFrameworkCoreExtensions")
                 .WithUsername("root")
                 .WithPassword("mysql")

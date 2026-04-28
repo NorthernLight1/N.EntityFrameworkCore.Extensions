@@ -46,7 +46,9 @@ internal sealed partial class BulkOperation<T> : IDisposable
     {
         if (StagingTableCreated)
         {
-            Context.Database.DropTable(StagingTableName, true);
+            // For MySQL temporary staging tables, use DROP TEMPORARY TABLE to avoid implicit transaction commit
+            bool isTemporary = Context.Database.IsMySql() && !Options.UsePermanentTable;
+            Context.Database.DropTable(StagingTableName, true, isTemporary);
         }
     }
     internal bool ShouldKeepIdentityForMerge()
@@ -67,8 +69,13 @@ internal sealed partial class BulkOperation<T> : IDisposable
     {
         IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
-        Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn);
+        Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, isTemporary: !Options.UsePermanentTable);
         StagingTableCreated = true;
+        if (keepIdentity && PrimaryKeyColumnNames.Length > 0 && Context.Database.IsMySql())
+        {
+            string indexColumns = string.Join(",", PrimaryKeyColumnNames.Select(c => Context.DelimitIdentifier(c)));
+            Context.Database.ExecuteSqlInternal($"ALTER TABLE {StagingTableName} ADD INDEX idx_pk ({indexColumns})");
+        }
         return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, useInternalId);
     }
     internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
@@ -122,23 +129,20 @@ internal sealed partial class BulkOperation<T> : IDisposable
             rowsUpdated[entityType] = 0;
             if (columnsToUpdate.Count > 0)
             {
+                // MySQL UPDATE returns "rows changed" by default, not "rows matched".
+                // Count matched rows first to get reliable "rows found" semantics.
+                string matchCountSql = $"SELECT COUNT(*) FROM {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition}";
+                rowsUpdated[entityType] = Convert.ToInt32(Context.Database.ExecuteScalar(matchCountSql, null, Options.CommandTimeout));
                 // MySQL UPDATE with JOIN syntax
                 string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"t.{Context.DelimitIdentifier(c)}=s.{Context.DelimitIdentifier(c)}"));
                 string updateSql = $"UPDATE {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition} SET {updateSetExpression}";
-                rowsUpdated[entityType] = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+                Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
             }
-
-            string insertColumnsSql = string.Join(",", columnsToInsert.Select(Context.DelimitIdentifier));
-            string sourceColumnsSql = string.Join(",", columnsToInsert.Select(c => Context.DelimitMemberAccess("s", c)));
-            string insertSql = $"INSERT INTO {targetTableName} ({insertColumnsSql}) SELECT {sourceColumnsSql} FROM {StagingTableName} AS s WHERE NOT EXISTS (SELECT 1 FROM {targetTableName} AS t WHERE {joinCondition})";
-            rowsInserted[entityType] = Context.Database.ExecuteSqlInternal(insertSql, Options.CommandTimeout);
-            if (keepIdentity && rowsInserted[entityType] > 0)
-                SyncMySqlAutoIncrement(entityType);
 
             rowsDeleted[entityType] = 0;
             if (TableMapping.EntityType == entityType && delete)
             {
-                string deleteJoinCondition = (preallocatedIds && mergeOnCondition != null) ? matchJoinCondition : pkJoinCondition;
+                string deleteJoinCondition = mergeOnCondition != null ? matchJoinCondition : pkJoinCondition;
                 // MySQL multi-table DELETE syntax: DELETE alias FROM table AS alias WHERE ...
                 string deleteSql = $"DELETE t FROM {targetTableName} AS t WHERE NOT EXISTS (SELECT 1 FROM {StagingTableName} AS s WHERE {deleteJoinCondition})";
                 rowsDeleted[entityType] = Context.Database.ExecuteSqlInternal(deleteSql, Options.CommandTimeout);
@@ -146,25 +150,63 @@ internal sealed partial class BulkOperation<T> : IDisposable
                     outputRows.Add(new BulkMergeOutputRow<T>(SqlMergeAction.Delete));
             }
 
+            string insertColumnsSql = string.Join(",", columnsToInsert.Select(Context.DelimitIdentifier));
+            string sourceColumnsSql = string.Join(",", columnsToInsert.Select(c => Context.DelimitMemberAccess("s", c)));
+            // When staging rows have Id=0 (keepIdentity=false, no explicit merge condition), ORDER BY _be_xx_id so
+            // LAST_INSERT_ID() + k correctly maps to each entity in entityMap order.
+            bool useLastInsertId = autoMapOutput && !keepIdentity && mergeOnCondition == null && autoGeneratedColumns.Any();
+            string insertOrderBy = useLastInsertId ? $" ORDER BY s.{Context.DelimitIdentifier(Constants.InternalId_ColumnName)}" : "";
+            string insertSql = $"INSERT INTO {targetTableName} ({insertColumnsSql}) SELECT {sourceColumnsSql} FROM {StagingTableName} AS s WHERE NOT EXISTS (SELECT 1 FROM {targetTableName} AS t WHERE {joinCondition}){insertOrderBy}";
+            rowsInserted[entityType] = Context.Database.ExecuteSqlInternal(insertSql, Options.CommandTimeout);
+            if (keepIdentity && rowsInserted[entityType] > 0)
+                SyncMySqlAutoIncrement(entityType);
+
             if (autoMapOutput)
             {
-                string outputColumnsSql = autoGeneratedColumns.Any()
-                    ? "," + string.Join(",", autoGeneratedColumns.Select(c => Context.DelimitMemberAccess("t", c)))
-                    : string.Empty;
-                var outputQuery = $"SELECT {Context.DelimitMemberAccess("s", Constants.InternalId_ColumnName)}{outputColumnsSql} FROM {StagingTableName} AS s JOIN {targetTableName} AS t ON {matchJoinCondition}";
-                var bulkQueryResult = Context.BulkQuery(outputQuery, Options);
-                var autoGeneratedColumnList = autoGeneratedColumns.ToList();
-                foreach (var result in bulkQueryResult.Results)
+                if (useLastInsertId && rowsInserted[entityType] > 0)
                 {
-                    int entityId = Convert.ToInt32(result[0]);
-                    bool wasMatched = matchedIds.Contains(entityId);
-                    string action = wasMatched ? SqlMergeAction.Update : SqlMergeAction.Insert;
-                    outputRows.Add(new BulkMergeOutputRow<T>(action));
-
-                    if (entityMap.TryGetValue(entityId, out var entity) && allProperties.Count > 0)
+                    // When keepIdentity=false and no merge condition, staging PKs are all 0.
+                    // JOIN on PK would return no rows, so use LAST_INSERT_ID() instead.
+                    // MySQL guarantees consecutive auto-increment IDs for a single INSERT statement.
+                    var lastInsertResult = Context.BulkQuery("SELECT LAST_INSERT_ID()", Options);
+                    long firstAutoId = Convert.ToInt64(lastInsertResult.Results.First()[0]);
+                    var insertedEntities = entityMap
+                        .Where(kvp => !matchedIds.Contains((int)kvp.Key))
+                        .OrderBy(kvp => kvp.Key)
+                        .ToList();
+                    for (int k = 0; k < insertedEntities.Count; k++)
                     {
-                        object[] entityValues = allProperties.Select(p => result[1 + autoGeneratedColumnList.IndexOf(p.GetColumnName())]).ToArray();
-                        Context.SetStoreGeneratedValues(entity, allProperties, entityValues);
+                        var entity = insertedEntities[k].Value;
+                        long generatedId = firstAutoId + k;
+                        var generatedPkProperty = GetGeneratedPrimaryKeyProperty();
+                        if (generatedPkProperty != null)
+                        {
+                            object pkValue = Convert.ChangeType(generatedId, generatedPkProperty.ClrType);
+                            Context.SetStoreGeneratedValues(entity, [generatedPkProperty], [pkValue]);
+                        }
+                        outputRows.Add(new BulkMergeOutputRow<T>(SqlMergeAction.Insert));
+                    }
+                }
+                else
+                {
+                    string outputColumnsSql = autoGeneratedColumns.Any()
+                        ? "," + string.Join(",", autoGeneratedColumns.Select(c => Context.DelimitMemberAccess("t", c)))
+                        : string.Empty;
+                    var outputQuery = $"SELECT {Context.DelimitMemberAccess("s", Constants.InternalId_ColumnName)}{outputColumnsSql} FROM {StagingTableName} AS s JOIN {targetTableName} AS t ON {matchJoinCondition}";
+                    var bulkQueryResult = Context.BulkQuery(outputQuery, Options);
+                    var autoGeneratedColumnList = autoGeneratedColumns.ToList();
+                    foreach (var result in bulkQueryResult.Results)
+                    {
+                        int entityId = Convert.ToInt32(result[0]);
+                        bool wasMatched = matchedIds.Contains(entityId);
+                        string action = wasMatched ? SqlMergeAction.Update : SqlMergeAction.Insert;
+                        outputRows.Add(new BulkMergeOutputRow<T>(action));
+
+                        if (entityMap.TryGetValue(entityId, out var entity) && allProperties.Count > 0)
+                        {
+                            object[] entityValues = allProperties.Select(p => result[1 + autoGeneratedColumnList.IndexOf(p.GetColumnName())]).ToArray();
+                            Context.SetStoreGeneratedValues(entity, allProperties, entityValues);
+                        }
                     }
                 }
             }
@@ -173,10 +215,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsInserted.Values.LastOrDefault() + rowsUpdated.Values.LastOrDefault() + rowsDeleted.Values.LastOrDefault(),
-            RowsDeleted = rowsDeleted.Values.LastOrDefault(),
-            RowsInserted = rowsInserted.Values.LastOrDefault(),
-            RowsUpdated = rowsUpdated.Values.LastOrDefault()
+            RowsAffected = rowsInserted.Values.FirstOrDefault() + rowsUpdated.Values.FirstOrDefault() + rowsDeleted.Values.Sum(),
+            RowsDeleted = rowsDeleted.Values.Sum(),
+            RowsInserted = rowsInserted.Values.FirstOrDefault(),
+            RowsUpdated = rowsUpdated.Values.FirstOrDefault()
         };
     }
     private int ExecuteUpdateMySql(Expression<Func<T, T, bool>> updateOnCondition)
