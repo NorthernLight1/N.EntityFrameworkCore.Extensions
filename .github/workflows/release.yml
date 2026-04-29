@@ -46,9 +46,10 @@ jobs:
       - name: Pack (ensure .nupkg output)
         id: pack
         run: |
-          dotnet pack N.EntityFrameworkCore.Extensions.SqlServer/N.EntityFrameworkCore.Extensions.SqlServer.csproj --no-build -c Release -o out
-          dotnet pack N.EntityFrameworkCore.Extensions.PostgreSql/N.EntityFrameworkCore.Extensions.PostgreSql.csproj --no-build -c Release -o out
-          dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out
+          dotnet pack N.EntityFrameworkCore.Extensions.SqlServer/N.EntityFrameworkCore.Extensions.SqlServer.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.PostgreSql/N.EntityFrameworkCore.Extensions.PostgreSql.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.MySql/N.EntityFrameworkCore.Extensions.MySql.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
 
       - name: Publish to NuGet
         if: ${{ inputs.nuget_publish }}
