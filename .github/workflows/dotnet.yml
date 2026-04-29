@@ -35,7 +35,7 @@ jobs:
       run: dotnet restore
 
     - name: Test SqlServer
-      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.SqlServer.Test/N.EntityFramework.Extensions.SqlServer.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.SqlServer.runsettings --verbosity normal
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.SqlServer.Test/N.EntityFrameworkCore.Extensions.SqlServer.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.SqlServer.runsettings --verbosity normal
 
   test-mysql:
     runs-on: ubuntu-latest
@@ -49,7 +49,7 @@ jobs:
       run: dotnet restore
 
     - name: Test MySQL
-      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.MySql.Test/N.EntityFramework.Extensions.MySql.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.MySql.runsettings --verbosity normal
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.MySql.Test/N.EntityFrameworkCore.Extensions.MySql.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.MySql.runsettings --verbosity normal
 
   test-postgresql:
     runs-on: ubuntu-latest
@@ -63,4 +63,4 @@ jobs:
       run: dotnet restore
 
     - name: Test PostgreSQL
-      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.PostgreSql.Test/N.EntityFramework.Extensions.PostgreSql.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.PostgreSql.runsettings --verbosity normal
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.PostgreSql.Test/N.EntityFrameworkCore.Extensions.PostgreSql.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.PostgreSql.runsettings --verbosity normal

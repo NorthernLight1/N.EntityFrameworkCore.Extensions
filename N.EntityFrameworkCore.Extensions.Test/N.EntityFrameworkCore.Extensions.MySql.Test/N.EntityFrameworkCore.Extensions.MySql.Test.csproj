@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Version></Version>
-    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\..\N.EntityFramework.Extensions.MySql.runsettings</RunSettingsFilePath>
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\..\N.EntityFrameworkCore.Extensions.MySql.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\N.EntityFramework.Extensions.MySql\N.EntityFramework.Extensions.MySql.csproj" />
+    <ProjectReference Include="..\..\N.EntityFrameworkCore.Extensions.MySql\N.EntityFrameworkCore.Extensions.MySql.csproj" />
   </ItemGroup>
 
   <ItemGroup>

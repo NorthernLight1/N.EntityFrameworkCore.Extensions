@@ -46,8 +46,8 @@ jobs:
       - name: Pack (ensure .nupkg output)
         id: pack
         run: |
-          dotnet pack N.EntityFramework.Extensions.SqlServer/N.EntityFramework.Extensions.SqlServer.csproj --no-build -c Release -o out
-          dotnet pack N.EntityFramework.Extensions.PostgreSql/N.EntityFramework.Extensions.PostgreSql.csproj --no-build -c Release -o out
+          dotnet pack N.EntityFrameworkCore.Extensions.SqlServer/N.EntityFrameworkCore.Extensions.SqlServer.csproj --no-build -c Release -o out
+          dotnet pack N.EntityFrameworkCore.Extensions.PostgreSql/N.EntityFrameworkCore.Extensions.PostgreSql.csproj --no-build -c Release -o out
           dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out
 
       - name: Publish to NuGet

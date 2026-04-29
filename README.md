@@ -68,10 +68,10 @@ dotnet add package N.EntityFrameworkCore.Extensions
 
 ### PostgreSql
 
-A separate package is available for PostgreSql on [NuGet](https://www.nuget.org/packages/N.EntityFramework.Extensions.PostgreSql).
+A separate package is available for PostgreSql on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql).
 
 ```sh
-dotnet add package N.EntityFramework.Extensions.PostgreSql
+dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql
 ```
 
 ---
@@ -106,7 +106,7 @@ This registers an EF Core `DbCommandInterceptor` used internally by bulk operati
 
 ### Test configuration
 
-The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFramework.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
+The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
 
 ---
 

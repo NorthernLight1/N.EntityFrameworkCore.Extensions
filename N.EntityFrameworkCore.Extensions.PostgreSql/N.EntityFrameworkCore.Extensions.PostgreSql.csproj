@@ -3,13 +3,13 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Version>10.0.5.1</Version>
-    <PackageId>N.EntityFramework.Extensions.PostgreSql</PackageId>
+    <PackageId>N.EntityFrameworkCore.Extensions.PostgreSql</PackageId>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFramework.Extensions.PostgreSql/</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions.PostgreSql/</PackageProjectUrl>
     <Authors>Northern25</Authors>
     <Copyright>Copyright © 2026</Copyright>
     <Company />
-    <Description>N.EntityFramework.Extensions.PostgreSql extends your DbContext in EF Core with high-performance bulk operations for PostgreSql: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.
+    <Description>N.EntityFrameworkCore.Extensions.PostgreSql extends your DbContext in EF Core with high-performance bulk operations for PostgreSql: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.
 
 Inheritance models supported: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per-Type</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -36,7 +36,7 @@ Inheritance models supported: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="N.EntityFramework.Extensions.PostgreSql.Test" />
+    <InternalsVisibleTo Include="N.EntityFrameworkCore.Extensions.PostgreSql.Test" />
   </ItemGroup>
   
 </Project>

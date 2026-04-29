@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿#nullable enable
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Data;
 
