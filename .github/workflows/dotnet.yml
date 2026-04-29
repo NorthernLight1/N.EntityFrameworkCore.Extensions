@@ -2,20 +2,20 @@ name: .NET
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 permissions:
   contents: read
 
 jobs:
   build:
-    runs-on: windows-latest 
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4 
+      uses: actions/checkout@v4
 
     - name: Restore dependencies
       run: dotnet restore
@@ -23,5 +23,44 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
-    - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal
+  test-sqlserver:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Test SqlServer
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.SqlServer.Test/N.EntityFramework.Extensions.SqlServer.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.SqlServer.runsettings --verbosity normal
+
+  test-mysql:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Test MySQL
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.MySql.Test/N.EntityFramework.Extensions.MySql.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.MySql.runsettings --verbosity normal
+
+  test-postgresql:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Test PostgreSQL
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFramework.Extensions.PostgreSql.Test/N.EntityFramework.Extensions.PostgreSql.Test.csproj" --configuration Release --settings N.EntityFramework.Extensions.PostgreSql.runsettings --verbosity normal

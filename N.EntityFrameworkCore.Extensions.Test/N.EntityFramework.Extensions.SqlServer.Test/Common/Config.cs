@@ -17,7 +17,10 @@ public class Config
         return configuration.GetConnectionString(name);
     }
     public static bool IsSqlServer => true;
-    public static string GetTestDatabaseConnectionString() => GetConnectionString("SqlServerTestDatabase");
+    public static bool UseSqlServerContainer =>
+        !string.Equals(configuration["UseSqlServerContainer"], "false", StringComparison.OrdinalIgnoreCase);
+    public static string GetTestDatabaseConnectionString() =>
+        UseSqlServerContainer ? SqlServerContainerManager.GetConnectionString() : GetConnectionString("SqlServerTestDatabase");
     public static DbParameter CreateParameter(string name, object value) => new SqlParameter(name, value ?? DBNull.Value);
     public static string DelimitIdentifier(string identifier) => $"[{identifier}]";
     public static string DelimitTableName(string tableName) => tableName;

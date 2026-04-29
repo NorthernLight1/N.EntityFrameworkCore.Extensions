@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Version></Version>
-    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\..\N.EntityFrameworkCore.Extensions.runsettings</RunSettingsFilePath>
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\..\N.EntityFramework.Extensions.SqlServer.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.NET.Test.SDK" Version="18.3.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="4.1.0" />
     <PackageReference Include="MSTest.TestFramework" Version="4.1.0" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.11.0" />
   </ItemGroup>
 
   <ItemGroup>
