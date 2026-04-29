@@ -22,7 +22,7 @@ env:
 
 jobs:
   publish-and-release:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write   # create tag and release, upload assets
 
@@ -52,16 +52,16 @@ jobs:
 
       - name: Publish to NuGet
         if: ${{ inputs.nuget_publish }}
-        run: dotnet nuget push .\out\*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
+        run: dotnet nuget push ./out/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
       - name: Create source zip
         run: |
-          $tag = "v${{ inputs.version }}"
-          git archive --format=zip --output=source-$tag.zip HEAD
-          echo "SOURCE_ZIP=source-$tag.zip" >> $env:GITHUB_ENV
-          echo "ARCHIVE_NAME=source-$tag.zip" >> $env:GITHUB_ENV
+          tag="v${{ inputs.version }}"
+          git archive --format=zip --output="source-${tag}.zip" HEAD
+          echo "SOURCE_ZIP=source-${tag}.zip" >> $GITHUB_ENV
+          echo "ARCHIVE_NAME=source-${tag}.zip" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
