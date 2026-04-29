@@ -5,7 +5,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -23,7 +22,7 @@ internal sealed partial class BulkOperation<T>
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
         await Context.Database.CloneTableAsync(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, cancellationToken);
         StagingTableCreated = true;
-        return await DbContextExtensionsAsync.BulkInsertAsync(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId, cancellationToken);
+        return await DbContextExtensionsAsync.BulkInsertAsync(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, useInternalId, cancellationToken);
     }
 
     internal async Task<BulkMergeResult<T>> ExecuteMergeAsync(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,

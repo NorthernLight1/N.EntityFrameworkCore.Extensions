@@ -4,7 +4,6 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -113,7 +112,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
         Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn);
         StagingTableCreated = true;
-        return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, SqlBulkCopyOptions.KeepIdentity, useInternalId);
+        return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, useInternalId);
     }
     internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
         bool autoMapOutput, bool keepIdentity, bool insertIfNotExists, bool update = false, bool delete = false, bool preallocatedIds = false)

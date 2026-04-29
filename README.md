@@ -65,7 +65,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 ## Installation
 
-Install the **all-in-one meta-package** (includes SQL Server and PostgreSql):
+Install the **all-in-one meta-package** (includes SQL Server and PostgreSql — MySQL must be installed separately):
 
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions
@@ -122,7 +122,7 @@ This registers an EF Core `DbCommandInterceptor` used internally by bulk operati
 
 ### Test configuration
 
-The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment). The MySQL test project uses `N.EntityFrameworkCore.Extensions.MySql.Test\appsettings.json` (or `ConnectionStrings__MySqlTestDatabase` in the environment).
+The SQL Server test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.SqlServer.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment). The MySQL test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\appsettings.json` (or `ConnectionStrings__MySqlTestDatabase` in the environment).
 
 ---
 
@@ -776,6 +776,5 @@ Use `InsertFromQuery` outside of a transaction on MySQL, or use `BulkInsert` as 
 
 If you found this project helpful and you would like to support it, feel free to donate through PayPal or Bitcoin.
 
-| PayPal | Bitcoin |
-| ------ | ------- |
-| [![](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ) | <center>[![](bitcoin.png)](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)<br />[bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z](bitcoin:bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z)</center> |
+- 💳 **PayPal:** [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ)
+- ₿ **Bitcoin:** `bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z`
