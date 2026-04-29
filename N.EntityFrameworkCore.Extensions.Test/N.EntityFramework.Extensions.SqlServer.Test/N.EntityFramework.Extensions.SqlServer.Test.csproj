@@ -21,6 +21,7 @@
     <PackageReference Include="Microsoft.NET.Test.SDK" Version="18.3.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="4.1.0" />
     <PackageReference Include="MSTest.TestFramework" Version="4.1.0" />
+    <PackageReference Include="Testcontainers.MsSql" Version="4.11.0" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,12 +8,18 @@ internal static class TestDatabaseInitializer
 {
     internal static void EnsureCreated(TestDbContext dbContext)
     {
+        if (Config.UseSqlServerContainer)
+            SqlServerContainerManager.EnsureStarted();
+
         dbContext.Database.EnsureCreated();
         CreateSqlServerObjects(dbContext);
     }
 
     internal static async Task EnsureCreatedAsync(TestDbContext dbContext)
     {
+        if (Config.UseSqlServerContainer)
+            await SqlServerContainerManager.EnsureStartedAsync();
+
         await dbContext.Database.EnsureCreatedAsync();
         await CreateSqlServerObjectsAsync(dbContext);
     }
