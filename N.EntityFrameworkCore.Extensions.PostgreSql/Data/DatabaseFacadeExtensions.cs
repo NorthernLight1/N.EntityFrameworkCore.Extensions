@@ -19,7 +19,8 @@ public static class DatabaseFacadeExtensions
     }
     public static int ClearTable(this DatabaseFacade database, string tableName)
     {
-        return database.ExecuteSqlRaw($"DELETE FROM {database.DelimitTableName(tableName)}");
+        string sql = $"DELETE FROM {database.DelimitTableName(tableName)}";
+        return database.ExecuteSqlRaw(sql);
     }
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {

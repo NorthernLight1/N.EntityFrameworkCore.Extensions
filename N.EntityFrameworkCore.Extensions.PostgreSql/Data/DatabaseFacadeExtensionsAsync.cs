@@ -12,7 +12,8 @@ public static class DatabaseFacadeExtensionsAsync
 {
     public static async Task<int> ClearTableAsync(this DatabaseFacade database, string tableName, CancellationToken cancellationToken = default)
     {
-        return await database.ExecuteSqlRawAsync($"DELETE FROM {database.DelimitTableName(tableName)}", cancellationToken);
+        string sql = $"DELETE FROM {database.DelimitTableName(tableName)}";
+        return await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
     public static async Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)
     {
