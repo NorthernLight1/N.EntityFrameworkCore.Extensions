@@ -99,8 +99,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
                 throw new InvalidDataException("Failed to allocate PostgreSql identity values.");
 
             object sequenceValue = Convert.ChangeType(reader.GetValue(0), identityProperty.ClrType);
+#pragma warning disable EF1001
             if (entity is InternalEntityEntry internalEntry)
                 internalEntry.SetStoreGeneratedValue(identityProperty, sequenceValue);
+#pragma warning restore EF1001
             else
                 identityProperty.PropertyInfo.SetValue(entity, sequenceValue);
         }

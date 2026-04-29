@@ -10,7 +10,13 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 **Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
 
-**Database:** SQL Server · PostgreSql
+**Database:** SQL Server · PostgreSql · MySQL
+
+---
+
+> 💬 **Feedback & Feature Requests**
+> Found a bug? Have an idea for a new feature or improvement? We'd love to hear from you!
+> Please [open an issue](https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/issues) on GitHub — whether it's a bug report, a feature request, a question, or general feedback, all contributions are welcome.
 
 ---
 
@@ -51,6 +57,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
   - [QueryToFileResult](#querytofileresult)
   - [SqlQuery](#sqlquery)
 - [Transactions](#transactions)
+- [MySQL Limitations](#mysql-limitations)
 - [API Reference](#api-reference)
 - [Donations](#donations)
 
@@ -58,21 +65,19 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 ## Installation
 
-### SQL Server
-
-The latest stable version is available on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions).
+Install the **all-in-one meta-package** (includes SQL Server and PostgreSql):
 
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions
 ```
 
-### PostgreSql
+Or install **only the provider you need**:
 
-A separate package is available for PostgreSql on [NuGet](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql).
-
-```sh
-dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql
-```
+| Provider | Package |
+| --- | --- |
+| SQL Server | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.SqlServer?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.SqlServer) `dotnet add package N.EntityFrameworkCore.Extensions.SqlServer` |
+| PostgreSql | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.PostgreSql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql) `dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql` |
+| MySQL | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.MySql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql) `dotnet add package N.EntityFrameworkCore.Extensions.MySql` |
 
 ---
 
@@ -102,11 +107,22 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
+### MySQL
+
+```csharp
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseMySql("your-connection-string", ServerVersion.AutoDetect("your-connection-string"))
+        .SetupEfCoreExtensions();
+}
+```
+
 This registers an EF Core `DbCommandInterceptor` used internally by bulk operations. It is required for operations that rewrite table names at execution time (e.g. `InsertFromQuery` targeting a new table); all other operations work without it.
 
 ### Test configuration
 
-The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment).
+The test project uses SQL Server through `N.EntityFrameworkCore.Extensions.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment). The MySQL test project uses `N.EntityFrameworkCore.Extensions.MySql.Test\appsettings.json` (or `ConnectionStrings__MySqlTestDatabase` in the environment).
 
 ---
 
@@ -633,6 +649,27 @@ catch
     transaction.Rollback();
 }
 ```
+
+---
+
+## MySQL Limitations
+
+MySQL has specific constraints that affect certain operations due to how it handles DDL statements and transactions.
+
+### InsertFromQuery and Transactions
+
+`InsertFromQuery` / `InsertFromQueryAsync` are **not supported inside user-managed transactions** on MySQL. Internally these operations execute `CREATE TABLE ... SELECT`, which is a DDL statement. MySQL automatically issues an implicit commit before and after any DDL statement, which would silently commit your active transaction.
+
+```csharp
+// ⚠️ Do NOT use InsertFromQuery inside a transaction on MySQL
+using var transaction = dbContext.Database.BeginTransaction();
+dbContext.Products
+    .Where(x => x.Price < 10M)
+    .InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price }); // implicit commit!
+transaction.Rollback(); // has no effect — already committed
+```
+
+Use `InsertFromQuery` outside of a transaction on MySQL, or use `BulkInsert` as an alternative when transactional safety is required.
 
 ---
 

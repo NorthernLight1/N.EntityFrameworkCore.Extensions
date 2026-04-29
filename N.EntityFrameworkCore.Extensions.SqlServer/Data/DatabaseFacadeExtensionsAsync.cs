@@ -12,7 +12,8 @@ public static class DatabaseFacadeExtensionsAsync
 {
     public static async Task<int> ClearTableAsync(this DatabaseFacade database, string tableName, CancellationToken cancellationToken = default)
     {
-        return await database.ExecuteSqlRawAsync($"DELETE FROM {database.DelimitTableName(tableName)}", cancellationToken);
+        string sql = $"DELETE FROM {database.DelimitTableName(tableName)}";
+        return await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
     public static async Task TruncateTableAsync(this DatabaseFacade database, string tableName, bool ifExists = false, CancellationToken cancellationToken = default)
     {
@@ -21,7 +22,8 @@ public static class DatabaseFacadeExtensionsAsync
             return;
 
         string formattedTableName = database.DelimitTableName(tableName);
-        await database.ExecuteSqlRawAsync($"TRUNCATE TABLE {formattedTableName}", cancellationToken);
+        string sql = $"TRUNCATE TABLE {formattedTableName}";
+        await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
     internal static async Task<int> CloneTableAsync(this DatabaseFacade database, string sourceTable, string destinationTable, IEnumerable<string> columnNames, string internalIdColumnName = null, CancellationToken cancellationToken = default)
     {
@@ -33,7 +35,8 @@ public static class DatabaseFacadeExtensionsAsync
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS INT) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        return await database.ExecuteSqlRawAsync($"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}", cancellationToken);
+        string sql = $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
+        return await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
     internal static async Task<int> ExecuteSqlAsync(this DatabaseFacade database, string sql, int? commandTimeout = null, CancellationToken cancellationToken = default)
     {

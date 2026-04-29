@@ -19,7 +19,8 @@ public static class DatabaseFacadeExtensions
     }
     public static int ClearTable(this DatabaseFacade database, string tableName)
     {
-        return database.ExecuteSqlRaw($"DELETE FROM {database.DelimitTableName(tableName)}");
+        string sql = $"DELETE FROM {database.DelimitTableName(tableName)}";
+        return database.ExecuteSqlRaw(sql);
     }
     public static int DropTable(this DatabaseFacade database, string tableName, bool ifExists = false)
     {
@@ -34,7 +35,8 @@ public static class DatabaseFacadeExtensions
             return;
 
         string formattedTableName = database.DelimitTableName(tableName);
-        database.ExecuteSqlRaw($"TRUNCATE TABLE {formattedTableName}");
+        string sql = $"TRUNCATE TABLE {formattedTableName}";
+        database.ExecuteSqlRaw(sql);
     }
     public static bool TableExists(this DatabaseFacade database, string tableName)
     {
@@ -59,7 +61,8 @@ public static class DatabaseFacadeExtensions
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS INT) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        return database.ExecuteSqlRaw($"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}");
+        string sql = $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
+        return database.ExecuteSqlRaw(sql);
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
     {

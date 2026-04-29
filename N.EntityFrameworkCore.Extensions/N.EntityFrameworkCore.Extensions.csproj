@@ -12,7 +12,7 @@
     <Description>Meta-package that includes both N.EntityFrameworkCore.Extensions (SQL Server) and N.EntityFrameworkCore.Extensions.PostgreSql (PostgreSql). Extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- No source files — this is a dependency aggregator only -->
+    <NoWarn>NU5128</NoWarn>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <ContentTargetFolders>contentFiles</ContentTargetFolders>
   </PropertyGroup>
