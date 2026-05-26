@@ -22,6 +22,19 @@ internal static class SqlServerContainerManager
         return builder.ConnectionString;
     }
 
+    internal static string GetRestrictedConnectionString()
+    {
+        EnsureStarted();
+        var builder = new SqlConnectionStringBuilder(container.GetConnectionString())
+        {
+            InitialCatalog = "NEntityFrameworkCoreExtensions",
+            UserID = "limited_test_user",
+            Password = "LimitedTest123!",
+            IntegratedSecurity = false
+        };
+        return builder.ConnectionString;
+    }
+
     internal static void EnsureStarted()
     {
         EnsureStartedAsync().GetAwaiter().GetResult();

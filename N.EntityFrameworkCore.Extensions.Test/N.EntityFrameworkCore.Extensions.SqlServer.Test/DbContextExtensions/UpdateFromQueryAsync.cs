@@ -227,6 +227,32 @@ public class UpdateFromQueryAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
     }
     [TestMethod]
+    public async Task With_String_Containing_Dot()
+    {
+        var dbContext = SetupDbContext(true);
+        string email = "luciano.cravero@testmail.com";
+        int oldTotal = dbContext.Orders.Where(o => o.ExternalId == null).Count();
+        int rowUpdated = await dbContext.Orders.Where(o => o.ExternalId == null).UpdateFromQueryAsync(o => new Order { ExternalId = email });
+        int newTotal = dbContext.Orders.Where(o => o.ExternalId == email).Count();
+
+        Assert.IsTrue(oldTotal > 0, "There must be orders in database that match this condition (ExternalId == null)");
+        Assert.IsTrue(rowUpdated == oldTotal, "The number of rows update must match the count of rows that match the condition (ExternalId == null)");
+        Assert.IsTrue(newTotal == rowUpdated, "The ExternalId must be saved exactly as provided, without any corruption from dot replacement");
+    }
+    [TestMethod]
+    public async Task With_String_Column_Copy()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.ExternalId != null);
+        int oldTotal = orders.Count();
+        int rowUpdated = await orders.UpdateFromQueryAsync(o => new Order { ExternalId = o.ExternalId + ".copy" });
+        int newTotal = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.EndsWith(".copy")).Count();
+
+        Assert.IsTrue(oldTotal > 0, "There must be orders in database that have an ExternalId");
+        Assert.IsTrue(rowUpdated == oldTotal, "The number of rows updated must match the count of rows that have an ExternalId");
+        Assert.IsTrue(newTotal == oldTotal, "All ExternalId values must have been updated using the column reference");
+    }
+    [TestMethod]
     public async Task With_Transaction()
     {
         var dbContext = SetupDbContext(true);
