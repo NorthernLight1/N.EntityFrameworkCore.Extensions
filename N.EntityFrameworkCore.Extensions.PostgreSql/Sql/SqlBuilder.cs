@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
-using Microsoft.Data.SqlClient;
 
 namespace N.EntityFrameworkCore.Extensions.Sql;
 
@@ -12,7 +11,7 @@ internal sealed class SqlBuilder
     private static readonly string[] keywords = ["DECLARE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY"];
     internal string Sql => ToString();
     internal List<SqlClause> Clauses { get; private set; }
-    internal List<SqlParameter> Parameters { get; private set; }
+    internal List<(string Name, SqlDbType DbType, int Size, object Value)> Parameters { get; private set; }
     private SqlBuilder(string sql)
     {
         Clauses = [];
@@ -95,7 +94,7 @@ internal sealed class SqlBuilder
                         int size = sizeStartIndex != -1 ?
                             Convert.ToInt32(declareParts[1][(sizeStartIndex + 1)..(sizeStartIndex + 1 + sizeLength)]) : 0;
                         string value = GetDeclareValue(declareParts[3]);
-                        Parameters.Add(new SqlParameter(declareParts[0], dbType, size) { Value = value });
+                        Parameters.Add((declareParts[0], dbType, size, (object)value));
                     }
                     else
                     {

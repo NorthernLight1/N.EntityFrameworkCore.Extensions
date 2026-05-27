@@ -35,6 +35,7 @@ internal static class TestDatabaseInitializer
                 PRINT 1
             END
             """);
+        CreateRestrictedUser(dbContext);
     }
 
     internal static async Task CreateSqlServerObjectsAsync(TestDbContext dbContext)
@@ -46,6 +47,33 @@ internal static class TestDatabaseInitializer
             AS
             BEGIN
                 PRINT 1
+            END
+            """);
+        await CreateRestrictedUserAsync(dbContext);
+    }
+
+    internal static void CreateRestrictedUser(TestDbContext dbContext)
+    {
+        dbContext.Database.ExecuteSqlRaw("""
+            IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'limited_test_user')
+                CREATE LOGIN limited_test_user WITH PASSWORD = 'LimitedTest123!';
+            IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'limited_test_user')
+            BEGIN
+                CREATE USER limited_test_user FOR LOGIN limited_test_user;
+                GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Orders TO limited_test_user;
+            END
+            """);
+    }
+
+    internal static async Task CreateRestrictedUserAsync(TestDbContext dbContext)
+    {
+        await dbContext.Database.ExecuteSqlRawAsync("""
+            IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'limited_test_user')
+                CREATE LOGIN limited_test_user WITH PASSWORD = 'LimitedTest123!';
+            IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'limited_test_user')
+            BEGIN
+                CREATE USER limited_test_user FOR LOGIN limited_test_user;
+                GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.Orders TO limited_test_user;
             END
             """);
     }

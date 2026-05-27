@@ -66,7 +66,7 @@ internal static class RelationalProviderUtil
 
     internal static string GetTemporaryTableName(this DatabaseFacade database, string baseName)
     {
-        string temporaryName = $"tmp_be_xx_{UnwrapIdentifier(baseName)}_{Guid.NewGuid():N}";
+        string temporaryName = $"#tmp_be_xx_{UnwrapIdentifier(baseName)}_{Guid.NewGuid():N}";
         return database.DelimitIdentifier(temporaryName);
     }
 

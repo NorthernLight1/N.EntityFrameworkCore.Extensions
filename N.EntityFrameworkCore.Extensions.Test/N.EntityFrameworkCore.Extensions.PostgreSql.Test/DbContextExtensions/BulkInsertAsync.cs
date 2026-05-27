@@ -369,8 +369,6 @@ public class BulkInsertAsync : DbContextExtensionsBase
         await dbContext.BulkInsertAsync(products, options =>
         {
             options.AutoMapOutput = false;
-            if (Config.IsSqlServer)
-                options.BulkCopyOptions = SqlBulkCopyOptions.FireTriggers;
         });
         var rowsInserted = dbContext.ProductsWithTrigger.Count();
 

@@ -6,7 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -62,7 +61,7 @@ public static class DbContextExtensions
                     throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
                 context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
-                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, false);
 
                 string joinCondition = CommonUtil<T>.GetJoinConditionSql(context, options.DeleteOnCondition, keyColumnNames);
                 string deleteSql = context.Database.IsPostgreSql()
@@ -112,7 +111,7 @@ public static class DbContextExtensions
                     throw new InvalidDataException("BulkFetch requires that the entity have a primary key or the Options.JoinOnCondition must be set.");
 
                 context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
-                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, SqlBulkCopyOptions.KeepIdentity, false);
+                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, false);
                 selectSql = $"SELECT {SqlUtil.ConvertToColumnString(columnsToFetch)} FROM {stagingTableName} s JOIN {destinationTableName} t ON {CommonUtil<T>.GetJoinConditionSql(context, options.JoinOnCondition, keyColumnNames)}";
 
 
@@ -312,7 +311,7 @@ public static class DbContextExtensions
 
                 var entities = queryable.AsNoTracking().ToList();
                 int rowsAffected = BulkInsert(entities, new BulkInsertOptions<T> { KeepIdentity = true, AutoMapOutput = false, CommandTimeout = commandTimeout }, tableMapping,
-                    dbTransactionContext.Connection, dbTransactionContext.CurrentTransaction, dbContext.Database.DelimitTableName(tableName), columnNames, SqlBulkCopyOptions.KeepIdentity).RowsAffected;
+                    dbTransactionContext.Connection, dbTransactionContext.CurrentTransaction, dbContext.Database.DelimitTableName(tableName), columnNames).RowsAffected;
                 dbTransactionContext.Commit();
                 return rowsAffected;
             }
@@ -455,68 +454,38 @@ public static class DbContextExtensions
         }
     }
     internal static BulkInsertResult<T> BulkInsert<T>(IEnumerable<T> entities, BulkOptions options, TableMapping tableMapping, DbConnection dbConnection, DbTransaction transaction, string tableName,
-        IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false)
+        IEnumerable<string> inputColumns = null, bool useInternalId = false)
     {
         using var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
-        if (dbConnection is NpgsqlConnection npgsqlConnection)
-        {
-            var columnNames = tableMapping.Properties
-                .Select(tableMapping.GetColumnName)
-                .Where(columnName => inputColumns == null || inputColumns.Contains(columnName))
-                .ToList();
-            if (useInternalId)
-                columnNames.Add(Constants.InternalId_ColumnName);
-
-            string copySql = $"COPY {tableName} ({string.Join(",", columnNames.Select(tableMapping.DbContext.DelimitIdentifier))}) FROM STDIN (FORMAT BINARY)";
-            using var importer = npgsqlConnection.BeginBinaryImport(copySql);
-            long rowsCopied = 0;
-            while (dataReader.Read())
-            {
-                importer.StartRow();
-                foreach (var columnName in columnNames)
-                {
-                    object value = dataReader.GetValue(dataReader.GetOrdinal(columnName));
-                    if (value == null || value == DBNull.Value)
-                        importer.WriteNull();
-                    else
-                        importer.Write(value);
-                }
-                rowsCopied++;
-            }
-            importer.Complete();
-
-            return new BulkInsertResult<T>
-            {
-                RowsAffected = (int)rowsCopied,
-                EntityMap = dataReader.EntityMap
-            };
-        }
-
-        var sqlBulkCopy = new SqlBulkCopy((SqlConnection)dbConnection, bulkCopyOptions | options.BulkCopyOptions, (SqlTransaction)transaction)
-        {
-            DestinationTableName = tableName,
-            BatchSize = options.BatchSize,
-            NotifyAfter = options.NotifyAfter,
-            EnableStreaming = options.EnableStreaming,
-        };
-        sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.HasValue ? options.CommandTimeout.Value : sqlBulkCopy.BulkCopyTimeout;
-        if (options.SqlRowsCopied != null)
-            sqlBulkCopy.SqlRowsCopied += options.SqlRowsCopied;
-        foreach (SqlBulkCopyColumnOrderHint columnOrderHint in options.ColumnOrderHints)
-            sqlBulkCopy.ColumnOrderHints.Add(columnOrderHint);
-        foreach (var property in dataReader.TableMapping.Properties)
-        {
-            var columnName = dataReader.TableMapping.GetColumnName(property);
-            if (inputColumns == null || inputColumns.Contains(columnName))
-                sqlBulkCopy.ColumnMappings.Add(columnName, columnName);
-        }
+        var npgsqlConnection = (NpgsqlConnection)dbConnection;
+        var columnNames = tableMapping.Properties
+            .Select(tableMapping.GetColumnName)
+            .Where(columnName => inputColumns == null || inputColumns.Contains(columnName))
+            .ToList();
         if (useInternalId)
-            sqlBulkCopy.ColumnMappings.Add(Constants.InternalId_ColumnName, Constants.InternalId_ColumnName);
-        sqlBulkCopy.WriteToServer(dataReader);
+            columnNames.Add(Constants.InternalId_ColumnName);
+
+        string copySql = $"COPY {tableName} ({string.Join(",", columnNames.Select(tableMapping.DbContext.DelimitIdentifier))}) FROM STDIN (FORMAT BINARY)";
+        using var importer = npgsqlConnection.BeginBinaryImport(copySql);
+        long rowsCopied = 0;
+        while (dataReader.Read())
+        {
+            importer.StartRow();
+            foreach (var columnName in columnNames)
+            {
+                object value = dataReader.GetValue(dataReader.GetOrdinal(columnName));
+                if (value == null || value == DBNull.Value)
+                    importer.WriteNull();
+                else
+                    importer.Write(value);
+            }
+            rowsCopied++;
+        }
+        importer.Complete();
 
         return new BulkInsertResult<T>
         {
-            RowsAffected = sqlBulkCopy.RowsCopied,
+            RowsAffected = (int)rowsCopied,
             EntityMap = dataReader.EntityMap
         };
     }

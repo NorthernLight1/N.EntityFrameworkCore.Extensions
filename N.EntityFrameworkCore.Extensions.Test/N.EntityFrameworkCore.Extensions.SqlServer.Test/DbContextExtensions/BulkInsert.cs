@@ -458,4 +458,27 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
+    [TestMethod]
+    public void With_UsePermanentTable_False_And_No_Create_Table_Permission()
+    {
+        // Ensures BulkInsert uses a temporary (#) table when UsePermanentTable = false,
+        // so users without CREATE TABLE permission can still perform bulk inserts.
+        var adminDbContext = SetupDbContext(false);
+        TestDatabaseInitializer.CreateRestrictedUser(adminDbContext);
+
+        var restrictedConnectionString = Config.GetRestrictedTestDatabaseConnectionString();
+        var dbContext = new TestDbContext(restrictedConnectionString);
+
+        var orders = new List<Order>();
+        for (int i = 0; i < 1000; i++)
+        {
+            orders.Add(new Order { Id = i, Price = 1.57M });
+        }
+        int oldTotal = adminDbContext.Orders.Count();
+        int rowsInserted = dbContext.BulkInsert(orders, options => options.UsePermanentTable = false);
+        int newTotal = adminDbContext.Orders.Count();
+
+        Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
 }

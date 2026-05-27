@@ -8,6 +8,13 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data;
 
 public class TestDbContext : DbContext
 {
+    private readonly string _connectionString;
+
+    public TestDbContext(string connectionString = null)
+    {
+        _connectionString = connectionString;
+    }
+
     public virtual DbSet<Product> Products { get; set; }
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
     public virtual DbSet<ProductWithCustomSchema> ProductsWithCustomSchema { get; set; }
@@ -25,7 +32,7 @@ public class TestDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlServer(Config.GetTestDatabaseConnectionString());
+        optionsBuilder.UseSqlServer(_connectionString ?? Config.GetTestDatabaseConnectionString());
         optionsBuilder.SetupEfCoreExtensions();
         optionsBuilder.UseLazyLoadingProxies();
         // Tell EF Core to allow mismatched models for this test run
