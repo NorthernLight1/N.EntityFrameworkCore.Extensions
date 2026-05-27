@@ -216,7 +216,11 @@ public static class DbContextExtensions
             var entities = saveEntryGroup.AsEnumerable();
             if (key.EntityState == EntityState.Added)
             {
-                rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; });
+                var primaryKeyProperties = key.EntityType.FindPrimaryKey()?.Properties;
+                bool hasExplicitIdentityKey = primaryKeyProperties != null
+                    && primaryKeyProperties.Any(p => p.ValueGenerated != ValueGenerated.Never)
+                    && primaryKeyProperties.All(p => !saveEntryGroup.First().HasTemporaryValue(p));
+                rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; o.KeepIdentity = hasExplicitIdentityKey; });
             }
             else if (key.EntityState == EntityState.Modified)
             {
