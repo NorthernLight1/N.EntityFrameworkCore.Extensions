@@ -51,12 +51,9 @@ internal static class CommonUtil
             var ignoreColumnNames = ignoreColumns.GetObjectProperties();
             if (ignoreColumnNames.Intersect(primaryKeyColumnNames).Any())
             {
-                throw new InvalidDataException("Primary key columns can not be ignored in BulkInsertOptions.IgnoreColumns");
+                throw new InvalidDataException("Primary key columns cannot be ignored in BulkInsertOptions.IgnoreColumns");
             }
-            else
-            {
-                filteredColumnNames = filteredColumnNames.Except(ignoreColumnNames);
-            }
+            filteredColumnNames = filteredColumnNames.Except(ignoreColumnNames);
         }
         return filteredColumnNames;
     }
