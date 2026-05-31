@@ -217,8 +217,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsInserted.Values.FirstOrDefault() + rowsUpdated.Values.FirstOrDefault() + rowsDeleted.Values.Sum(),
-            RowsDeleted = rowsDeleted.Values.Sum(),
+            RowsAffected = rowsInserted.Values.FirstOrDefault() + rowsUpdated.Values.FirstOrDefault() + rowsDeleted.Values.FirstOrDefault(),
+            RowsDeleted = rowsDeleted.Values.FirstOrDefault(),
             RowsInserted = rowsInserted.Values.FirstOrDefault(),
             RowsUpdated = rowsUpdated.Values.FirstOrDefault()
         };

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -110,9 +110,14 @@ public static class DbContextExtensionsAsync
                 throw;
             }
 
-            var results = await context.FetchInternalAsync<T>(selectSql, cancellationToken: cancellationToken);
-            context.Database.DropTable(stagingTableName);
-            return results;
+                        try
+            {
+                return await context.FetchInternalAsync<T>(selectSql, cancellationToken: cancellationToken);
+            }
+            finally
+            {
+                context.Database.DropTable(stagingTableName);
+            }
         }
     }
     public static async Task FetchAsync<T>(this IQueryable<T> queryable, Func<FetchResult<T>, Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()

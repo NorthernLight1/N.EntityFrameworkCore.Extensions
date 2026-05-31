@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -126,11 +126,17 @@ public static class DbContextExtensions
                 throw;
             }
 
-            foreach (var item in context.FetchInternal<T>(selectSql))
+                                    List<T> items;
+            try
             {
-                yield return item;
+                items = context.FetchInternal<T>(selectSql).ToList();
             }
-            context.Database.DropTable(stagingTableName);
+            finally
+            {
+                context.Database.DropTable(stagingTableName);
+            }
+            foreach (var item in items)
+                yield return item;
         }
     }
     public static void Fetch<T>(this IQueryable<T> queryable, Action<FetchResult<T>> action, Action<FetchOptions<T>> optionsAction) where T : class, new()
@@ -218,26 +224,38 @@ public static class DbContextExtensions
         dbContext.ChangeTracker.DetectChanges();
         var entries = stateManager.GetEntriesToSave(true);
 
-        foreach (var saveEntryGroup in entries.GroupBy(o => new { o.EntityType, o.EntityState }))
+        bool ownsTx = dbContext.Database.CurrentTransaction == null;
+        using var tx = ownsTx ? dbContext.Database.BeginTransaction() : null;
+        try
         {
-            var key = saveEntryGroup.Key;
-            var entities = saveEntryGroup.AsEnumerable();
-            if (key.EntityState == EntityState.Added)
+            foreach (var saveEntryGroup in entries.GroupBy(o => new { o.EntityType, o.EntityState }))
             {
-                rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; });
+                var key = saveEntryGroup.Key;
+                var entities = saveEntryGroup.AsEnumerable();
+                if (key.EntityState == EntityState.Added)
+                {
+                    rowsAffected += dbContext.BulkInsert(entities, o => { o.EntityType = key.EntityType; });
+                }
+                else if (key.EntityState == EntityState.Modified)
+                {
+                    rowsAffected += dbContext.BulkUpdate(entities, o => { o.EntityType = key.EntityType; });
+                }
+                else if (key.EntityState == EntityState.Deleted)
+                {
+                    rowsAffected += dbContext.BulkDelete(entities, o => { o.EntityType = key.EntityType; });
+                }
             }
-            else if (key.EntityState == EntityState.Modified)
-            {
-                rowsAffected += dbContext.BulkUpdate(entities, o => { o.EntityType = key.EntityType; });
-            }
-            else if (key.EntityState == EntityState.Deleted)
-            {
-                rowsAffected += dbContext.BulkDelete(entities, o => { o.EntityType = key.EntityType; });
-            }
-        }
 
-        if (acceptAllChangesOnSuccess)
-            dbContext.ChangeTracker.AcceptAllChanges();
+            if (acceptAllChangesOnSuccess)
+                dbContext.ChangeTracker.AcceptAllChanges();
+
+            tx?.Commit();
+        }
+        catch
+        {
+            tx?.Rollback();
+            throw;
+        }
 
         return rowsAffected;
     }
@@ -626,12 +644,12 @@ internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText
             }
             else
             {
-                throw new Exception("This extension method could not find the DbContext for this type that implements IQueryable");
+                throw new InvalidOperationException("This extension method could not find the DbContext for this type that implements IQueryable");
             }
         }
-        catch
+        catch (Exception ex)
         {
-            throw new Exception("This extension method could not find the DbContext for this type that implements IQueryable");
+            throw new InvalidOperationException("This extension method could not find the DbContext for this type that implements IQueryable", ex);
         }
         return dbContext;
     }
@@ -770,7 +788,7 @@ internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText
         int dataRowCount = 0;
         int totalRowCount = 0;
         long bytesWritten = 0;
-        var properties = typeof(T).GetProperties().Where(p => p.CanRead && !typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType) || p.PropertyType == typeof(string)).ToArray();
+        var properties = typeof(T).GetProperties().Where(p => p.CanRead && (!typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType) || p.PropertyType == typeof(string))).ToArray();
 
         using var streamWriter = new StreamWriter(stream, leaveOpen: true);
         if (options.IncludeHeaderRow)
