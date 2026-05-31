@@ -36,11 +36,11 @@ internal sealed class DbTransactionContext : IDisposable
                 closeConnection = true;
             }
         }
+        defaultCommandTimeout = context.Database.GetCommandTimeout();
         if (connectionBehavior == ConnectionBehavior.Default)
         {
             ownsTransaction = context.Database.CurrentTransaction == null;
             transaction = context.Database.CurrentTransaction;
-            defaultCommandTimeout = context.Database.GetCommandTimeout();
             if (transaction != null)
                 CurrentTransaction = transaction.GetDbTransaction();
         }
@@ -68,4 +68,3 @@ internal sealed class DbTransactionContext : IDisposable
             transaction.Rollback();
     }
 }
-

@@ -612,7 +612,11 @@ public static class DbContextExtensions
     }
     private static IEnumerable<T> FetchInternal<T>(this DbContext dbContext, string sqlText, object[] parameters = null) where T : class, new()
     {
-        using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+        using var connection = dbContext.GetDbConnection(ConnectionBehavior.New);
+        if (connection.State == ConnectionState.Closed)
+            connection.Open();
+
+        using var command = connection.CreateCommand();
         command.CommandText = sqlText;
         if (parameters != null)
             command.Parameters.AddRange(parameters);

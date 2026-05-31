@@ -587,7 +587,11 @@ public static class DbContextExtensionsAsync
     private static async Task<IEnumerable<T>> FetchInternalAsync<T>(this DbContext dbContext, string sqlText, object[] parameters = null, CancellationToken cancellationToken = default) where T : class, new()
     {
         List<T> results = [];
-        await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+        await using var connection = dbContext.GetDbConnection(ConnectionBehavior.New);
+        if (connection.State == ConnectionState.Closed)
+            await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
         command.CommandText = sqlText;
         if (parameters != null)
             command.Parameters.AddRange(parameters);
