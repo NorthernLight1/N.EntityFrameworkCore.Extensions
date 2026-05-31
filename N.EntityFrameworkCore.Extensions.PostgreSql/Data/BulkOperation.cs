@@ -45,9 +45,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
     public void Dispose()
     {
         if (StagingTableCreated)
-        {
             Context.Database.DropTable(StagingTableName, true);
-        }
+        DbTransactionContext.Dispose();
     }
     internal bool ShouldKeepIdentityForPostgresMerge()
     {

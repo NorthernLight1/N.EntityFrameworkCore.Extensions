@@ -456,7 +456,7 @@ public static class DbContextExtensions
         IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false)
     {
         using var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
-        var sqlBulkCopy = new SqlBulkCopy((SqlConnection)dbConnection, bulkCopyOptions | options.BulkCopyOptions, (SqlTransaction)transaction)
+        using var sqlBulkCopy = new SqlBulkCopy((SqlConnection)dbConnection, bulkCopyOptions | options.BulkCopyOptions, (SqlTransaction)transaction)
         {
             DestinationTableName = tableName,
             BatchSize = options.BatchSize,
