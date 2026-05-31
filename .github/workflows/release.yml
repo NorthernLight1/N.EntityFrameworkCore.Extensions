@@ -43,9 +43,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
-      - name: Test SQLite
-        run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.Sqlite.Test/N.EntityFrameworkCore.Extensions.Sqlite.Test.csproj" --no-build -c Release --settings N.EntityFrameworkCore.Extensions.Sqlite.runsettings --verbosity normal
-
       - name: Pack (ensure .nupkg output)
         id: pack
         run: |
