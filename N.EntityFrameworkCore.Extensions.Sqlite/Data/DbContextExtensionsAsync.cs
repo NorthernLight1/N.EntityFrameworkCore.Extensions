@@ -684,7 +684,7 @@ internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext contex
             command.Parameters.AddRange(parameters);
 
         var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
@@ -694,8 +694,6 @@ internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext contex
             results.Add(entity);
         }
 
-        await reader.CloseAsync();
-        await command.Connection.CloseAsync();
         return results;
     }
     private static HashSet<string> GetIncludedColumns<T>(TableMapping tableMapping, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)

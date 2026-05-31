@@ -406,15 +406,18 @@ public static class DbContextExtensionsAsync
         IEnumerable<string> inputColumns = null, SqlBulkCopyOptions bulkCopyOptions = SqlBulkCopyOptions.Default, bool useInternalId = false, CancellationToken cancellationToken = default)
     {
         using var dataReader = new EntityDataReader<T>(tableMapping, entities, useInternalId);
-        var sqlBulkCopy = new SqlBulkCopy((SqlConnection)dbConnection, bulkCopyOptions, (SqlTransaction)transaction)
+        using var sqlBulkCopy = new SqlBulkCopy((SqlConnection)dbConnection, bulkCopyOptions | options.BulkCopyOptions, (SqlTransaction)transaction)
         {
             DestinationTableName = tableName,
-            BatchSize = options.BatchSize
+            BatchSize = options.BatchSize,
+            NotifyAfter = options.NotifyAfter,
+            EnableStreaming = options.EnableStreaming,
         };
-        if (options.CommandTimeout.HasValue)
-        {
-            sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
-        }
+        sqlBulkCopy.BulkCopyTimeout = options.CommandTimeout.HasValue ? options.CommandTimeout.Value : sqlBulkCopy.BulkCopyTimeout;
+        if (options.SqlRowsCopied != null)
+            sqlBulkCopy.SqlRowsCopied += options.SqlRowsCopied;
+        foreach (SqlBulkCopyColumnOrderHint columnOrderHint in options.ColumnOrderHints)
+            sqlBulkCopy.ColumnOrderHints.Add(columnOrderHint);
         foreach (var property in dataReader.TableMapping.Properties)
         {
             var columnName = dataReader.TableMapping.GetColumnName(property);
@@ -585,7 +588,7 @@ public static class DbContextExtensionsAsync
             command.Parameters.AddRange(parameters);
 
         var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
@@ -595,8 +598,6 @@ public static class DbContextExtensionsAsync
             results.Add(entity);
         }
 
-        await reader.CloseAsync();
-        await command.Connection.CloseAsync();
         return results;
     }
     private static HashSet<string> GetIncludedColumns<T>(TableMapping tableMapping, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
