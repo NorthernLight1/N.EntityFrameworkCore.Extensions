@@ -10,7 +10,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 **Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
 
-**Database:** SQL Server · PostgreSql · MySQL
+**Database:** SQL Server · PostgreSQL · MySQL · SQLite
 
 ---
 
@@ -65,7 +65,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 ## Installation
 
-Install the **all-in-one meta-package** (includes SQL Server and PostgreSql — MySQL must be installed separately):
+Install the **all-in-one meta-package** (includes SQL Server and PostgreSQL — MySQL and SQLite must be installed separately):
 
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions
@@ -76,8 +76,9 @@ Or install **only the provider you need**:
 | Provider | Package |
 | --- | --- |
 | SQL Server | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.SqlServer?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.SqlServer) `dotnet add package N.EntityFrameworkCore.Extensions.SqlServer` |
-| PostgreSql | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.PostgreSql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql) `dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql` |
+| PostgreSQL | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.PostgreSql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql) `dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql` |
 | MySQL | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.MySql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql) `dotnet add package N.EntityFrameworkCore.Extensions.MySql` |
+| SQLite | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.Sqlite?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.Sqlite) `dotnet add package N.EntityFrameworkCore.Extensions.Sqlite` |
 
 ---
 
@@ -96,7 +97,7 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
-### PostgreSql
+### PostgreSQL
 
 ```csharp
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -119,6 +120,17 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 ```
 
 This registers an EF Core `DbCommandInterceptor` used internally by bulk operations. It is required for operations that rewrite table names at execution time (e.g. `InsertFromQuery` targeting a new table); all other operations work without it.
+
+### SQLite
+
+```csharp
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseSqlite("your-connection-string")
+        .SetupEfCoreExtensions();
+}
+```
 
 ### Test configuration
 

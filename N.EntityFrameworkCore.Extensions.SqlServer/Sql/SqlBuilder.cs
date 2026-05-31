@@ -34,13 +34,10 @@ internal sealed class SqlBuilder
     {
         Validate();
         var sqlClause = Clauses.FirstOrDefault();
-        var sqlFromClause = Clauses.First(o => o.Name == "FROM");
         if (sqlClause != null)
         {
             sqlClause.Name = "DELETE";
-            int aliasStartIndex = sqlFromClause.InputText.IndexOf("AS ") + 3;
-            int aliasLength = sqlFromClause.InputText.IndexOf(']', aliasStartIndex) - aliasStartIndex + 1;
-            sqlClause.InputText = sqlFromClause.InputText[aliasStartIndex..(aliasStartIndex + aliasLength)];
+            sqlClause.InputText = GetTableAlias();
         }
     }
     internal void ChangeToUpdate(string updateExpression, string setExpression)
@@ -87,15 +84,20 @@ internal sealed class SqlBuilder
                 {
                     if (curClause == "DECLARE")
                     {
-                        var declareParts = inputText[..inputText.IndexOf(';')].Trim().Split(' ');
-                        int sizeStartIndex = declareParts[1].IndexOf('(');
-                        int sizeLength = declareParts[1].IndexOf(')') - (sizeStartIndex + 1);
-                        string dbTypeString = sizeStartIndex != -1 ? declareParts[1][..sizeStartIndex] : declareParts[1];
-                        SqlDbType dbType = (SqlDbType)Enum.Parse(typeof(SqlDbType), dbTypeString, true);
-                        int size = sizeStartIndex != -1 ?
-                            Convert.ToInt32(declareParts[1][(sizeStartIndex + 1)..(sizeStartIndex + 1 + sizeLength)]) : 0;
-                        string value = GetDeclareValue(declareParts[3]);
-                        Parameters.Add(new SqlParameter(declareParts[0], dbType, size) { Value = value });
+                        int semicolonIndex = inputText.IndexOf(';');
+                        var declareParts = (semicolonIndex >= 0 ? inputText[..semicolonIndex] : inputText).Trim().Split(' ');
+                        if (declareParts.Length >= 4)
+                        {
+                            int sizeStartIndex = declareParts[1].IndexOf('(');
+                            int closeParenIndex = declareParts[1].IndexOf(')');
+                            int sizeLength = (sizeStartIndex != -1 && closeParenIndex != -1) ? closeParenIndex - (sizeStartIndex + 1) : 0;
+                            string dbTypeString = sizeStartIndex != -1 ? declareParts[1][..sizeStartIndex] : declareParts[1];
+                            SqlDbType dbType = (SqlDbType)Enum.Parse(typeof(SqlDbType), dbTypeString, true);
+                            int size = sizeStartIndex != -1 ?
+                                Convert.ToInt32(declareParts[1][(sizeStartIndex + 1)..(sizeStartIndex + 1 + sizeLength)]) : 0;
+                            string value = GetDeclareValue(declareParts[3]);
+                            Parameters.Add(new SqlParameter(declareParts[0], dbType, size) { Value = value });
+                        }
                     }
                     else
                     {

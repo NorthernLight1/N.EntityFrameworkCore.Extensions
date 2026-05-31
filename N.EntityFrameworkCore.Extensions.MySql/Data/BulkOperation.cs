@@ -46,10 +46,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
     {
         if (StagingTableCreated)
         {
-            // For MySQL temporary staging tables, use DROP TEMPORARY TABLE to avoid implicit transaction commit
             bool isTemporary = Context.Database.IsMySql() && !Options.UsePermanentTable;
             Context.Database.DropTable(StagingTableName, true, isTemporary);
         }
+        DbTransactionContext.Dispose();
     }
     internal bool ShouldKeepIdentityForMerge()
     {

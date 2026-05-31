@@ -45,9 +45,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
     public void Dispose()
     {
         if (StagingTableCreated)
-        {
             Context.Database.DropTable(StagingTableName, true);
-        }
+        DbTransactionContext.Dispose();
     }
     internal bool ShouldKeepIdentityForPostgresMerge()
     {
@@ -87,7 +86,9 @@ internal sealed partial class BulkOperation<T> : IDisposable
             return;
 
         string tableName = Context.DelimitIdentifier(TableMapping.EntityType.GetTableName(), TableMapping.EntityType.GetSchema() ?? Context.Database.GetDefaultSchema());
-        string sequenceSql = $"SELECT nextval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}')) FROM generate_series(1, {entityList.Count})";
+        string tableNameEscaped = tableName.Replace("'", "''");
+        string columnNameEscaped = identityProperty.GetColumnName().Replace("'", "''");
+        string sequenceSql = $"SELECT nextval(pg_get_serial_sequence('{tableNameEscaped}', '{columnNameEscaped}')) FROM generate_series(1, {entityList.Count})";
         using var command = Connection.CreateCommand();
         command.CommandText = sequenceSql;
         command.Transaction = Transaction;
@@ -350,7 +351,9 @@ internal sealed partial class BulkOperation<T> : IDisposable
 
         string tableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
         string columnName = Context.DelimitIdentifier(identityProperty.GetColumnName());
-        string sequenceSql = $"SELECT setval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}'), COALESCE(MAX({columnName}), 0)) FROM {tableName}";
+        string tableNameEscaped = tableName.Replace("'", "''");
+        string columnNameEscaped = identityProperty.GetColumnName().Replace("'", "''");
+        string sequenceSql = $"SELECT setval(pg_get_serial_sequence('{tableNameEscaped}', '{columnNameEscaped}'), COALESCE(MAX({columnName}), 0)) FROM {tableName}";
         Context.Database.ExecuteSqlInternal(sequenceSql, Options.CommandTimeout);
     }
     internal void ValidateBulkMerge(Expression<Func<T, T, bool>> mergeOnCondition)

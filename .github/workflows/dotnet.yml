@@ -64,3 +64,17 @@ jobs:
 
     - name: Test PostgreSQL
       run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.PostgreSql.Test/N.EntityFrameworkCore.Extensions.PostgreSql.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.PostgreSql.runsettings --verbosity normal
+
+  test-sqlite:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Test SQLite
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.Sqlite.Test/N.EntityFrameworkCore.Extensions.Sqlite.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.Sqlite.runsettings --verbosity normal

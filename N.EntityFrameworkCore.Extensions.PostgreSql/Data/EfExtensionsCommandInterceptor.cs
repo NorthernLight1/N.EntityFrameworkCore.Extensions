@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace N.EntityFrameworkCore.Extensions;
 
-public class EfExtensionsCommandInterceptor : DbCommandInterceptor
+internal sealed class EfExtensionsCommandInterceptor : DbCommandInterceptor
 {
     private ConcurrentDictionary<Guid, EfExtensionsCommand> extensionCommands = new();
     public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)

@@ -48,14 +48,18 @@ public static class DatabaseFacadeExtensionsAsync
     }
     internal static async Task<int> ExecuteSqlAsync(this DatabaseFacade database, string sql, object[] parameters = null, int? commandTimeout = null, CancellationToken cancellationToken = default)
     {
-        int value;
         int? origCommandTimeout = database.GetCommandTimeout();
         database.SetCommandTimeout(commandTimeout);
-        value = parameters != null
-            ? await database.ExecuteSqlRawAsync(sql, parameters, cancellationToken)
-            : await database.ExecuteSqlRawAsync(sql, cancellationToken);
-        database.SetCommandTimeout(origCommandTimeout);
-        return value;
+        try
+        {
+            return parameters != null
+                ? await database.ExecuteSqlRawAsync(sql, parameters, cancellationToken)
+                : await database.ExecuteSqlRawAsync(sql, cancellationToken);
+        }
+        finally
+        {
+            database.SetCommandTimeout(origCommandTimeout);
+        }
     }
     internal static async Task<object> ExecuteScalarAsync(this DatabaseFacade database, string query, object[] parameters = null, int? commandTimeout = null, CancellationToken cancellationToken = default)
     {

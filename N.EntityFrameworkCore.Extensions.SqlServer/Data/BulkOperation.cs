@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.IO;
@@ -45,6 +45,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
     {
         if (StagingTableCreated)
             Context.Database.DropTable(StagingTableName, true);
+        DbTransactionContext.Dispose();
     }
     internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
     {

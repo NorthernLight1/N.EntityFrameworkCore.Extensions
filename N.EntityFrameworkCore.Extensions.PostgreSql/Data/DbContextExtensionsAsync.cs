@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -112,9 +112,14 @@ public static class DbContextExtensionsAsync
                 throw;
             }
 
-            var results = await context.FetchInternalAsync<T>(selectSql, cancellationToken: cancellationToken);
-            context.Database.DropTable(stagingTableName);
-            return results;
+                        try
+            {
+                return await context.FetchInternalAsync<T>(selectSql, cancellationToken: cancellationToken);
+            }
+            finally
+            {
+                context.Database.DropTable(stagingTableName);
+            }
         }
     }
     public static async Task FetchAsync<T>(this IQueryable<T> queryable, Func<FetchResult<T>, Task> action, Action<FetchOptions<T>> optionsAction, CancellationToken cancellationToken = default) where T : class, new()
@@ -589,13 +594,17 @@ public static class DbContextExtensionsAsync
     private static async Task<IEnumerable<T>> FetchInternalAsync<T>(this DbContext dbContext, string sqlText, object[] parameters = null, CancellationToken cancellationToken = default) where T : class, new()
     {
         List<T> results = [];
-        await using var command = dbContext.Database.CreateCommand(ConnectionBehavior.New);
+        await using var connection = dbContext.GetDbConnection(ConnectionBehavior.New);
+        if (connection.State == ConnectionState.Closed)
+            await connection.OpenAsync(cancellationToken);
+
+        await using var command = connection.CreateCommand();
         command.CommandText = sqlText;
         if (parameters != null)
             command.Parameters.AddRange(parameters);
 
         var tableMapping = dbContext.GetTableMapping(typeof(T), null);
-        var reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var properties = reader.GetProperties(tableMapping);
         var valuesFromProvider = properties.Select(p => tableMapping.GetValueFromProvider(p)).ToArray();
 
@@ -605,8 +614,6 @@ public static class DbContextExtensionsAsync
             results.Add(entity);
         }
 
-        await reader.CloseAsync();
-        await command.Connection.CloseAsync();
         return results;
     }
     private static HashSet<string> GetIncludedColumns<T>(TableMapping tableMapping, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
