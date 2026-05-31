@@ -1,0 +1,71 @@
+name: Cleanup Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      older_than_days:
+        description: Delete artifacts older than this many days
+        required: true
+        default: '30'
+        type: string
+      dry_run:
+        description: Preview artifacts without deleting them
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete old workflow artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const olderThanDays = Number.parseInt('${{ inputs.older_than_days }}', 10);
+            const dryRun = '${{ inputs.dry_run }}' === 'true';
+
+            if (!Number.isInteger(olderThanDays) || olderThanDays < 0) {
+              core.setFailed(`older_than_days must be a non-negative integer. Received: ${olderThanDays}`);
+              return;
+            }
+
+            const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              owner,
+              repo,
+              per_page: 100
+            });
+
+            const oldArtifacts = artifacts.filter((artifact) => {
+              return !artifact.expired && new Date(artifact.created_at) < cutoff;
+            });
+
+            core.info(
+              `Found ${artifacts.length} artifacts total. ${oldArtifacts.length} artifact(s) older than ${olderThanDays} day(s).`
+            );
+
+            if (oldArtifacts.length === 0) {
+              return;
+            }
+
+            for (const artifact of oldArtifacts) {
+              const details = `#${artifact.id} ${artifact.name} (${artifact.size_in_bytes} bytes, created ${artifact.created_at})`;
+
+              if (dryRun) {
+                core.info(`[dry-run] Would delete ${details}`);
+                continue;
+              }
+
+              core.info(`Deleting ${details}`);
+              await github.rest.actions.deleteArtifact({
+                owner,
+                repo,
+                artifact_id: artifact.id
+              });
+            }
