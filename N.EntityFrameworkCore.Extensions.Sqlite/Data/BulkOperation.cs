@@ -50,57 +50,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
         }
     }
     internal bool ShouldKeepIdentityForMerge() => false;
-    internal bool ShouldPreallocateIdentityValues(bool autoMapOutput, bool keepIdentity, IEnumerable<T> entities)
-    {
-        if (!Context.Database.IsPostgreSql() || keepIdentity || !autoMapOutput)
-            return false;
-
-        var identityProperty = GetGeneratedPrimaryKeyProperty();
-        if (identityProperty?.PropertyInfo == null || PrimaryKeyColumnNames.Length != 1)
-            return false;
-
-        var entityList = entities as IList<T> ?? entities.ToList();
-        if (entityList.Count == 0)
-            return false;
-
-        // For BulkSaveChanges, entities are InternalEntityEntry (Added state) — always preallocate
-        if (entityList[0] is InternalEntityEntry)
-            return true;
-
-        // For regular POCOs, only preallocate if all entities have the default PK value
-        object defaultValue = identityProperty.ClrType.IsValueType ? Activator.CreateInstance(identityProperty.ClrType) : null;
-        return entityList.All(entity => Equals(identityProperty.PropertyInfo.GetValue(entity), defaultValue));
-    }
-    internal void PreallocateIdentityValues(IEnumerable<T> entities)
-    {
-        var identityProperty = GetGeneratedPrimaryKeyProperty();
-        if (identityProperty?.PropertyInfo == null)
-            return;
-
-        var entityList = entities.ToList();
-        if (entityList.Count == 0)
-            return;
-
-        string tableName = Context.DelimitIdentifier(TableMapping.EntityType.GetTableName(), TableMapping.EntityType.GetSchema() ?? Context.Database.GetDefaultSchema());
-        string sequenceSql = $"SELECT nextval(pg_get_serial_sequence('{tableName}', '{identityProperty.GetColumnName()}')) FROM generate_series(1, {entityList.Count})";
-        using var command = Connection.CreateCommand();
-        command.CommandText = sequenceSql;
-        command.Transaction = Transaction;
-        using var reader = command.ExecuteReader();
-        foreach (var entity in entityList)
-        {
-            if (!reader.Read())
-                throw new InvalidDataException("Failed to allocate PostgreSql identity values.");
-
-            object sequenceValue = Convert.ChangeType(reader.GetValue(0), identityProperty.ClrType);
-#pragma warning disable EF1001
-            if (entity is InternalEntityEntry internalEntry)
-                internalEntry.SetStoreGeneratedValue(identityProperty, sequenceValue);
-#pragma warning restore EF1001
-            else
-                identityProperty.PropertyInfo.SetValue(entity, sequenceValue);
-        }
-    }
+    internal bool ShouldPreallocateIdentityValues(bool autoMapOutput, bool keepIdentity, IEnumerable<T> entities) => false;
+    internal void PreallocateIdentityValues(IEnumerable<T> entities) { }
     internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
     {
         IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);

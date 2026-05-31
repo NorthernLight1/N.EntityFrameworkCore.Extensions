@@ -65,7 +65,7 @@ internal sealed class DbTransactionContext : IDisposable
     }
     internal void Rollback()
     {
-        if (transaction != null)
+        if (ownsTransaction && transaction != null)
             transaction.Rollback();
     }
 }
