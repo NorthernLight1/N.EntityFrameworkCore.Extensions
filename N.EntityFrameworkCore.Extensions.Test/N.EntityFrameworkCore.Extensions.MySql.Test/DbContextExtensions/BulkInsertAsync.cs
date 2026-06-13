@@ -78,23 +78,26 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
-    //[TestMethod]
-    //public async Task With_IEnumerable()
-    //{
-    //    var dbContext = SetupDbContext(false);
-    //    var orders = dbContext.Orders.Where(o => o.Price <= 10);
+    [TestMethod]
+    public async Task With_IEnumerable()
+    {
+        var dbContext = SetupDbContext(false);
+        const int orderCount = 20000;
+        IEnumerable<Order> orders = CreateOrders(orderCount);
 
-    //    foreach(var order in orders)
-    //    {
-    //        order.Price = 15.75M;
-    //    }
-    //    int oldTotal = orders.Count();
-    //    int rowsInserted = await dbContext.BulkInsertAsync(orders);
-    //    int newTotal = orders.Count();
+        int oldTotal = dbContext.Orders.Where(o => o.Price == 15.75M).Count();
+        int rowsInserted = await dbContext.BulkInsertAsync(orders);
+        int newTotal = dbContext.Orders.Where(o => o.Price == 15.75M).Count();
 
-    //    Assert.IsTrue(rowsInserted == oldTotal, "The number of rows inserted must match the count of order list");
-    //    Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
-    //}
+        Assert.IsTrue(rowsInserted == orderCount, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+
+        static IEnumerable<Order> CreateOrders(int count)
+        {
+            for (int i = 0; i < count; i++)
+                yield return new Order { Id = i, Price = 15.75M };
+        }
+    }
     [TestMethod]
     public async Task With_Inheritance_Tpc()
     {

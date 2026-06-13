@@ -134,7 +134,7 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 
 ### Test configuration
 
-The SQL Server test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.SqlServer.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment). The MySQL test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\appsettings.json` (or `ConnectionStrings__MySqlTestDatabase` in the environment).
+The SQL Server test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.SqlServer.Test\appsettings.json` (or `ConnectionStrings__SqlServerTestDatabase` in the environment). The Oracle test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\appsettings.json` (or `ConnectionStrings__OracleTestDatabase` in the environment). The PostgreSql test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\appsettings.json` (or `ConnectionStrings__PostgreSqlTestDatabase` in the environment). The MySQL test project uses `N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\appsettings.json` (or `ConnectionStrings__MySqlTestDatabase` in the environment).
 
 ---
 
