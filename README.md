@@ -10,7 +10,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 **Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
 
-**Database:** SQL Server · PostgreSQL · MySQL · SQLite
+**Database:** SQL Server · PostgreSQL · MySQL · SQLite · Oracle
 
 ---
 
@@ -65,7 +65,7 @@ High-performance bulk data extensions for Entity Framework Core. Extends your `D
 
 ## Installation
 
-Install the **all-in-one meta-package** (includes SQL Server and PostgreSQL — MySQL and SQLite must be installed separately):
+Install the **all-in-one meta-package** (includes SQL Server and PostgreSQL — MySQL, SQLite, and Oracle must be installed separately):
 
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions
@@ -79,6 +79,7 @@ Or install **only the provider you need**:
 | PostgreSQL | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.PostgreSql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.PostgreSql) `dotnet add package N.EntityFrameworkCore.Extensions.PostgreSql` |
 | MySQL | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.MySql?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql) `dotnet add package N.EntityFrameworkCore.Extensions.MySql` |
 | SQLite | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.Sqlite?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.Sqlite) `dotnet add package N.EntityFrameworkCore.Extensions.Sqlite` |
+| Oracle | [![](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.Oracle?label=NuGet)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.Oracle) `dotnet add package N.EntityFrameworkCore.Extensions.Oracle` |
 
 ---
 
@@ -128,6 +129,17 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 {
     optionsBuilder
         .UseSqlite("your-connection-string")
+        .SetupEfCoreExtensions();
+}
+```
+
+### Oracle
+
+```csharp
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseOracle("your-connection-string")
         .SetupEfCoreExtensions();
 }
 ```

@@ -39,6 +39,7 @@ internal static class MySqlContainerManager
                 .WithDatabase("NEntityFrameworkCoreExtensions")
                 .WithUsername("root")
                 .WithPassword("mysql")
+                .WithCommand("--local-infile=1")
                 .Build();
 
             await container.StartAsync();

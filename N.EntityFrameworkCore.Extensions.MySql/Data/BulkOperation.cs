@@ -131,14 +131,11 @@ internal sealed partial class BulkOperation<T> : IDisposable
             rowsUpdated[entityType] = 0;
             if (columnsToUpdate.Count > 0)
             {
-                // MySQL UPDATE returns "rows changed" by default, not "rows matched".
-                // Count matched rows first to get reliable "rows found" semantics.
-                string matchCountSql = $"SELECT COUNT(*) FROM {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition}";
-                rowsUpdated[entityType] = Convert.ToInt32(Context.Database.ExecuteScalar(matchCountSql, null, Options.CommandTimeout));
-                // MySQL UPDATE with JOIN syntax
+                // MySQL UPDATE with JOIN syntax. Tests set UseAffectedRows=false, so MySqlConnector
+                // returns matched rows instead of only changed rows.
                 string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"t.{Context.DelimitIdentifier(c)}=s.{Context.DelimitIdentifier(c)}"));
                 string updateSql = $"UPDATE {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition} SET {updateSetExpression}";
-                Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+                rowsUpdated[entityType] = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
             }
 
             rowsDeleted[entityType] = 0;

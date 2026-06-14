@@ -305,6 +305,12 @@ public static class DbContextExtensions
                 dbTransactionContext.Commit();
                 return rowsAffected;
             }
+            catch (MySqlException ex) when (IsMySqlTargetTableDeleteException(ex))
+            {
+                int rowsAffected = dbTransactionContext.DbContext.BulkDelete(queryable.AsNoTracking().ToList(), o => o.CommandTimeout = commandTimeout);
+                dbTransactionContext.Commit();
+                return rowsAffected;
+            }
             catch (Exception)
             {
                 dbTransactionContext.Rollback();
@@ -480,54 +486,19 @@ public static class DbContextExtensions
             if (includeColumns.Count == 0)
                 return new BulkInsertResult<T> { RowsAffected = 0, EntityMap = dataReader.EntityMap };
 
-            string destTable = UnwrapTableName(tableName);
-            string columnList = string.Join(",", includeColumns.Select(c => $"`{c.name}`"));
-            const int batchSize = 500;
-            int totalInserted = 0;
-            var rowBuffer = new List<object[]>(batchSize);
-
-            using var cmd = mySqlConnection.CreateCommand();
-            cmd.Transaction = transaction as MySqlTransaction;
+            var bulkCopy = new MySqlBulkCopy(mySqlConnection, transaction as MySqlTransaction)
+            {
+                DestinationTableName = UnwrapTableName(tableName)
+            };
             if (options.CommandTimeout.HasValue)
-                cmd.CommandTimeout = options.CommandTimeout.Value;
-
-            void FlushBatch()
-            {
-                if (rowBuffer.Count == 0) return;
-                cmd.Parameters.Clear();
-                var sb = new System.Text.StringBuilder($"INSERT INTO `{destTable}` ({columnList}) VALUES ");
-                for (int r = 0; r < rowBuffer.Count; r++)
-                {
-                    if (r > 0) sb.Append(',');
-                    sb.Append('(');
-                    for (int c = 0; c < includeColumns.Count; c++)
-                    {
-                        if (c > 0) sb.Append(',');
-                        string paramName = $"@p{r}_{c}";
-                        sb.Append(paramName);
-                        cmd.Parameters.AddWithValue(paramName, rowBuffer[r][c] ?? DBNull.Value);
-                    }
-                    sb.Append(')');
-                }
-                cmd.CommandText = sb.ToString();
-                totalInserted += cmd.ExecuteNonQuery();
-                rowBuffer.Clear();
-            }
-
-            while (dataReader.Read())
-            {
-                var rowData = new object[includeColumns.Count];
-                for (int i = 0; i < includeColumns.Count; i++)
-                    rowData[i] = dataReader.GetValue(includeColumns[i].ordinal) ?? DBNull.Value;
-                rowBuffer.Add(rowData);
-                if (rowBuffer.Count >= batchSize)
-                    FlushBatch();
-            }
-            FlushBatch();
+                bulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
+            foreach (var column in includeColumns)
+                bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(column.ordinal, column.name, null));
+            var result = bulkCopy.WriteToServer(dataReader);
 
             return new BulkInsertResult<T>
             {
-                RowsAffected = totalInserted,
+                RowsAffected = result.RowsInserted,
                 EntityMap = dataReader.EntityMap
             };
         }
@@ -550,6 +521,7 @@ public static class DbContextExtensions
         return includeColumns;
     }
     internal static string UnwrapTableName(string tableName) => tableName.Replace("`", "");
+    internal static bool IsMySqlTargetTableDeleteException(MySqlException exception) => exception.Number == 1093;
     internal static BulkQueryResult BulkQuery(this DbContext context, string sqlText, BulkOptions options)
     {
         List<object[]> results = [];
@@ -811,26 +783,26 @@ public static class DbContextExtensions
         }
         writer.Write(options.RowDelimiter);
     }
-    private static Expression<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>> BuildSetPropertyCalls<T>(Expression<Func<T, T>> updateExpression) where T : class
+    private static Action<UpdateSettersBuilder<T>> BuildSetPropertyCalls<T>(Expression<Func<T, T>> updateExpression) where T : class
     {
         if (updateExpression.Body is not MemberInitExpression memberInitExpression)
             throw new InvalidOperationException("UpdateFromQuery requires a member initialization expression.");
 
         var entityParameter = updateExpression.Parameters[0];
-        var callsParam = Expression.Parameter(typeof(SetPropertyCalls<T>), "calls");
-        var setPropertyMethod = typeof(SetPropertyCalls<T>)
+        var setPropertyMethod = typeof(UpdateSettersBuilder<T>)
             .GetMethods()
-            .Single(m => m.Name == nameof(SetPropertyCalls<T>.SetProperty) && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType.IsGenericType);
+            .Single(m => m.Name == nameof(UpdateSettersBuilder<T>.SetProperty) && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType.IsGenericType);
 
-        Expression current = callsParam;
-        foreach (var binding in memberInitExpression.Bindings.OfType<MemberAssignment>())
+        return setters =>
         {
-            var propertyInfo = binding.Member as PropertyInfo ?? throw new InvalidOperationException("Only property bindings are supported.");
-            var propertyLambda = Expression.Lambda(Expression.Property(entityParameter, propertyInfo), entityParameter);
-            var valueLambda = Expression.Lambda(binding.Expression, entityParameter);
-            current = Expression.Call(current, setPropertyMethod.MakeGenericMethod(propertyInfo.PropertyType), propertyLambda, valueLambda);
-        }
-
-        return Expression.Lambda<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>>(current, callsParam);
+            object currentBuilder = setters;
+            foreach (var binding in memberInitExpression.Bindings.OfType<MemberAssignment>())
+            {
+                var propertyInfo = binding.Member as PropertyInfo ?? throw new InvalidOperationException("Only property bindings are supported.");
+                var propertyLambda = Expression.Lambda(Expression.Property(entityParameter, propertyInfo), entityParameter);
+                var valueLambda = Expression.Lambda(binding.Expression, entityParameter);
+                currentBuilder = setPropertyMethod.MakeGenericMethod(propertyInfo.PropertyType).Invoke(currentBuilder, [propertyLambda, valueLambda]);
+            }
+        };
     }
 }
