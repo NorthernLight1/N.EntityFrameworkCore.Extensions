@@ -38,6 +38,16 @@ protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 }
 ```
 
+For best bulk-insert performance, enable MySQL local infile support on both the client and server. The provider uses `MySqlBulkCopy` when possible and falls back to batched inserts when local infile is unavailable.
+
+```csharp
+optionsBuilder
+    .UseMySql("your-connection-string;AllowLoadLocalInfile=true", ServerVersion.AutoDetect("your-connection-string"))
+    .SetupEfCoreExtensions();
+```
+
+The MySQL server must also have `local_infile=1` enabled.
+
 ---
 
 ## Usage

@@ -26,7 +26,7 @@ public class TestDbContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         var connectionString = Config.GetTestDatabaseConnectionString();
-        optionsBuilder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+        optionsBuilder.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 4, 0)));
         optionsBuilder.SetupEfCoreExtensions();
         optionsBuilder.UseLazyLoadingProxies();
         optionsBuilder.ConfigureWarnings(warnings =>

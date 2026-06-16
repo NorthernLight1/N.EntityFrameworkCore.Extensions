@@ -19,6 +19,9 @@ internal sealed class EntityDataReader<T> : IDataReader
     private IEnumerable<T> entities;
     private IEnumerator<T> enumerator;
     private Dictionary<int, Func<EntityEntry, object>> selectors;
+    private string[] columnNames;
+    private Type[] fieldTypes;
+    private bool isClosed;
 
     public EntityDataReader(TableMapping tableMapping, IEnumerable<T> entities, bool useInternalId)
     {
@@ -32,13 +35,18 @@ internal sealed class EntityDataReader<T> : IDataReader
         this.EntityMap = [];
         this.FieldCount = tableMapping.Properties.Length;
         this.TableMapping = tableMapping;
+        this.columnNames = new string[this.FieldCount + (useInternalId ? 1 : 0)];
+        this.fieldTypes = new Type[this.FieldCount + (useInternalId ? 1 : 0)];
 
 
         int i = 0;
         foreach (var property in tableMapping.Properties)
         {
             selectors[i] = GetValueSelector(property);
-            columnIndexes[tableMapping.GetColumnName(property)] = i;
+            string columnName = tableMapping.GetColumnName(property);
+            columnIndexes[columnName] = i;
+            columnNames[i] = columnName;
+            fieldTypes[i] = property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType;
             i++;
         }
 
@@ -46,6 +54,8 @@ internal sealed class EntityDataReader<T> : IDataReader
         {
             this.FieldCount++;
             columnIndexes[Constants.InternalId_ColumnName] = i;
+            columnNames[i] = Constants.InternalId_ColumnName;
+            fieldTypes[i] = typeof(int);
         }
     }
     private Func<EntityEntry, object> GetValueSelector(IProperty property)
@@ -84,19 +94,20 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public int Depth { get; set; }
 
-    public bool IsClosed => throw new NotImplementedException();
+    public bool IsClosed => isClosed;
 
-    public int RecordsAffected => throw new NotImplementedException();
+    public int RecordsAffected => -1;
 
     public int FieldCount { get; set; }
 
     public void Close()
     {
-        throw new NotImplementedException();
+        isClosed = true;
     }
 
     public void Dispose()
     {
+        isClosed = true;
         selectors = null;
         enumerator.Dispose();
     }
@@ -133,7 +144,7 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public string GetDataTypeName(int i)
     {
-        throw new NotImplementedException();
+        return GetFieldType(i).Name;
     }
 
     public DateTime GetDateTime(int i)
@@ -153,7 +164,7 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public Type GetFieldType(int i)
     {
-        throw new NotImplementedException();
+        return fieldTypes[i];
     }
 
     public float GetFloat(int i)
@@ -183,7 +194,7 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public string GetName(int i)
     {
-        throw new NotImplementedException();
+        return columnNames[i];
     }
 
     public int GetOrdinal(string name)
@@ -193,7 +204,13 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public DataTable GetSchemaTable()
     {
-        throw new NotImplementedException();
+        var schemaTable = new DataTable();
+        schemaTable.Columns.Add("ColumnName", typeof(string));
+        schemaTable.Columns.Add("ColumnOrdinal", typeof(int));
+        schemaTable.Columns.Add("DataType", typeof(Type));
+        for (int i = 0; i < FieldCount; i++)
+            schemaTable.Rows.Add(GetName(i), i, GetFieldType(i));
+        return schemaTable;
     }
 
     public string GetString(int i)
@@ -221,12 +238,15 @@ internal sealed class EntityDataReader<T> : IDataReader
 
     public int GetValues(object[] values)
     {
-        throw new NotImplementedException();
+        int count = Math.Min(values.Length, FieldCount);
+        for (int i = 0; i < count; i++)
+            values[i] = GetValue(i);
+        return count;
     }
 
     public bool IsDBNull(int i)
     {
-        throw new NotImplementedException();
+        return GetValue(i) == null;
     }
 
     public bool NextResult()

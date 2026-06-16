@@ -7,6 +7,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N.EntityFrameworkCore.Exten
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N.EntityFrameworkCore.Extensions.SqlServer.Test", "N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.SqlServer.Test\N.EntityFrameworkCore.Extensions.SqlServer.Test.csproj", "{A52CDEFF-F507-4EA2-B5B1-AE46A3AFCE95}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N.EntityFrameworkCore.Extensions.Oracle", "N.EntityFrameworkCore.Extensions.Oracle\N.EntityFrameworkCore.Extensions.Oracle.csproj", "{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "N.EntityFrameworkCore.Extensions.Oracle.Test", "N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\N.EntityFrameworkCore.Extensions.Oracle.Test.csproj", "{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "N.EntityFrameworkCore.Extensions.Test", "N.EntityFrameworkCore.Extensions.Test", "{CBD9B889-7168-4D7F-898F-3111EABC28DE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A169187F-E5B6-4C2D-AB86-7B92B05D27C0}"
@@ -62,6 +66,30 @@ Global
 		{A52CDEFF-F507-4EA2-B5B1-AE46A3AFCE95}.Release|x64.Build.0 = Release|Any CPU
 		{A52CDEFF-F507-4EA2-B5B1-AE46A3AFCE95}.Release|x86.ActiveCfg = Release|Any CPU
 		{A52CDEFF-F507-4EA2-B5B1-AE46A3AFCE95}.Release|x86.Build.0 = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|x64.Build.0 = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Debug|x86.Build.0 = Debug|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|x64.ActiveCfg = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|x64.Build.0 = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|x86.ActiveCfg = Release|Any CPU
+		{3F7A8A3E-1A89-4E10-91C4-0DB2C5E52C47}.Release|x86.Build.0 = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|x64.Build.0 = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Debug|x86.Build.0 = Debug|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|x64.ActiveCfg = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|x64.Build.0 = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|x86.ActiveCfg = Release|Any CPU
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11}.Release|x86.Build.0 = Release|Any CPU
 		{992C6666-72D7-4E9A-905C-A8A0A37B0F28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{992C6666-72D7-4E9A-905C-A8A0A37B0F28}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{992C6666-72D7-4E9A-905C-A8A0A37B0F28}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -152,6 +180,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A52CDEFF-F507-4EA2-B5B1-AE46A3AFCE95} = {CBD9B889-7168-4D7F-898F-3111EABC28DE}
+		{D8D8A8F1-CC7B-4E8B-95C4-4C6A8A9E1B11} = {CBD9B889-7168-4D7F-898F-3111EABC28DE}
 		{6CE9CBC4-2626-4464-A92E-35E92D5284B4} = {CBD9B889-7168-4D7F-898F-3111EABC28DE}
 		{C02A68C1-39E3-45A5-B7C3-CB24374B4B43} = {CBD9B889-7168-4D7F-898F-3111EABC28DE}
 		{D2237B04-9881-4649-AF3F-BC5A1EA1C2EA} = {CBD9B889-7168-4D7F-898F-3111EABC28DE}

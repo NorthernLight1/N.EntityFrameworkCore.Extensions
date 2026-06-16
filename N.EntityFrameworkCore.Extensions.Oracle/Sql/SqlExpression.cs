@@ -1,0 +1,70 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using N.EntityFrameworkCore.Extensions.Util;
+
+namespace N.EntityFrameworkCore.Extensions.Sql;
+
+internal sealed class SqlExpression
+{
+    internal SqlExpressionType ExpressionType { get; }
+    List<object> Items { get; set; }
+    internal string Sql => ToSql();
+    string Alias { get; }
+    internal bool IsEmpty => Items.Count == 0;
+
+    SqlExpression(SqlExpressionType expressionType, object item, string alias = null)
+    {
+        ExpressionType = expressionType;
+        Items = [];
+        if (item is IEnumerable<string> values)
+        {
+            Items.AddRange(values.ToArray());
+        }
+        else
+        {
+            Items.Add(item);
+        }
+        Alias = alias;
+    }
+    SqlExpression(SqlExpressionType expressionType, object[] items, string alias = null)
+    {
+        ExpressionType = expressionType;
+        Items = [];
+        Items.AddRange(items);
+        Alias = alias;
+    }
+    internal static SqlExpression Columns(IEnumerable<string> columns) =>
+        new SqlExpression(SqlExpressionType.Columns, columns);
+
+    internal static SqlExpression Set(IEnumerable<string> columns) =>
+        new SqlExpression(SqlExpressionType.Set, columns);
+
+    internal static SqlExpression String(string joinOnCondition) =>
+        new SqlExpression(SqlExpressionType.String, joinOnCondition);
+
+    internal static SqlExpression Table(string tableName, string alias = null) =>
+        new SqlExpression(SqlExpressionType.Table, Util.CommonUtil.FormatTableName(tableName), alias);
+
+    private string ToSql()
+    {
+        var sbSql = new StringBuilder();
+        if (ExpressionType == SqlExpressionType.Columns)
+        {
+            var values = Items.Where(o => o != null).Select(o => o.ToString()).Where(o => !string.IsNullOrWhiteSpace(o)).ToArray();
+            sbSql.Append(string.Join(",", CommonUtil.FormatColumns(values)));
+        }
+        else
+        {
+            sbSql.Append(string.Join(",", Items.Where(o => o != null).Select(o => o.ToString()).Where(o => !string.IsNullOrWhiteSpace(o))));
+        }
+        if (Alias != null)
+        {
+            sbSql.Append(" ");
+            sbSql.Append(SqlKeyword.As.ToString().ToUpper());
+            sbSql.Append(" ");
+            sbSql.Append(Alias);
+        }
+        return sbSql.ToString();
+    }
+}

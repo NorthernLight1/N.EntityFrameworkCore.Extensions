@@ -169,10 +169,20 @@ public static class DbContextExtensionsAsync
                 bool keepIdentity = options.KeepIdentity || bulkOperation.ShouldPreallocateIdentityValues(options.AutoMapOutput, options.KeepIdentity, entities);
                 if (keepIdentity && !options.KeepIdentity)
                     await bulkOperation.PreallocateIdentityValuesAsync(entities, cancellationToken);
-                var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true);
-                var bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.InsertOnCondition,
-                    options.AutoMapOutput, keepIdentity, options.InsertIfNotExists);
-                rowsAffected = bulkMergeResult.RowsAffected;
+
+                if (DbContextExtensions.CanUseDirectBulkInsert(bulkOperation, options))
+                {
+                    var columnsToInsert = bulkOperation.GetColumnNames(keepIdentity);
+                    rowsAffected = (await BulkInsertAsync(entities, options, bulkOperation.TableMapping, bulkOperation.Connection, bulkOperation.Transaction,
+                        bulkOperation.TableMapping.FullQualifedTableName, columnsToInsert, cancellationToken: cancellationToken)).RowsAffected;
+                }
+                else
+                {
+                    var bulkInsertResult = await bulkOperation.BulkInsertStagingDataAsync(entities, true, true);
+                    var bulkMergeResult = await bulkOperation.ExecuteMergeAsync(bulkInsertResult.EntityMap, options.InsertOnCondition,
+                        options.AutoMapOutput, keepIdentity, options.InsertIfNotExists);
+                    rowsAffected = bulkMergeResult.RowsAffected;
+                }
                 bulkOperation.DbTransactionContext.Commit();
             }
             catch (Exception)
@@ -278,6 +288,13 @@ public static class DbContextExtensionsAsync
             try
             {
                 int rowsAffected = await queryable.ExecuteDeleteAsync(cancellationToken);
+                dbTransactionContext.Commit();
+                return rowsAffected;
+            }
+            catch (MySqlException ex) when (DbContextExtensions.IsMySqlTargetTableDeleteException(ex))
+            {
+                var entities = await queryable.AsNoTracking().ToListAsync(cancellationToken);
+                int rowsAffected = await dbContext.BulkDeleteAsync(entities, o => o.CommandTimeout = commandTimeout, cancellationToken);
                 dbTransactionContext.Commit();
                 return rowsAffected;
             }
@@ -417,59 +434,94 @@ public static class DbContextExtensionsAsync
             if (includeColumns.Count == 0)
                 return new BulkInsertResult<T> { RowsAffected = 0, EntityMap = dataReader.EntityMap };
 
-            string destTable = DbContextExtensions.UnwrapTableName(tableName);
-            string columnList = string.Join(",", includeColumns.Select(c => $"`{c.name}`"));
-            const int batchSize = 500;
-            int totalInserted = 0;
-            var rowBuffer = new List<object[]>(batchSize);
-
-            await using var cmd = mySqlConnection.CreateCommand();
-            cmd.Transaction = transaction as MySqlTransaction;
-            if (options.CommandTimeout.HasValue)
-                cmd.CommandTimeout = options.CommandTimeout.Value;
-
-            async Task FlushBatchAsync()
+            int rowsInserted;
+            if (DbContextExtensions.CanUseMySqlBulkCopy(mySqlConnection, transaction as MySqlTransaction, options))
             {
-                if (rowBuffer.Count == 0) return;
-                cmd.Parameters.Clear();
-                var sb = new System.Text.StringBuilder($"INSERT INTO `{destTable}` ({columnList}) VALUES ");
-                for (int r = 0; r < rowBuffer.Count; r++)
+                try
                 {
-                    if (r > 0) sb.Append(',');
-                    sb.Append('(');
-                    for (int c = 0; c < includeColumns.Count; c++)
-                    {
-                        if (c > 0) sb.Append(',');
-                        string paramName = $"@p{r}_{c}";
-                        sb.Append(paramName);
-                        cmd.Parameters.AddWithValue(paramName, rowBuffer[r][c] ?? DBNull.Value);
-                    }
-                    sb.Append(')');
+                    rowsInserted = await ExecuteMySqlBulkCopyAsync(dataReader, mySqlConnection, transaction as MySqlTransaction, tableName, includeColumns, options, cancellationToken);
                 }
-                cmd.CommandText = sb.ToString();
-                totalInserted += await cmd.ExecuteNonQueryAsync(cancellationToken);
-                rowBuffer.Clear();
+                catch (MySqlException ex) when (DbContextExtensions.IsMySqlLocalInfileDisabledException(ex))
+                {
+                    rowsInserted = await ExecuteMySqlBatchedInsertAsync(dataReader, mySqlConnection, transaction as MySqlTransaction, tableName, includeColumns, options, cancellationToken);
+                }
             }
-
-            while (dataReader.Read())
+            else
             {
-                var rowData = new object[includeColumns.Count];
-                for (int i = 0; i < includeColumns.Count; i++)
-                    rowData[i] = dataReader.GetValue(includeColumns[i].ordinal) ?? DBNull.Value;
-                rowBuffer.Add(rowData);
-                if (rowBuffer.Count >= batchSize)
-                    await FlushBatchAsync();
+                rowsInserted = await ExecuteMySqlBatchedInsertAsync(dataReader, mySqlConnection, transaction as MySqlTransaction, tableName, includeColumns, options, cancellationToken);
             }
-            await FlushBatchAsync();
 
             return new BulkInsertResult<T>
             {
-                RowsAffected = totalInserted,
+                RowsAffected = rowsInserted,
                 EntityMap = dataReader.EntityMap
             };
         }
 
         throw new NotSupportedException($"The connection type '{dbConnection.GetType().Name}' is not supported for BulkInsertAsync. Use a MySqlConnection.");
+    }
+    private static async Task<int> ExecuteMySqlBulkCopyAsync<T>(EntityDataReader<T> dataReader, MySqlConnection mySqlConnection, MySqlTransaction transaction, string tableName,
+        List<(int ordinal, string name)> includeColumns, BulkOptions options, CancellationToken cancellationToken)
+    {
+        var bulkCopy = new MySqlBulkCopy(mySqlConnection, transaction)
+        {
+            DestinationTableName = DbContextExtensions.UnwrapTableName(tableName)
+        };
+        if (options.CommandTimeout.HasValue)
+            bulkCopy.BulkCopyTimeout = options.CommandTimeout.Value;
+        foreach (var column in includeColumns)
+            bulkCopy.ColumnMappings.Add(new MySqlBulkCopyColumnMapping(column.ordinal, column.name, null));
+        var result = await bulkCopy.WriteToServerAsync(dataReader, cancellationToken);
+        return result.RowsInserted;
+    }
+    private static async Task<int> ExecuteMySqlBatchedInsertAsync<T>(EntityDataReader<T> dataReader, MySqlConnection mySqlConnection, MySqlTransaction transaction, string tableName,
+        List<(int ordinal, string name)> includeColumns, BulkOptions options, CancellationToken cancellationToken)
+    {
+        string destTable = DbContextExtensions.UnwrapTableName(tableName);
+        string columnList = string.Join(",", includeColumns.Select(c => $"`{c.name}`"));
+        const int batchSize = 500;
+        int totalInserted = 0;
+        var rowBuffer = new List<object[]>(batchSize);
+
+        await using var cmd = mySqlConnection.CreateCommand();
+        cmd.Transaction = transaction;
+        if (options.CommandTimeout.HasValue)
+            cmd.CommandTimeout = options.CommandTimeout.Value;
+
+        async Task FlushBatchAsync()
+        {
+            if (rowBuffer.Count == 0) return;
+            cmd.Parameters.Clear();
+            var sb = new System.Text.StringBuilder($"INSERT INTO `{destTable}` ({columnList}) VALUES ");
+            for (int r = 0; r < rowBuffer.Count; r++)
+            {
+                if (r > 0) sb.Append(',');
+                sb.Append('(');
+                for (int c = 0; c < includeColumns.Count; c++)
+                {
+                    if (c > 0) sb.Append(',');
+                    string paramName = $"@p{r}_{c}";
+                    sb.Append(paramName);
+                    cmd.Parameters.AddWithValue(paramName, rowBuffer[r][c] ?? DBNull.Value);
+                }
+                sb.Append(')');
+            }
+            cmd.CommandText = sb.ToString();
+            totalInserted += await cmd.ExecuteNonQueryAsync(cancellationToken);
+            rowBuffer.Clear();
+        }
+
+        while (dataReader.Read())
+        {
+            var rowData = new object[includeColumns.Count];
+            for (int i = 0; i < includeColumns.Count; i++)
+                rowData[i] = dataReader.GetValue(includeColumns[i].ordinal) ?? DBNull.Value;
+            rowBuffer.Add(rowData);
+            if (rowBuffer.Count >= batchSize)
+                await FlushBatchAsync();
+        }
+        await FlushBatchAsync();
+        return totalInserted;
     }
     internal static async Task<BulkQueryResult> BulkQueryAsync(this DbContext context, string sqlText, DbConnection dbConnection, DbTransaction transaction, BulkOptions options, CancellationToken cancellationToken = default)
     {
@@ -691,26 +743,26 @@ public static class DbContextExtensionsAsync
         }
         await writer.WriteAsync(options.RowDelimiter);
     }
-    private static Expression<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>> BuildSetPropertyCalls<T>(Expression<Func<T, T>> updateExpression) where T : class
+    private static Action<UpdateSettersBuilder<T>> BuildSetPropertyCalls<T>(Expression<Func<T, T>> updateExpression) where T : class
     {
         if (updateExpression.Body is not MemberInitExpression memberInitExpression)
             throw new InvalidOperationException("UpdateFromQuery requires a member initialization expression.");
 
         var entityParameter = updateExpression.Parameters[0];
-        var callsParam = Expression.Parameter(typeof(SetPropertyCalls<T>), "calls");
-        var setPropertyMethod = typeof(SetPropertyCalls<T>)
+        var setPropertyMethod = typeof(UpdateSettersBuilder<T>)
             .GetMethods()
-            .Single(m => m.Name == nameof(SetPropertyCalls<T>.SetProperty) && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType.IsGenericType);
+            .Single(m => m.Name == nameof(UpdateSettersBuilder<T>.SetProperty) && m.GetParameters().Length == 2 && m.GetParameters()[1].ParameterType.IsGenericType);
 
-        Expression current = callsParam;
-        foreach (var binding in memberInitExpression.Bindings.OfType<MemberAssignment>())
+        return setters =>
         {
-            var propertyInfo = binding.Member as System.Reflection.PropertyInfo ?? throw new InvalidOperationException("Only property bindings are supported.");
-            var propertyLambda = Expression.Lambda(Expression.Property(entityParameter, propertyInfo), entityParameter);
-            var valueLambda = Expression.Lambda(binding.Expression, entityParameter);
-            current = Expression.Call(current, setPropertyMethod.MakeGenericMethod(propertyInfo.PropertyType), propertyLambda, valueLambda);
-        }
-
-        return Expression.Lambda<Func<SetPropertyCalls<T>, SetPropertyCalls<T>>>(current, callsParam);
+            object currentBuilder = setters;
+            foreach (var binding in memberInitExpression.Bindings.OfType<MemberAssignment>())
+            {
+                var propertyInfo = binding.Member as System.Reflection.PropertyInfo ?? throw new InvalidOperationException("Only property bindings are supported.");
+                var propertyLambda = Expression.Lambda(Expression.Property(entityParameter, propertyInfo), entityParameter);
+                var valueLambda = Expression.Lambda(binding.Expression, entityParameter);
+                currentBuilder = setPropertyMethod.MakeGenericMethod(propertyInfo.PropertyType).Invoke(currentBuilder, [propertyLambda, valueLambda]);
+            }
+        };
     }
 }

@@ -37,6 +37,20 @@ jobs:
     - name: Test SqlServer
       run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.SqlServer.Test/N.EntityFrameworkCore.Extensions.SqlServer.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.SqlServer.runsettings --verbosity normal
 
+  test-oracle:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Test Oracle
+      run: dotnet test "N.EntityFrameworkCore.Extensions.Test/N.EntityFrameworkCore.Extensions.Oracle.Test/N.EntityFrameworkCore.Extensions.Oracle.Test.csproj" --configuration Release --settings N.EntityFrameworkCore.Extensions.Oracle.runsettings --verbosity normal
+
   test-mysql:
     runs-on: ubuntu-latest
     needs: build

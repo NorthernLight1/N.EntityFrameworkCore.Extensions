@@ -142,10 +142,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsAffected.Values.LastOrDefault(),
-            RowsDeleted = rowsDeleted.Values.LastOrDefault(),
-            RowsInserted = rowsInserted.Values.LastOrDefault(),
-            RowsUpdated = rowsUpdated.Values.LastOrDefault()
+            RowsAffected = GetLogicalRowCount(rowsAffected),
+            RowsDeleted = GetLogicalRowCount(rowsDeleted),
+            RowsInserted = GetLogicalRowCount(rowsInserted),
+            RowsUpdated = GetLogicalRowCount(rowsUpdated)
         };
     }
 
@@ -172,7 +172,7 @@ internal sealed partial class BulkOperation<T> : IDisposable
             IEnumerable<string> columnsToUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => $"t.{o}=s.{o}"));
             string updateSql = $"UPDATE t SET {updateSetExpression} FROM {StagingTableName} AS s JOIN {CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName())} AS t ON {CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t")}; SELECT @@RowCount;";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = Math.Max(rowsUpdated, Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout));
         }
         return rowsUpdated;
     }
@@ -285,10 +285,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsInserted.Values.LastOrDefault() + rowsUpdated.Values.LastOrDefault() + rowsDeleted.Values.LastOrDefault(),
-            RowsDeleted = rowsDeleted.Values.LastOrDefault(),
-            RowsInserted = rowsInserted.Values.LastOrDefault(),
-            RowsUpdated = rowsUpdated.Values.LastOrDefault()
+            RowsAffected = GetLogicalRowCount(rowsInserted) + GetLogicalRowCount(rowsUpdated) + GetLogicalRowCount(rowsDeleted),
+            RowsDeleted = GetLogicalRowCount(rowsDeleted),
+            RowsInserted = GetLogicalRowCount(rowsInserted),
+            RowsUpdated = GetLogicalRowCount(rowsUpdated)
         };
     }
     private int ExecuteUpdateSqlite(Expression<Func<T, T, bool>> updateOnCondition)
@@ -300,9 +300,13 @@ internal sealed partial class BulkOperation<T> : IDisposable
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"{Context.DelimitIdentifier(c)}={Context.DelimitMemberAccess("s", c)}"));
             string targetTableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
             string updateSql = $"UPDATE {targetTableName} AS t SET {updateSetExpression} FROM {StagingTableName} AS s WHERE {CommonUtil<T>.GetJoinConditionSql(Context, updateOnCondition, PrimaryKeyColumnNames, "s", "t")}";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = Math.Max(rowsUpdated, Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout));
         }
         return rowsUpdated;
+    }
+    private static int GetLogicalRowCount(Dictionary<IEntityType, int> rowCounts)
+    {
+        return rowCounts.Values.DefaultIfEmpty(0).Max();
     }
     private HashSet<int> GetMatchedInternalIds(string targetTableName, string joinCondition)
     {

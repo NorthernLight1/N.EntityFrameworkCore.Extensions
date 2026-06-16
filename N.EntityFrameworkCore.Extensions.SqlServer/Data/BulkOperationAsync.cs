@@ -104,10 +104,10 @@ internal sealed partial class BulkOperation<T>
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsAffected.Values.LastOrDefault(),
-            RowsDeleted = rowsDeleted.Values.LastOrDefault(),
-            RowsInserted = rowsInserted.Values.LastOrDefault(),
-            RowsUpdated = rowsUpdated.Values.LastOrDefault()
+            RowsAffected = GetLogicalRowCount(rowsAffected),
+            RowsDeleted = GetLogicalRowCount(rowsDeleted),
+            RowsInserted = GetLogicalRowCount(rowsInserted),
+            RowsUpdated = GetLogicalRowCount(rowsUpdated)
         };
     }
     internal async Task<int> ExecuteUpdateAsync(IEnumerable<T> entities, Expression<Func<T, T, bool>> updateOnCondition, CancellationToken cancellationToken = default)
@@ -118,7 +118,7 @@ internal sealed partial class BulkOperation<T>
             IEnumerable<string> columnsToUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => $"t.{o}=s.{o}"));
             string updateSql = $"UPDATE t SET {updateSetExpression} FROM {StagingTableName} AS s JOIN {CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName())} AS t ON {CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t")}; SELECT @@RowCount;";
-            rowsUpdated = await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken);
+            rowsUpdated = Math.Max(rowsUpdated, await Context.Database.ExecuteSqlAsync(updateSql, Options.CommandTimeout, cancellationToken));
         }
         return rowsUpdated;
     }

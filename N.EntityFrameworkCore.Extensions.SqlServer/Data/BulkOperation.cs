@@ -135,10 +135,10 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsAffected.Values.LastOrDefault(),
-            RowsDeleted = rowsDeleted.Values.LastOrDefault(),
-            RowsInserted = rowsInserted.Values.LastOrDefault(),
-            RowsUpdated = rowsUpdated.Values.LastOrDefault()
+            RowsAffected = GetLogicalRowCount(rowsAffected),
+            RowsDeleted = GetLogicalRowCount(rowsDeleted),
+            RowsInserted = GetLogicalRowCount(rowsInserted),
+            RowsUpdated = GetLogicalRowCount(rowsUpdated)
         };
     }
 
@@ -162,9 +162,13 @@ internal sealed partial class BulkOperation<T> : IDisposable
             IEnumerable<string> columnsToUpdate = CommonUtil.FormatColumns(GetColumnNames(entityType));
             string updateSetExpression = string.Join(",", columnsToUpdate.Select(o => $"t.{o}=s.{o}"));
             string updateSql = $"UPDATE t SET {updateSetExpression} FROM {StagingTableName} AS s JOIN {CommonUtil.FormatTableName(entityType.GetSchemaQualifiedTableName())} AS t ON {CommonUtil<T>.GetJoinConditionSql(updateOnCondition, PrimaryKeyColumnNames, "s", "t")}; SELECT @@RowCount;";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = Math.Max(rowsUpdated, Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout));
         }
         return rowsUpdated;
+    }
+    private static int GetLogicalRowCount(Dictionary<IEntityType, int> rowCounts)
+    {
+        return rowCounts.Values.DefaultIfEmpty(0).Max();
     }
     internal void ValidateBulkMerge(Expression<Func<T, T, bool>> mergeOnCondition)
     {

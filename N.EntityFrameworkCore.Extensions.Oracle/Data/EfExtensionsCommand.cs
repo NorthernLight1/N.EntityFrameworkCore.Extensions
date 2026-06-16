@@ -1,0 +1,22 @@
+﻿using System.Data.Common;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+
+namespace N.EntityFrameworkCore.Extensions;
+
+internal sealed class EfExtensionsCommand
+{
+    public EfExtensionsCommandType CommandType { get; set; }
+    public string OldValue { get; set; }
+    public string NewValue { get; set; }
+    public DbConnection Connection { get; internal set; }
+
+    internal bool Execute(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+    {
+        if (CommandType == EfExtensionsCommandType.ChangeTableName)
+        {
+            command.CommandText = command.CommandText.Replace(OldValue, NewValue);
+        }
+
+        return true;
+    }
+}

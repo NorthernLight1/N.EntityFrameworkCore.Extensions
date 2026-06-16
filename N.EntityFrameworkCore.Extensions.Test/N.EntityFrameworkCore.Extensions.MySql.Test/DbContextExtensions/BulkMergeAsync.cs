@@ -341,7 +341,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         BulkMergeResult<Order> result;
         using (var transaction = dbContext.Database.BeginTransaction())
         {
-            result = await dbContext.BulkMergeAsync(orders);
+            result = await dbContext.BulkMergeAsync(orders, options => options.CommandTimeout = 120);
             transaction.Rollback();
         }
         int ordersUpdated = dbContext.Orders.Count(o => o.Id <= 10000 && o.Price == ((decimal)o.Id + .25M) && o.Price != 1.25M);

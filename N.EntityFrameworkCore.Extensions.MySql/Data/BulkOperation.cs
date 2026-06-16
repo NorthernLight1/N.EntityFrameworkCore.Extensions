@@ -4,6 +4,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using MySqlConnector;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -28,6 +29,8 @@ internal sealed partial class BulkOperation<T> : IDisposable
     internal DbTransaction Transaction => DbTransactionContext.CurrentTransaction;
     internal TableMapping TableMapping { get; }
     internal IEnumerable<string> SchemaQualifiedTableNames => TableMapping.GetSchemaQualifiedTableNames();
+    private readonly HashSet<string> stagingIndexes = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> stagingColumnNames = new(StringComparer.OrdinalIgnoreCase);
 
 
     public BulkOperation(DbContext dbContext, BulkOptions options, Expression<Func<T, object>> inputColumns = null, Expression<Func<T, object>> ignoreColumns = null)
@@ -67,17 +70,15 @@ internal sealed partial class BulkOperation<T> : IDisposable
     }
     internal BulkInsertResult<T> BulkInsertStagingData(IEnumerable<T> entities, bool keepIdentity = true, bool useInternalId = false)
     {
-        IEnumerable<string> columnsToInsert = GetColumnNames(keepIdentity);
+        var columnsToInsert = GetColumnNames(keepIdentity).ToList();
         string internalIdColumn = useInternalId ? Common.Constants.InternalId_ColumnName : null;
+        stagingColumnNames = columnsToInsert.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (internalIdColumn != null)
+            stagingColumnNames.Add(internalIdColumn);
         Context.Database.CloneTable(SchemaQualifiedTableNames, StagingTableName, TableMapping.GetQualifiedColumnNames(columnsToInsert), internalIdColumn, isTemporary: !Options.UsePermanentTable);
         StagingTableCreated = true;
-        // ALTER TABLE on temporary tables causes an implicit commit in MySQL, which would break
-        // any active user transaction. Skip adding the index when inside a user-provided transaction.
-        if (keepIdentity && PrimaryKeyColumnNames.Length > 0 && Context.Database.IsMySql() && DbTransactionContext.OwnsTransaction)
-        {
-            string indexColumns = string.Join(",", PrimaryKeyColumnNames.Select(c => Context.DelimitIdentifier(c)));
-            Context.Database.ExecuteSqlInternal($"ALTER TABLE {StagingTableName} ADD INDEX idx_pk ({indexColumns})");
-        }
+        if (keepIdentity)
+            EnsureStagingIndex(PrimaryKeyColumnNames);
         return DbContextExtensions.BulkInsert(entities, Options, TableMapping, Connection, Transaction, StagingTableName, columnsToInsert, useInternalId);
     }
     internal BulkMergeResult<T> ExecuteMerge(Dictionary<long, T> entityMap, Expression<Func<T, T, bool>> mergeOnCondition,
@@ -110,6 +111,9 @@ internal sealed partial class BulkOperation<T> : IDisposable
         Dictionary<IEntityType, int> rowsDeleted = [];
         List<BulkMergeOutputRow<T>> outputRows = [];
 
+        if (update || delete || insertIfNotExists || autoMapOutput)
+            EnsureStagingIndex(GetStagingJoinColumns(mergeOnCondition));
+
         foreach (var entityType in TableMapping.EntityTypes)
         {
             var targetTableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
@@ -131,14 +135,17 @@ internal sealed partial class BulkOperation<T> : IDisposable
             rowsUpdated[entityType] = 0;
             if (columnsToUpdate.Count > 0)
             {
-                // MySQL UPDATE returns "rows changed" by default, not "rows matched".
-                // Count matched rows first to get reliable "rows found" semantics.
-                string matchCountSql = $"SELECT COUNT(*) FROM {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition}";
-                rowsUpdated[entityType] = Convert.ToInt32(Context.Database.ExecuteScalar(matchCountSql, null, Options.CommandTimeout));
-                // MySQL UPDATE with JOIN syntax
+                if (!ReturnsMatchedRowsForUpdates())
+                {
+                    string matchCountSql = $"SELECT COUNT(*) FROM {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition}";
+                    rowsUpdated[entityType] = Convert.ToInt32(Context.Database.ExecuteScalar(matchCountSql, null, Options.CommandTimeout));
+                }
+
                 string updateSetExpression = string.Join(",", columnsToUpdate.Select(c => $"t.{Context.DelimitIdentifier(c)}=s.{Context.DelimitIdentifier(c)}"));
                 string updateSql = $"UPDATE {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {joinCondition} SET {updateSetExpression}";
-                Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+                int updateRows = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+                if (ReturnsMatchedRowsForUpdates())
+                    rowsUpdated[entityType] = updateRows;
             }
 
             rowsDeleted[entityType] = 0;
@@ -217,15 +224,16 @@ internal sealed partial class BulkOperation<T> : IDisposable
         return new BulkMergeResult<T>
         {
             Output = outputRows,
-            RowsAffected = rowsInserted.Values.FirstOrDefault() + rowsUpdated.Values.FirstOrDefault() + rowsDeleted.Values.Sum(),
-            RowsDeleted = rowsDeleted.Values.Sum(),
-            RowsInserted = rowsInserted.Values.FirstOrDefault(),
-            RowsUpdated = rowsUpdated.Values.FirstOrDefault()
+            RowsAffected = GetLogicalRowCount(rowsInserted) + GetLogicalRowCount(rowsUpdated) + GetLogicalRowCount(rowsDeleted),
+            RowsDeleted = GetLogicalRowCount(rowsDeleted),
+            RowsInserted = GetLogicalRowCount(rowsInserted),
+            RowsUpdated = GetLogicalRowCount(rowsUpdated)
         };
     }
     private int ExecuteUpdateMySql(Expression<Func<T, T, bool>> updateOnCondition)
     {
         int rowsUpdated = 0;
+        EnsureStagingIndex(GetStagingJoinColumns(updateOnCondition));
         foreach (var entityType in TableMapping.EntityTypes)
         {
             IEnumerable<string> columnsToUpdate = GetColumnNames(entityType);
@@ -233,9 +241,66 @@ internal sealed partial class BulkOperation<T> : IDisposable
             string targetTableName = Context.DelimitIdentifier(entityType.GetTableName(), entityType.GetSchema() ?? Context.Database.GetDefaultSchema());
             // MySQL UPDATE with JOIN syntax
             string updateSql = $"UPDATE {StagingTableName} AS s INNER JOIN {targetTableName} AS t ON {CommonUtil<T>.GetJoinConditionSql(Context, updateOnCondition, PrimaryKeyColumnNames, "s", "t")} SET {updateSetExpression}";
-            rowsUpdated = Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout);
+            rowsUpdated = Math.Max(rowsUpdated, Context.Database.ExecuteSqlInternal(updateSql, Options.CommandTimeout));
         }
         return rowsUpdated;
+    }
+    private static int GetLogicalRowCount(Dictionary<IEntityType, int> rowCounts)
+    {
+        return rowCounts.Values.DefaultIfEmpty(0).Max();
+    }
+    private bool ReturnsMatchedRowsForUpdates()
+    {
+        var connectionStringBuilder = new MySqlConnectionStringBuilder(Connection.ConnectionString);
+        return !connectionStringBuilder.UseAffectedRows;
+    }
+    private IEnumerable<string> GetStagingJoinColumns(Expression<Func<T, T, bool>> joinCondition)
+    {
+        return joinCondition != null ? CommonUtil<T>.GetColumns(joinCondition, ["s"]) : PrimaryKeyColumnNames;
+    }
+    private void EnsureStagingIndex(IEnumerable<string> columns)
+    {
+        // ALTER TABLE causes an implicit commit in MySQL, which would break a user-provided transaction.
+        if (!Context.Database.IsMySql() || !DbTransactionContext.OwnsTransaction)
+            return;
+
+        var indexColumns = columns?
+            .Where(c => stagingColumnNames.Contains(c))
+            .Where(CanIndexStagingColumn)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? [];
+
+        if (indexColumns.Count == 0)
+            return;
+
+        string indexKey = string.Join("|", indexColumns);
+        if (!stagingIndexes.Add(indexKey))
+            return;
+
+        string indexName = Context.DelimitIdentifier($"idx_staging_{stagingIndexes.Count}");
+        string delimitedColumns = string.Join(",", indexColumns.Select(c => Context.DelimitIdentifier(c)));
+        Context.Database.ExecuteSqlInternal($"ALTER TABLE {StagingTableName} ADD INDEX {indexName} ({delimitedColumns})", Options.CommandTimeout);
+    }
+    private bool CanIndexStagingColumn(string columnName)
+    {
+        if (string.Equals(columnName, Constants.InternalId_ColumnName, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        try
+        {
+            var property = TableMapping.GetPropertyFromColumnName(columnName);
+            string storeType = property.GetColumnType() ?? property.GetRelationalTypeMapping().StoreType;
+
+            if (string.IsNullOrWhiteSpace(storeType))
+                return true;
+
+            storeType = storeType.ToLowerInvariant();
+            return !storeType.Contains("text") && !storeType.Contains("blob") && !storeType.Contains("json");
+        }
+        catch (KeyNotFoundException)
+        {
+            return true;
+        }
     }
     private HashSet<int> GetMatchedInternalIds(string targetTableName, string joinCondition)
     {
