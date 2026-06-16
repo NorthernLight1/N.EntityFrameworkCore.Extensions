@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 8.0.0.x). Tag will be v{version}.'
+        description: 'Release version (e.g. 10.0.5.5 or v10.0.5.5). Tag will be v{version}.'
         required: true
         type: string
       nuget_publish:
@@ -43,14 +43,25 @@ jobs:
       - name: Build
         run: dotnet build --no-restore -c Release
 
+      - name: Normalize version
+        id: version
+        shell: bash
+        run: |
+          version="${{ inputs.version }}"
+          version="${version#v}"
+          version="${version#V}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
       - name: Pack (ensure .nupkg output)
         id: pack
         run: |
-          dotnet pack N.EntityFrameworkCore.Extensions.SqlServer/N.EntityFrameworkCore.Extensions.SqlServer.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
-          dotnet pack N.EntityFrameworkCore.Extensions.PostgreSql/N.EntityFrameworkCore.Extensions.PostgreSql.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
-          dotnet pack N.EntityFrameworkCore.Extensions.MySql/N.EntityFrameworkCore.Extensions.MySql.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
-          dotnet pack N.EntityFrameworkCore.Extensions.Sqlite/N.EntityFrameworkCore.Extensions.Sqlite.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
-          dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out /p:Version=${{ inputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.SqlServer/N.EntityFrameworkCore.Extensions.SqlServer.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.PostgreSql/N.EntityFrameworkCore.Extensions.PostgreSql.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.MySql/N.EntityFrameworkCore.Extensions.MySql.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.Sqlite/N.EntityFrameworkCore.Extensions.Sqlite.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions.Oracle/N.EntityFrameworkCore.Extensions.Oracle.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
+          dotnet pack N.EntityFrameworkCore.Extensions/N.EntityFrameworkCore.Extensions.csproj --no-build -c Release -o out /p:Version=${{ steps.version.outputs.version }}
 
       - name: Publish to NuGet
         if: ${{ inputs.nuget_publish }}
@@ -60,7 +71,7 @@ jobs:
 
       - name: Create source zip
         run: |
-          tag="v${{ inputs.version }}"
+          tag="${{ steps.version.outputs.tag }}"
           git archive --format=zip --output="source-${tag}.zip" HEAD
           echo "SOURCE_ZIP=source-${tag}.zip" >> $GITHUB_ENV
           echo "ARCHIVE_NAME=source-${tag}.zip" >> $GITHUB_ENV
@@ -71,8 +82,8 @@ jobs:
           FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ inputs.version }}
-          name: Release v${{ inputs.version }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
           generate_release_notes: true
           files: |
             ${{ env.ARCHIVE_NAME }}
