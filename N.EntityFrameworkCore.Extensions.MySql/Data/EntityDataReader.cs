@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -79,6 +80,30 @@ internal sealed class EntityDataReader<T> : IDataReader
                 if (property.DeclaringType is IComplexType complexType)
                 {
                     selector = entry => entry.ComplexProperty(complexType.ComplexProperty).Property(property).CurrentValue;
+                }
+                else if (property.DeclaringType is IEntityType declaringEntityType && declaringEntityType.IsOwned())
+                {
+                    var ownershipNavigation = declaringEntityType.FindOwnership()?.PrincipalToDependent
+                        ?? TableMapping.EntityType.GetNavigations()
+                            .FirstOrDefault(n => n.ForeignKey.IsOwnership && n.TargetEntityType == declaringEntityType);
+                    if (ownershipNavigation != null)
+                    {
+                        selector = entry =>
+                        {
+                            object ownedInstance = ownershipNavigation.PropertyInfo != null
+                                ? ownershipNavigation.PropertyInfo.GetValue(entry.Entity)
+                                : entry.Reference(ownershipNavigation.Name).CurrentValue;
+                            if (ownedInstance == null)
+                                return null;
+                            if (property.PropertyInfo != null)
+                                return property.PropertyInfo.GetValue(ownedInstance);
+                            return property.GetGetter()?.GetClrValue(ownedInstance);
+                        };
+                    }
+                    else
+                    {
+                        selector = entry => entry.CurrentValues[property];
+                    }
                 }
                 else
                 {

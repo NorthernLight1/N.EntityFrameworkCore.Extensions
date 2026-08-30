@@ -1,0 +1,21 @@
+Test run for C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Failed With_IncludeGraph [112 ms]
+  Error Message:
+   Test method N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_IncludeGraph threw exception:
+System.InvalidOperationException: Sequence contains more than one matching element
+  Stack Trace:
+     at System.Linq.ThrowHelper.ThrowMoreThanOneMatchException()
+   at System.Linq.Enumerable.TryGetSingle[TSource](IEnumerable`1 source, Func`2 predicate, Boolean& found)
+   at System.Linq.Enumerable.Single[TSource](IEnumerable`1 source, Func`2 predicate)
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.InvokeBulkInsertAsync(DbContext context, Type entityClrType, List`1 entities, Boolean autoMapOutput, BulkOptions parentOptions, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 357
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertDependentNavigationAsync[T](DbContext context, IList`1 principals, INavigation navigation, BulkInsertOptions`1 parentOptions, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 306
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertIncludeGraphAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 252
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertIncludeGraphAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 256
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 189
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertAsync[T](DbContext context, IEnumerable`1 entities, Action`1 optionsAction, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.PostgreSql\Data\DbContextExtensionsAsync.cs:line 184
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_IncludeGraph() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\DbContextExtensions\BulkInsertAsync.cs:line 522
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+
+
+Failed!  - Failed:     1, Passed:   273, Skipped:     0, Total:   274, Duration: 4 m 56 s - N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll (net10.0)

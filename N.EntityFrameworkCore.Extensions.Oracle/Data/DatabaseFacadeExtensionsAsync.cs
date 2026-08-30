@@ -67,8 +67,4 @@ public static class DatabaseFacadeExtensionsAsync
             DatabaseFacadeExtensions.AddParameters(command, parameters);
         return await command.ExecuteScalarAsync(cancellationToken);
     }
-    internal static async Task ToggleIdentityInsertAsync(this DatabaseFacade database, string tableName, bool enable)
-    {
-        await Task.CompletedTask;
-    }
 }

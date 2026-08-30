@@ -84,4 +84,3 @@ public class InsertFromQuery : DbContextExtensionsBase
         Assert.IsFalse(tableExistsAfter, string.Format("Table {0} should not exist after transaction rollback", tableName));
     }
 }
-

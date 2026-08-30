@@ -33,4 +33,3 @@ public class SqlQuery_CountAsync : DatabaseExtensionsBase
         Assert.IsTrue(efCount == sqlCount, "Count from EF should match the count from the SqlQuery");
     }
 }
-

@@ -63,27 +63,36 @@ public class InsertFromQueryAsync : DbContextExtensionsBase
     }
     [TestMethod]
     [DoNotParallelize]
-    [Ignore("MySQL DDL auto-commit: CREATE TABLE in InsertFromQuery cannot be rolled back in MySQL because DDL statements cause implicit transaction commits. Table will persist after rollback.")]
-    public async Task With_Transaction()
+    public async Task With_Transaction_Throws_When_Table_Must_Be_Created()
     {
         var dbContext = SetupDbContext(true);
         string tableName = "OrdersUnderTen";
-        int rowsInserted;
-        bool tableExistsBefore, tableExistsAfter;
+        using var transaction = dbContext.Database.BeginTransaction();
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(async () =>
+            await dbContext.Orders.Where(o => o.Price < 10M).InsertFromQueryAsync(tableName, o => new { o.Price, o.Id, o.AddedDateTime, o.Active }));
+    }
+    [TestMethod]
+    [DoNotParallelize]
+    public async Task With_Transaction_Succeeds_When_Table_Already_Exists()
+    {
+        var dbContext = SetupDbContext(true);
+        string tableName = "OrdersUnderTenExistingAsync";
         int oldSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
+        await dbContext.Orders.Where(o => o.Price < 10M).InsertFromQueryAsync(tableName, o => new { o.Price, o.Id, o.AddedDateTime, o.Active });
+
+        int rowsInserted;
         using (var transaction = dbContext.Database.BeginTransaction())
         {
             rowsInserted = await dbContext.Orders.Where(o => o.Price < 10M).InsertFromQueryAsync(tableName, o => new { o.Price, o.Id, o.AddedDateTime, o.Active });
-            tableExistsBefore = dbContext.Database.TableExists(tableName);
             transaction.Rollback();
         }
-        tableExistsAfter = dbContext.Database.TableExists(tableName);
-        int newSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
 
-        Assert.IsTrue(oldSourceTotal > 0, "There must be orders in database that match this condition (Price < $10)");
-        Assert.IsTrue(rowsInserted == oldSourceTotal, "The number of rows update must match the count of rows that match the condtion (Price < $10)");
-        Assert.IsTrue(newSourceTotal == oldSourceTotal, "The new count must match the old count since the transaction was rollbacked");
-        Assert.IsTrue(tableExistsBefore, string.Format("Table {0} should exist before transaction rollback", tableName));
-        Assert.IsFalse(tableExistsAfter, string.Format("Table {0} should not exist after transaction rollback", tableName));
+        int newSourceTotal = dbContext.Orders.Where(o => o.Price < 10M).Count();
+        int targetTotal = dbContext.Orders.UsingTable(tableName).Count();
+
+        Assert.IsTrue(oldSourceTotal > 0);
+        Assert.AreEqual(oldSourceTotal, rowsInserted);
+        Assert.AreEqual(oldSourceTotal, newSourceTotal);
+        Assert.AreEqual(oldSourceTotal, targetTotal);
     }
 }

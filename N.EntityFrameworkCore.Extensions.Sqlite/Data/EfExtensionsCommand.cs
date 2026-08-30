@@ -20,4 +20,3 @@ internal sealed class EfExtensionsCommand
         return true;
     }
 }
-

@@ -25,7 +25,7 @@ public class BulkSyncAsync : DbContextExtensionsBase
         }
         for (int i = 0; i < ordersToAdd; i++)
         {
-            orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
+            orders.Add(new Order { Id = 100000 + i, ExternalId = $"new-{i}", Price = 3.55M });
         }
         var result = await dbContext.BulkSyncAsync(orders);
         var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
@@ -206,7 +206,7 @@ public class BulkSyncAsync : DbContextExtensionsBase
         }
         for (int i = 0; i < ordersToAdd; i++)
         {
-            orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
+            orders.Add(new Order { Id = 100000 + i, ExternalId = $"new-{i}", Price = 3.55M });
         }
         var result = await dbContext.BulkSyncAsync(orders, new BulkSyncOptions<Order>
         {
@@ -240,5 +240,26 @@ public class BulkSyncAsync : DbContextExtensionsBase
         Assert.IsTrue(areAddedOrdersMerged, "The orders that were added did not merge correctly");
         Assert.IsTrue(areUpdatedOrdersMerged, "The orders that were updated did not merge correctly");
     }
-}
 
+    [TestMethod]
+    public async Task With_Options_SoftDeleteColumns()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(10).ToList();
+        var keptIds = orders.Select(o => o.Id).ToHashSet();
+        int totalBefore = dbContext.Orders.Count();
+        int unmatchedBefore = dbContext.Orders.Count(o => !keptIds.Contains(o.Id) && !o.IsDeleted);
+
+        var result = await dbContext.BulkSyncAsync(orders, o => o.SoftDeleteColumns = x => new { IsDeleted = true });
+
+        int totalAfter = dbContext.Orders.Count();
+        int softDeleted = dbContext.Orders.Count(o => !keptIds.Contains(o.Id) && o.IsDeleted);
+        int keptActive = dbContext.Orders.Count(o => keptIds.Contains(o.Id) && !o.IsDeleted);
+
+        Assert.AreEqual(totalBefore, totalAfter, "Soft delete should not remove rows from the table");
+        Assert.AreEqual(unmatchedBefore, softDeleted);
+        Assert.AreEqual(orders.Count, keptActive);
+        Assert.AreEqual(unmatchedBefore, result.RowsDeleted);
+    }
+
+}

@@ -1,5 +1,7 @@
-﻿using System.Linq;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.DbContextExtensions;
 
@@ -68,12 +70,34 @@ public class BulkFetch : DbContextExtensionsBase
         var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId != null);
         var fetchedOrders = dbContext.Orders.BulkFetch(orders, options => { options.IgnoreColumns = o => new { o.ExternalId }; }).ToList();
-        int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
-        bool foundNullExternalId = fetchedOrders.Where(o => o.ExternalId != null).Any();
 
         Assert.IsTrue(orders.Count() > 0, "There must be orders in the database that match condition (Price <= 10 And ExternalId != null)");
         Assert.IsTrue(orders.Count() == fetchedOrders.Count(), "The number of orders must match the number of fetched orders");
-        Assert.IsTrue(!foundNullExternalId, "Fetched orders should not contain any items where ExternalId is null.");
+        Assert.IsTrue(fetchedOrders.All(o => o.ExternalId == null), "Fetched orders should have ExternalId cleared (IgnoreColumns)");
+        Assert.IsTrue(fetchedOrders.Any(f => orders.Any(o => o.Id == f.Id && o.Price == f.Price)), "Non-ignored columns like Price should still match the source");
+    }
+    [TestMethod]
+    public void With_KeyOnly_Stubs()
+    {
+        var dbContext = SetupDbContext(true);
+        var dbOrders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).Take(20).ToList();
+        Assert.IsTrue(dbOrders.Count > 0);
+
+        // Key-only stubs with deliberately wrong Price/ExternalId
+        var stubs = dbOrders.Select(o => new Order { Id = o.Id, Price = 999M, ExternalId = "wrong" }).ToList();
+        var fetched = dbContext.Orders.BulkFetch(stubs).ToList();
+
+        Assert.AreEqual(stubs.Count, fetched.Count);
+        foreach (var stub in stubs)
+            Assert.IsFalse(object.ReferenceEquals(stub, fetched.FirstOrDefault(f => f.Id == stub.Id)),
+                "BulkFetch must return database entities, not the input stubs");
+
+        foreach (var f in fetched)
+        {
+            var db = dbOrders.First(o => o.Id == f.Id);
+            Assert.AreEqual(db.Price, f.Price);
+            Assert.AreEqual(db.ExternalId, f.ExternalId);
+        }
     }
     [TestMethod]
     public void With_Options_IgnoreColumns()
@@ -81,12 +105,11 @@ public class BulkFetch : DbContextExtensionsBase
         var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId != null).ToList();
         var fetchedOrders = dbContext.Orders.BulkFetch(orders, options => { options.IgnoreColumns = o => new { o.ExternalId }; }).ToList();
-        int newTotal = dbContext.Orders.Where(o => o.Price <= 10 && o.ExternalId == null).Count();
-        bool foundNullExternalId = fetchedOrders.Where(o => o.ExternalId != null).Any();
 
         Assert.IsTrue(orders.Count() > 0, "There must be orders in the database that match condition (Price <= 10 And ExternalId != null)");
         Assert.IsTrue(orders.Count() == fetchedOrders.Count(), "The number of orders must match the number of fetched orders");
-        Assert.IsTrue(!foundNullExternalId, "Fetched orders should not contain any items where ExternalId is null.");
+        Assert.IsTrue(fetchedOrders.All(o => o.ExternalId == null), "Fetched orders should have ExternalId cleared (IgnoreColumns)");
+        Assert.IsTrue(fetchedOrders.Any(f => orders.Any(o => o.Id == f.Id && o.Price == f.Price)), "Non-ignored columns like Price should still match the source");
     }
     [TestMethod]
     public void With_ValueConverter()
@@ -110,5 +133,54 @@ public class BulkFetch : DbContextExtensionsBase
         Assert.IsTrue(products.Count > 0, "There must be orders in database that match this condition (Price = $1.25)");
         Assert.IsTrue(products.Count == fetchedProducts.Count(), "The number of rows deleted must match the count of existing rows in database");
         Assert.IsTrue(areMatched, "The products from BulkFetch() should match what is retrieved from DbContext");
+    }
+    [TestMethod]
+    public void With_AttachToContext()
+    {
+        var dbContext = SetupDbContext(true);
+        var stubs = dbContext.Orders.Where(o => o.Price == 1.25M).Take(3).Select(o => new Order { Id = o.Id }).ToList();
+        var fetched = dbContext.Orders.BulkFetch(stubs, o => o.AttachToContext = true).ToList();
+        Assert.AreEqual(3, fetched.Count);
+        Assert.IsTrue(fetched.All(o => dbContext.Entry(o).State == EntityState.Unchanged));
+    }
+
+
+    [TestMethod]
+    public void With_Options_JoinOnCondition()
+    {
+        var dbContext = SetupDbContext(true);
+        var dbOrders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).Take(5).ToList();
+        Assert.IsTrue(dbOrders.Count > 0);
+        var stubs = dbOrders.Select(o => new Order { Id = o.Id + 999999, ExternalId = o.ExternalId, Price = 999M }).ToList();
+        var fetched = dbContext.Orders.BulkFetch(stubs, o => o.JoinOnCondition = (s, t) => s.ExternalId == t.ExternalId).ToList();
+
+        Assert.AreEqual(stubs.Count, fetched.Count);
+        foreach (var f in fetched)
+        {
+            var db = dbOrders.First(o => o.ExternalId == f.ExternalId);
+            Assert.AreEqual(db.Id, f.Id);
+            Assert.AreEqual(db.Price, f.Price);
+        }
+    }
+
+    [TestMethod]
+    public void With_Options_InputColumns()
+    {
+        var dbContext = SetupDbContext(true);
+        var dbOrders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).Take(5).ToList();
+        Assert.IsTrue(dbOrders.Count > 0);
+        var stubs = dbOrders.Select(o => new Order { ExternalId = o.ExternalId, Price = 999M }).ToList();
+        var fetched = dbContext.Orders.BulkFetch(stubs, o =>
+        {
+            o.JoinOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.InputColumns = x => new { x.ExternalId };
+        }).ToList();
+
+        Assert.AreEqual(stubs.Count, fetched.Count);
+        foreach (var f in fetched)
+        {
+            var db = dbOrders.First(o => o.ExternalId == f.ExternalId);
+            Assert.AreEqual(db.ExternalId, f.ExternalId);
+        }
     }
 }

@@ -43,10 +43,10 @@ internal static class RelationalProviderUtil
         dbContext.Database.DelimitTableName(tableName);
 
     internal static string DelimitMemberAccess(this DbContext dbContext, string alias, string columnName) =>
-        $"{dbContext.DelimitIdentifier(alias)}.{dbContext.DelimitIdentifier(columnName)}";
+        $"{alias}.{dbContext.DelimitIdentifier(columnName)}";
 
     internal static string DelimitMemberAccess(this DatabaseFacade database, string alias, string columnName) =>
-        $"{database.DelimitIdentifier(alias)}.{database.DelimitIdentifier(columnName)}";
+        $"{alias}.{database.DelimitIdentifier(columnName)}";
 
     internal static DatabaseObjectName ParseObjectName(this DatabaseFacade database, string objectName)
     {
@@ -66,18 +66,6 @@ internal static class RelationalProviderUtil
     internal static string UnwrapIdentifier(string value) =>
         value.Trim().Trim('[', ']', '"');
 
-    internal static string GetTemporaryTableName(this DatabaseFacade database, string baseName)
-    {
-        string temporaryName = $"#tmp_be_xx_{UnwrapIdentifier(baseName)}_{Guid.NewGuid():N}";
-        return database.DelimitIdentifier(temporaryName);
-    }
-
-    internal static string GetPermanentStagingTableName(this DatabaseFacade database, string schema, string tableName, string uniqueSuffix)
-    {
-        string stagingName = $"tmp_be_xx_{UnwrapIdentifier(tableName)}_{uniqueSuffix}";
-        return database.DelimitIdentifier(stagingName, schema);
-    }
-
     internal static DbConnection CloneConnection(this DbConnection dbConnection) =>
         dbConnection is ICloneable cloneable
             ? (DbConnection)cloneable.Clone()
@@ -86,7 +74,4 @@ internal static class RelationalProviderUtil
     private static ISqlGenerationHelper GetSqlGenerationHelper(this DatabaseFacade database) =>
         ((IInfrastructure<IServiceProvider>)database).Instance.GetService(typeof(ISqlGenerationHelper)) as ISqlGenerationHelper
         ?? throw new InvalidOperationException("Unable to resolve ISqlGenerationHelper.");
-
-    private static bool IsTemporaryName(string objectName) =>
-        UnwrapIdentifier(objectName).StartsWith("#", StringComparison.Ordinal);
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -80,9 +80,9 @@ public static class DatabaseFacadeExtensions
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS INT) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        string sql = database.IsPostgreSql()
-            ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
-            : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
+        if (!database.IsPostgreSql())
+            throw new InvalidOperationException("CloneTable requires a PostgreSQL database.");
+        string sql = $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0";
         return database.ExecuteSqlRaw(sql);
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
@@ -118,18 +118,6 @@ public static class DatabaseFacadeExtensions
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return command.ExecuteScalar();
-    }
-    internal static void ToggleIdentityInsert(this DatabaseFacade database, string tableName, bool enable)
-    {
-        if (database.IsPostgreSql())
-            return;
-
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            database.ExecuteSql($"SET IDENTITY_INSERT {tableName} {boolString}");
-        }
     }
     internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
     {

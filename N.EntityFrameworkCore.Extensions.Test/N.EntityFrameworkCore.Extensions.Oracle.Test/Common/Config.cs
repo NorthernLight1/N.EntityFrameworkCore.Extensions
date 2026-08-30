@@ -1,7 +1,7 @@
 using System;
 using System.Data.Common;
-using Oracle.ManagedDataAccess.Client;
 using Microsoft.Extensions.Configuration;
+using Oracle.ManagedDataAccess.Client;
 
 namespace N.EntityFrameworkCore.Extensions.Test.Common;
 

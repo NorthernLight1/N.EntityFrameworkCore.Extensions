@@ -44,4 +44,3 @@ public class Config
         || exception.Message.Contains("PRIMARY KEY constraint failed", StringComparison.OrdinalIgnoreCase)
         || exception.Message.Contains("SQLite Error 19", StringComparison.OrdinalIgnoreCase);
 }
-

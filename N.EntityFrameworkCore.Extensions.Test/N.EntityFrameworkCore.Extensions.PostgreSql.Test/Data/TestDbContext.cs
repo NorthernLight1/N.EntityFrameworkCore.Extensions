@@ -8,6 +8,9 @@ namespace N.EntityFrameworkCore.Extensions.Test.Data;
 
 public class TestDbContext : DbContext
 {
+    public virtual DbSet<Blog> Blogs { get; set; }
+    public virtual DbSet<BlogPost> BlogPosts { get; set; }
+    public virtual DbSet<GuidKeyEntity> GuidKeyEntities { get; set; }
     public virtual DbSet<Product> Products { get; set; }
     public virtual DbSet<ProductCategory> ProductCategories { get; set; }
     public virtual DbSet<ProductWithCustomSchema> ProductsWithCustomSchema { get; set; }
@@ -15,6 +18,7 @@ public class TestDbContext : DbContext
     public virtual DbSet<ProductWithTrigger> ProductsWithTrigger { get; set; }
     public virtual DbSet<Order> Orders { get; set; }
     public virtual DbSet<OrderWithComplexType> OrdersWithComplexType { get; set; }
+    public virtual DbSet<OrderWithOwnedDetail> OrdersWithOwnedDetail { get; set; }
     public virtual DbSet<TpcPerson> TpcPeople { get; set; }
     public virtual DbSet<TphPerson> TphPeople { get; set; }
     public virtual DbSet<TphCustomer> TphCustomers { get; set; }
@@ -48,6 +52,7 @@ public class TestDbContext : DbContext
         else
             modelBuilder.Entity<Order>().Property<DateTime>("DbModifiedDateTime").HasComputedColumnSql("getdate()");
         modelBuilder.Entity<Order>().Property<bool>(p => p.DbActive).HasDefaultValueSql(Config.IsPostgreSql ? "TRUE" : "((1))");
+        modelBuilder.Entity<Order>().Property(p => p.IsDeleted).HasDefaultValue(false);
         modelBuilder.Entity<Order>().Property(p => p.Status).HasConversion<string>();
         modelBuilder.Entity<OrderWithComplexType>(b =>
         {
@@ -66,5 +71,17 @@ public class TestDbContext : DbContext
             t.ComplexProperty(p => p.Position).IsRequired();
             t.Property(p => p.Color).HasConversion(x => x.ToArgb(), x => Color.FromArgb(x));
         });
+        modelBuilder.Entity<GuidKeyEntity>(t =>
+        {
+            t.Property(e => e.Id).ValueGeneratedOnAdd();
+        });
+        modelBuilder.Entity<Blog>(t =>
+        {
+            t.HasMany(b => b.Posts)
+                .WithOne(p => p.Blog)
+                .HasForeignKey(p => p.BlogId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<OrderWithOwnedDetail>().OwnsOne(o => o.Detail);
     }
 }

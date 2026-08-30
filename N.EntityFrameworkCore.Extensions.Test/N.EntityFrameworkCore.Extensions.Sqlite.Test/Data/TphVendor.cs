@@ -7,4 +7,3 @@ public class TphVendor : TphPerson
     public string Phone { get; set; }
     public string Url { get; set; }
 }
-

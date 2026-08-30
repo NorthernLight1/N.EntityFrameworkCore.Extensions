@@ -288,10 +288,6 @@ public static class DatabaseFacadeExtensions
             AddParameters(command, parameters);
         return command.ExecuteScalar();
     }
-    internal static void ToggleIdentityInsert(this DatabaseFacade database, string tableName, bool enable)
-    {
-        // Oracle identity columns do not require an IDENTITY_INSERT toggle.
-    }
     internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
     {
         return connectionBehavior == ConnectionBehavior.New ? database.GetDbConnection().CloneConnection() : database.GetDbConnection();

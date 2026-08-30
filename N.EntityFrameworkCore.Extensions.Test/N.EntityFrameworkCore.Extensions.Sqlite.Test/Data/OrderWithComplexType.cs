@@ -16,4 +16,3 @@ public class OrderWithComplexType
     [Required]
     public Address BillingAddress { get; set; }
 }
-

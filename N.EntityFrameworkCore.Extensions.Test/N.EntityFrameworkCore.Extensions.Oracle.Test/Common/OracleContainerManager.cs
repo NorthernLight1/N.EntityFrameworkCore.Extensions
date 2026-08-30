@@ -29,7 +29,7 @@ internal static class OracleContainerManager
     {
         if (connectionString.Contains("Min Pool Size"))
             return connectionString;
-        
+
         return $"{connectionString};Min Pool Size=5;Max Pool Size=10;Connection Lifetime=300";
     }
 

@@ -146,4 +146,3 @@ public class DeleteFromQueryAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal == oldTotal, "The new count must match the old count since the transaction was rollbacked");
     }
 }
-

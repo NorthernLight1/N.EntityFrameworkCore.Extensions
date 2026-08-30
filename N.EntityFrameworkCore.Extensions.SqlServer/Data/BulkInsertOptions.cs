@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -8,6 +8,11 @@ public class BulkInsertOptions<T> : BulkOptions
 {
     public bool AutoMapOutput { get; set; }
     public Expression<Func<T, object>> IgnoreColumns { get; set; }
+    /// <summary>
+    /// When true, related entities reachable through navigation properties are inserted
+    /// after principals, with foreign keys assigned from mapped primary keys.
+    /// </summary>
+    public bool IncludeGraph { get; set; }
     public Expression<Func<T, object>> InputColumns { get; set; }
     public bool InsertIfNotExists { get; set; }
     public Expression<Func<T, T, bool>> InsertOnCondition { get; set; }
@@ -19,9 +24,5 @@ public class BulkInsertOptions<T> : BulkOptions
     public BulkInsertOptions()
     {
         AutoMapOutput = true;
-    }
-    internal BulkInsertOptions(BulkOptions options)
-    {
-        EntityType = options.EntityType;
     }
 }

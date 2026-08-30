@@ -7,4 +7,3 @@ public class TpcVendor : TpcPerson
     public string Phone { get; set; }
     public string Url { get; set; }
 }
-

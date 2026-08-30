@@ -32,16 +32,24 @@ public class DbContextExtensionsBase
         TestDbContext dbContext = new TestDbContext();
         TestDatabaseInitializer.EnsureCreated(dbContext);
         dbContext.Orders.Truncate();
+        dbContext.BlogPosts.Clear();
+        dbContext.Blogs.Clear();
         dbContext.Products.Truncate();
         dbContext.ProductCategories.Clear();
         dbContext.ProductsWithCustomSchema.Truncate();
         dbContext.ProductsWithTrigger.Truncate();
+        dbContext.GuidKeyEntities.Clear();
         dbContext.Database.ClearTable("TpcCustomer");
         dbContext.Database.ClearTable("TpcVendor");
         dbContext.TphPeople.Truncate();
         dbContext.Database.ClearTable("TptPeople");
         dbContext.Database.ClearTable("TptCustomer");
         dbContext.Database.ClearTable("TptVendor");
+        dbContext.OrdersWithComplexType.Truncate();
+        dbContext.OrdersWithOwnedDetail.Truncate();
+        dbContext.LocationsWithSpatial.Truncate();
+        dbContext.OrgNodes.Truncate();
+        try { dbContext.Database.ExecuteSqlRaw("DELETE FROM TemporalOrders"); } catch { }
         dbContext.Database.DropTable("ProductsUnderTen", true);
         dbContext.Database.DropTable("OrdersUnderTen", true);
         dbContext.Database.DropTable("OrdersLast30Days", true);

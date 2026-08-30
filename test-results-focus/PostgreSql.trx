@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="57573593-c84b-4f43-9194-82edde0512df" name="ttsch@TIMO-PC 2026-08-27 11:35:48" runUser="TIMO-PC\ttsch" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-27T11:35:48.9284429-04:00" queuing="2026-08-27T11:35:48.9284437-04:00" start="2026-08-27T11:35:32.9080708-04:00" finish="2026-08-27T11:35:54.2130671-04:00" />
+  <TestSettings name="default" id="0589d3a6-2f08-4f43-8b66-2413d93077eb">
+    <Deployment runDeploymentRoot="ttsch_TIMO-PC_2026-08-27_11_35_48" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="e1049640-0510-4e21-9c5d-440b3e713de5" testId="1abce5ec-6b44-8468-83a8-047ca7745186" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:04.1022968" startTime="2026-08-27T11:35:49.6571441-04:00" endTime="2026-08-27T11:35:53.7635946-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e1049640-0510-4e21-9c5d-440b3e713de5">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\DbContextExtensions\BulkInsertAsync.cs:line 459&#xD;
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="05730f14-aa2c-458d-8d0c-57cda0dd5f3f" testId="103a3784-31d5-886b-9a44-fb9a6df2e099" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.3995469" startTime="2026-08-27T11:35:49.2530943-04:00" endTime="2026-08-27T11:35:49.6566410-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="05730f14-aa2c-458d-8d0c-57cda0dd5f3f" />
+    <UnitTestResult executionId="f35ea3ee-53e7-4bcf-933a-02bba471c9c4" testId="1f472cb9-2bb9-8fbc-b384-f5b51fa05521" testName="With_Client_Guid_PrimaryKey" computerName="TIMO-PC" duration="00:00:00.3632263" startTime="2026-08-27T11:35:48.8887071-04:00" endTime="2026-08-27T11:35:49.2524095-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f35ea3ee-53e7-4bcf-933a-02bba471c9c4" />
+    <UnitTestResult executionId="1782d976-38c5-4527-9487-b6924d3c4bea" testId="1621c6a5-989f-835f-b22b-e4bb1637d7d4" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.2364421" startTime="2026-08-27T11:35:53.7644783-04:00" endTime="2026-08-27T11:35:54.0081287-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1782d976-38c5-4527-9487-b6924d3c4bea" />
+    <UnitTestResult executionId="1d37b7d3-f63d-46c2-aa12-9152d752d145" testId="134729a8-b3b6-8715-b2a0-22eea045c036" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:14.4593849" startTime="2026-08-27T11:35:34.3519320-04:00" endTime="2026-08-27T11:35:48.8541114-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1d37b7d3-f63d-46c2-aa12-9152d752d145">
+      <Output>
+        <StdOut>[testcontainers.org 00:00:00.26] Connected to Docker:&#xD;
+  Host: npipe://./pipe/docker_engine&#xD;
+  Server Version: 29.4.1&#xD;
+  Kernel Version: 6.6.87.2-microsoft-standard-WSL2&#xD;
+  API Version: 1.54&#xD;
+  Operating System: Docker Desktop&#xD;
+  Total Memory: 15.46 GB&#xD;
+  Labels: &#xD;
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli&#xD;
+[testcontainers.org 00:00:00.66] Docker container 48d7c786edab created&#xD;
+[testcontainers.org 00:00:00.76] Start Docker container 48d7c786edab&#xD;
+[testcontainers.org 00:00:01.10] Wait for Docker container 48d7c786edab to complete readiness checks&#xD;
+[testcontainers.org 00:00:02.27] Docker container 48d7c786edab ready&#xD;
+[testcontainers.org 00:00:02.43] Docker container de8873a56de2 created&#xD;
+[testcontainers.org 00:00:02.47] Start Docker container de8873a56de2&#xD;
+[testcontainers.org 00:00:02.88] Wait for Docker container de8873a56de2 to complete readiness checks&#xD;
+[testcontainers.org 00:00:02.93] Execute "pg_isready --host localhost --dbname N.EntityFrameworkCore.Test --username postgres" at Docker container de8873a56de2&#xD;
+[testcontainers.org 00:00:04.15] Execute "pg_isready --host localhost --dbname N.EntityFrameworkCore.Test --username postgres" at Docker container de8873a56de2&#xD;
+[testcontainers.org 00:00:05.29] Execute "pg_isready --host localhost --dbname N.EntityFrameworkCore.Test --username postgres" at Docker container de8873a56de2&#xD;
+[testcontainers.org 00:00:06.40] Execute "pg_isready --host localhost --dbname N.EntityFrameworkCore.Test --username postgres" at Docker container de8873a56de2&#xD;
+[testcontainers.org 00:00:06.53] Docker container de8873a56de2 ready</StdOut>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\DbContextExtensions\BulkInsert.cs:line 417&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="With_Client_Guid_PrimaryKey" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.postgresql.test\bin\release\net10.0\n.entityframeworkcore.extensions.postgresql.test.dll" id="1f472cb9-2bb9-8fbc-b384-f5b51fa05521">
+      <Execution id="f35ea3ee-53e7-4bcf-933a-02bba471c9c4" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Client_Guid_PrimaryKey" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.postgresql.test\bin\release\net10.0\n.entityframeworkcore.extensions.postgresql.test.dll" id="103a3784-31d5-886b-9a44-fb9a6df2e099">
+      <Execution id="05730f14-aa2c-458d-8d0c-57cda0dd5f3f" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.postgresql.test\bin\release\net10.0\n.entityframeworkcore.extensions.postgresql.test.dll" id="1621c6a5-989f-835f-b22b-e4bb1637d7d4">
+      <Execution id="1782d976-38c5-4527-9487-b6924d3c4bea" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.postgresql.test\bin\release\net10.0\n.entityframeworkcore.extensions.postgresql.test.dll" id="134729a8-b3b6-8715-b2a0-22eea045c036">
+      <Execution id="1d37b7d3-f63d-46c2-aa12-9152d752d145" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.postgresql.test\bin\release\net10.0\n.entityframeworkcore.extensions.postgresql.test.dll" id="1abce5ec-6b44-8468-83a8-047ca7745186">
+      <Execution id="e1049640-0510-4e21-9c5d-440b3e713de5" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.PostgreSql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.PostgreSql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="1abce5ec-6b44-8468-83a8-047ca7745186" executionId="e1049640-0510-4e21-9c5d-440b3e713de5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="103a3784-31d5-886b-9a44-fb9a6df2e099" executionId="05730f14-aa2c-458d-8d0c-57cda0dd5f3f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1f472cb9-2bb9-8fbc-b384-f5b51fa05521" executionId="f35ea3ee-53e7-4bcf-933a-02bba471c9c4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1621c6a5-989f-835f-b22b-e4bb1637d7d4" executionId="1782d976-38c5-4527-9487-b6924d3c4bea" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="134729a8-b3b6-8715-b2a0-22eea045c036" executionId="1d37b7d3-f63d-46c2-aa12-9152d752d145" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="5" executed="5" passed="3" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[testcontainers.org 00:00:19.08] Delete Docker container de8873a56de2&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

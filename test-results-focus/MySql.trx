@@ -1,0 +1,150 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="b3838a72-0d2e-4620-aba4-351d069d52da" name="ttsch@TIMO-PC 2026-08-27 11:36:17" runUser="TIMO-PC\ttsch" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-27T11:36:17.9572463-04:00" queuing="2026-08-27T11:36:17.9572470-04:00" start="2026-08-27T11:35:56.9578286-04:00" finish="2026-08-27T11:36:28.9075006-04:00" />
+  <TestSettings name="default" id="1c3e4fad-8c90-49fd-ab2a-68efcc9e4968">
+    <Deployment runDeploymentRoot="ttsch_TIMO-PC_2026-08-27_11_36_17" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="e05d054c-7ed7-474c-a1f4-6419f7a57b2c" testId="1b29735e-54dd-85bc-934f-a3aee6c589b8" testName="With_Client_Guid_PrimaryKey" computerName="TIMO-PC" duration="00:00:00.5723529" startTime="2026-08-27T11:36:21.8646679-04:00" endTime="2026-08-27T11:36:22.4372783-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e05d054c-7ed7-474c-a1f4-6419f7a57b2c">
+      <Output>
+        <ErrorInfo>
+          <Message>Test method N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_Client_Guid_PrimaryKey threw exception:&#xD;
+System.InvalidCastException: Invalid cast from 'System.Int64' to 'System.Guid'.</Message>
+          <StackTrace>   at System.Convert.DefaultToType(IConvertible value, Type targetType, IFormatProvider provider)&#xD;
+   at N.EntityFrameworkCore.Extensions.BulkOperation`1.ExecuteMergeMySql(Dictionary`2 entityMap, Expression`1 mergeOnCondition, Boolean autoMapOutput, Boolean keepIdentity, Boolean insertIfNotExists, Boolean update, Boolean delete, Boolean preallocatedIds) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.MySql\Data\BulkOperation.cs:line 190&#xD;
+   at N.EntityFrameworkCore.Extensions.BulkOperation`1.ExecuteMerge(Dictionary`2 entityMap, Expression`1 mergeOnCondition, Boolean autoMapOutput, Boolean keepIdentity, Boolean insertIfNotExists, Boolean update, Boolean delete, Boolean preallocatedIds) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.MySql\Data\BulkOperation.cs:line 84&#xD;
+   at N.EntityFrameworkCore.Extensions.DbContextExtensions.BulkInsert[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.MySql\Data\DbContextExtensions.cs:line 200&#xD;
+   at N.EntityFrameworkCore.Extensions.DbContextExtensions.BulkInsert[T](DbContext context, IEnumerable`1 entities) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.MySql\Data\DbContextExtensions.cs:line 171&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_Client_Guid_PrimaryKey() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\DbContextExtensions\BulkInsert.cs:line 520&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)&#xD;
+</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="fc4b151c-5ea9-43ee-bdbe-1883bfa1ce0c" testId="14423514-59ee-804f-bf65-4ae489e0a1f6" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.6057808" startTime="2026-08-27T11:36:28.0904073-04:00" endTime="2026-08-27T11:36:28.7002722-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fc4b151c-5ea9-43ee-bdbe-1883bfa1ce0c" />
+    <UnitTestResult executionId="f58e67eb-efa7-43d7-90e1-fa1b809f10ee" testId="1d63cbfe-4ae3-8b7d-88d0-1e2d68ea9e11" testName="With_KeepIdentity_Under_Transaction" computerName="TIMO-PC" duration="00:00:00.6642252" startTime="2026-08-27T11:36:23.2494763-04:00" endTime="2026-08-27T11:36:23.9179335-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f58e67eb-efa7-43d7-90e1-fa1b809f10ee">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;0&gt;. Actual:&lt;500&gt;. 'expected' expression: 'oldTotal', 'actual' expression: 'dbContext.Orders.Count()'. KeepIdentity must not commit the ambient transaction (ALTER TABLE AUTO_INCREMENT must not auto-commit)</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_KeepIdentity_Under_Transaction() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\DbContextExtensions\BulkInsertAsync.cs:line 366&#xD;
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="bdda2be2-5b78-499e-9f63-860e28b111ff" testId="165a7af3-3080-8cc1-8b11-5c2cd79010d0" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.8051089" startTime="2026-08-27T11:36:22.4373738-04:00" endTime="2026-08-27T11:36:23.2491662-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bdda2be2-5b78-499e-9f63-860e28b111ff" />
+    <UnitTestResult executionId="5d9d879e-10be-422a-952c-e4584611737b" testId="16795586-373a-84b9-8861-3d2743c1fd48" testName="With_KeepIdentity_Under_Transaction" computerName="TIMO-PC" duration="00:00:19.3144672" startTime="2026-08-27T11:35:58.5252180-04:00" endTime="2026-08-27T11:36:17.8899902-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5d9d879e-10be-422a-952c-e4584611737b">
+      <Output>
+        <StdOut>[testcontainers.org 00:00:00.22] Connected to Docker:&#xD;
+  Host: npipe://./pipe/docker_engine&#xD;
+  Server Version: 29.4.1&#xD;
+  Kernel Version: 6.6.87.2-microsoft-standard-WSL2&#xD;
+  API Version: 1.54&#xD;
+  Operating System: Docker Desktop&#xD;
+  Total Memory: 15.46 GB&#xD;
+  Labels: &#xD;
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli&#xD;
+[testcontainers.org 00:00:00.51] Docker container 661e89496e39 created&#xD;
+[testcontainers.org 00:00:00.63] Start Docker container 661e89496e39&#xD;
+[testcontainers.org 00:00:01.00] Wait for Docker container 661e89496e39 to complete readiness checks&#xD;
+[testcontainers.org 00:00:02.13] Docker container 661e89496e39 ready&#xD;
+[testcontainers.org 00:00:02.31] Docker container 8aec7474f191 created&#xD;
+[testcontainers.org 00:00:02.34] Start Docker container 8aec7474f191&#xD;
+[testcontainers.org 00:00:02.72] Execute "mkdir /var/lib/mysql-files" at Docker container 8aec7474f191&#xD;
+[testcontainers.org 00:00:02.75] Add file to tar archive: Content length: 47 byte(s), Target file: "/etc/mysql/my.cnf", UID: 0, GID: 0, Mode: 0600&#xD;
+[testcontainers.org 00:00:02.80] Copy tar archive to container: Content length: 47 byte(s), Docker container: 8aec7474f191&#xD;
+[testcontainers.org 00:00:02.87] Wait for Docker container 8aec7474f191 to complete readiness checks&#xD;
+[testcontainers.org 00:00:02.89] Execute "mysql NEntityFrameworkCoreExtensions --wait --silent --execute=SELECT 1;" at Docker container 8aec7474f191&#xD;
+[testcontainers.org 00:00:09.03] Execute "mysql NEntityFrameworkCoreExtensions --wait --silent --execute=SELECT 1;" at Docker container 8aec7474f191&#xD;
+[testcontainers.org 00:00:14.19] Docker container 8aec7474f191 ready</StdOut>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;0&gt;. Actual:&lt;500&gt;. 'expected' expression: 'oldTotal', 'actual' expression: 'dbContext.Orders.Count()'. KeepIdentity must not commit the ambient transaction (ALTER TABLE AUTO_INCREMENT must not auto-commit)</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_KeepIdentity_Under_Transaction() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\DbContextExtensions\BulkInsert.cs:line 344&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="905facde-5acd-4308-8590-7196b408bee3" testId="11c8c344-3359-8e39-88e7-bafa5c9388aa" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:03.9437480" startTime="2026-08-27T11:36:17.9177241-04:00" endTime="2026-08-27T11:36:21.8619994-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="905facde-5acd-4308-8590-7196b408bee3">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\DbContextExtensions\BulkInsert.cs:line 437&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="a86cc351-6721-40ad-9803-7c792dd8bd3b" testId="1b5c47ec-3fed-84e3-b74b-cebaa6f7ede7" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:04.1712103" startTime="2026-08-27T11:36:23.9180540-04:00" endTime="2026-08-27T11:36:28.0894502-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a86cc351-6721-40ad-9803-7c792dd8bd3b">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\DbContextExtensions\BulkInsertAsync.cs:line 499&#xD;
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="With_KeepIdentity_Under_Transaction" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="1d63cbfe-4ae3-8b7d-88d0-1e2d68ea9e11">
+      <Execution id="f58e67eb-efa7-43d7-90e1-fa1b809f10ee" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_KeepIdentity_Under_Transaction" />
+    </UnitTest>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="11c8c344-3359-8e39-88e7-bafa5c9388aa">
+      <Execution id="905facde-5acd-4308-8590-7196b408bee3" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="165a7af3-3080-8cc1-8b11-5c2cd79010d0">
+      <Execution id="bdda2be2-5b78-499e-9f63-860e28b111ff" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="14423514-59ee-804f-bf65-4ae489e0a1f6">
+      <Execution id="fc4b151c-5ea9-43ee-bdbe-1883bfa1ce0c" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_Client_Guid_PrimaryKey" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="1b29735e-54dd-85bc-934f-a3aee6c589b8">
+      <Execution id="e05d054c-7ed7-474c-a1f4-6419f7a57b2c" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Client_Guid_PrimaryKey" />
+    </UnitTest>
+    <UnitTest name="With_KeepIdentity_Under_Transaction" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="16795586-373a-84b9-8861-3d2743c1fd48">
+      <Execution id="5d9d879e-10be-422a-952c-e4584611737b" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_KeepIdentity_Under_Transaction" />
+    </UnitTest>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.mysql.test\bin\release\net10.0\n.entityframeworkcore.extensions.mysql.test.dll" id="1b5c47ec-3fed-84e3-b74b-cebaa6f7ede7">
+      <Execution id="a86cc351-6721-40ad-9803-7c792dd8bd3b" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.MySql.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.MySql.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="1b29735e-54dd-85bc-934f-a3aee6c589b8" executionId="e05d054c-7ed7-474c-a1f4-6419f7a57b2c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="14423514-59ee-804f-bf65-4ae489e0a1f6" executionId="fc4b151c-5ea9-43ee-bdbe-1883bfa1ce0c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1d63cbfe-4ae3-8b7d-88d0-1e2d68ea9e11" executionId="f58e67eb-efa7-43d7-90e1-fa1b809f10ee" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="165a7af3-3080-8cc1-8b11-5c2cd79010d0" executionId="bdda2be2-5b78-499e-9f63-860e28b111ff" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="16795586-373a-84b9-8861-3d2743c1fd48" executionId="5d9d879e-10be-422a-952c-e4584611737b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="11c8c344-3359-8e39-88e7-bafa5c9388aa" executionId="905facde-5acd-4308-8590-7196b408bee3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1b5c47ec-3fed-84e3-b74b-cebaa6f7ede7" executionId="a86cc351-6721-40ad-9803-7c792dd8bd3b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="7" executed="7" passed="2" failed="5" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[testcontainers.org 00:00:29.51] Delete Docker container 8aec7474f191&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

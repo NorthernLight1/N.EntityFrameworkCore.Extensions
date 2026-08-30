@@ -19,4 +19,3 @@ public class Truncate : DbContextExtensionsBase
         Assert.IsTrue(newOrdersCount == 0, "Order table should be empty after truncating");
     }
 }
-

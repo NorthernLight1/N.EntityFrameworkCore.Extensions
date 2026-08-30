@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using N.EntityFrameworkCore.Extensions.Test.Data;
 
@@ -77,7 +77,7 @@ public class BulkDelete : DbContextExtensionsBase
         int rowsDeleted, newTotal = 0;
         using (var transaction = dbContext.Database.BeginTransaction())
         {
-            rowsDeleted = dbContext.BulkDelete(orders);
+            rowsDeleted = dbContext.BulkDelete(orders, options => options.CommandTimeout = 120);
             newTotal = dbContext.Orders.Where(o => o.Price == 1.25M).Count();
             transaction.Rollback();
         }
@@ -87,5 +87,20 @@ public class BulkDelete : DbContextExtensionsBase
         Assert.IsTrue(rowsDeleted == orders.Count, "The number of rows deleted must match the count of existing rows in database");
         Assert.IsTrue(newTotal == 0, "Must be 0 to indicate all records were deleted");
         Assert.IsTrue(rollbackTotal == orders.Count, "The number of rows after the transacation has been rollbacked should match the original count");
+    }
+
+    [TestMethod]
+    public void With_SoftDeleteColumns()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(5).ToList();
+        var orderIds = orders.Select(o => o.Id).ToList();
+        foreach (var o in orders) o.IsDeleted = true;
+        int rows = dbContext.BulkDelete(orders, o => o.SoftDeleteColumns = x => new { x.IsDeleted });
+        int stillThere = dbContext.Orders.Count(o => orderIds.Contains(o.Id) && !o.IsDeleted);
+        int softDeleted = dbContext.Orders.Count(o => orderIds.Contains(o.Id) && o.IsDeleted);
+        Assert.AreEqual(5, rows);
+        Assert.AreEqual(0, stillThere);
+        Assert.AreEqual(5, softDeleted);
     }
 }

@@ -57,4 +57,3 @@ public class DatabaseExtensionsBase
         return dbContext;
     }
 }
-

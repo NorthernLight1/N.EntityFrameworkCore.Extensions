@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -62,6 +62,16 @@ public class BulkInsertAsync : DbContextExtensionsBase
 
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+
+        dbContext.ChangeTracker.Clear();
+        var saved = dbContext.OrdersWithComplexType.OrderBy(o => o.Id).ToList();
+        Assert.AreEqual(orders.Count, saved.Count - oldTotal);
+        var first = saved.First(o => o.ShippingAddress.Line1 == "123 Main St, 1");
+        Assert.AreEqual("Atlanta", first.ShippingAddress.City);
+        Assert.AreEqual("456 Oak St, 1", first.BillingAddress.Line1);
+        var last = saved.First(o => o.ShippingAddress.Line1 == "123 Main St, 999");
+        Assert.AreEqual("Atlanta", last.ShippingAddress.City);
+        Assert.AreEqual("456 Oak St, 999", last.BillingAddress.Line1);
     }
     [TestMethod]
     public async Task With_Default_Options()
@@ -79,23 +89,6 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
-    //[TestMethod]
-    //public async Task With_IEnumerable()
-    //{
-    //    var dbContext = SetupDbContext(false);
-    //    var orders = dbContext.Orders.Where(o => o.Price <= 10);
-
-    //    foreach(var order in orders)
-    //    {
-    //        order.Price = 15.75M;
-    //    }
-    //    int oldTotal = orders.Count();
-    //    int rowsInserted = await dbContext.BulkInsertAsync(orders);
-    //    int newTotal = orders.Count();
-
-    //    Assert.IsTrue(rowsInserted == oldTotal, "The number of rows inserted must match the count of order list");
-    //    Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
-    //}
     [TestMethod]
     public async Task With_Inheritance_Tpc()
     {
@@ -441,6 +434,33 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == expectedRowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public async Task With_Options_InsertOnCondition()
+    {
+        var dbContext = SetupDbContext(true);
+        var existing = dbContext.Orders.Where(o => o.ExternalId != null).OrderBy(o => o.Id).Take(50).ToList();
+        Assert.IsTrue(existing.Count > 0);
+
+        long maxId = dbContext.Orders.Max(o => o.Id);
+        var toInsert = new List<Order>();
+        // Reuse existing ExternalIds (should be skipped) + new ExternalIds (should insert)
+        foreach (var order in existing)
+            toInsert.Add(new Order { Id = maxId + order.Id + 1, ExternalId = order.ExternalId, Price = 9.99M });
+        for (int i = 0; i < 100; i++)
+            toInsert.Add(new Order { Id = maxId + 100000 + i, ExternalId = $"insert-on-{i}", Price = 9.99M });
+
+        int oldTotal = dbContext.Orders.Count(o => o.Price == 9.99M);
+        int rowsInserted = await dbContext.BulkInsertAsync(toInsert, o =>
+        {
+            o.InsertIfNotExists = true;
+            o.InsertOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.KeepIdentity = true;
+        });
+        int newTotal = dbContext.Orders.Count(o => o.Price == 9.99M);
+
+        Assert.AreEqual(100, rowsInserted, "Only rows that do not match InsertOnCondition should insert");
+        Assert.AreEqual(100, newTotal - oldTotal);
+    }
+    [TestMethod]
     public async Task With_ValueGenerated_Default()
     {
         var dbContext = SetupDbContext(false);
@@ -448,7 +468,7 @@ public class BulkInsertAsync : DbContextExtensionsBase
         var orders = new List<Order>();
         for (int i = 0; i < 20000; i++)
         {
-            orders.Add(new Order { Id = i, Price = 1.57M });
+            orders.Add(new Order { Id = i, Price = 1.57M, DbActive = true, DbAddedDateTime = nowDateTime.AddSeconds(1) });
         }
         int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
         int rowsInserted = await dbContext.BulkInsertAsync(orders);
@@ -473,5 +493,60 @@ public class BulkInsertAsync : DbContextExtensionsBase
 
         Assert.IsTrue(rowsInserted == orders.Count(), "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
+    public async Task With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blogs = new List<Blog>
+        {
+            new Blog
+            {
+                Title = "Graph Blog 1",
+                Posts =
+                [
+                    new BlogPost { Title = "Post A" },
+                    new BlogPost { Title = "Post B" }
+                ]
+            },
+            new Blog
+            {
+                Title = "Graph Blog 2",
+                Posts =
+                [
+                    new BlogPost { Title = "Post C" }
+                ]
+            }
+        };
+
+        int rowsInserted = await dbContext.BulkInsertAsync(blogs, options =>
+        {
+            options.IncludeGraph = true;
+            options.AutoMapOutput = true;
+        });
+
+        var savedBlogs = dbContext.Blogs.Include(b => b.Posts).OrderBy(b => b.Id).ToList();
+        Assert.AreEqual(2, savedBlogs.Count, "Both blogs should be inserted");
+        Assert.AreEqual(3, dbContext.BlogPosts.Count(), "All related posts should be inserted");
+        Assert.IsTrue(savedBlogs.All(b => b.Id > 0), "Blog identity values should be mapped back");
+        Assert.IsTrue(savedBlogs.SelectMany(b => b.Posts).All(p => p.BlogId > 0 && p.Id > 0),
+            "Posts should receive foreign keys from inserted blogs and have their own identity values");
+        Assert.AreEqual(2, savedBlogs[0].Posts.Count);
+        Assert.AreEqual(1, savedBlogs[1].Posts.Count);
+        Assert.IsTrue(rowsInserted >= 5, "Rows affected should include blogs and posts");
+    }
+
+    [TestMethod]
+    public async Task With_OwnedType()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<OrderWithOwnedDetail>
+        {
+            new() { Price = 9.99M, Detail = new OwnedDetail { City = "Seattle", Region = "WA" } }
+        };
+        int rows = await dbContext.BulkInsertAsync(orders, o => o.AutoMapOutput = true);
+        Assert.AreEqual(1, rows);
+        var saved = dbContext.OrdersWithOwnedDetail.First();
+        Assert.AreEqual("Seattle", saved.Detail.City);
     }
 }

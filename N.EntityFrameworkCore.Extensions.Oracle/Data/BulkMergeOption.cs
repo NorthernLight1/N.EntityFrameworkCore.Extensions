@@ -12,6 +12,12 @@ public class BulkMergeOptions<T> : BulkOptions
     public Expression<Func<T, object>> IgnoreColumnsOnUpdate { get; set; }
     public bool AutoMapOutput { get; set; }
     internal bool DeleteIfNotMatched { get; set; }
+    public bool IncludeGraph { get; set; }
+    public Expression<Func<T, object>> InputColumnsOnInsert { get; set; }
+    public Expression<Func<T, object>> InputColumnsOnUpdate { get; set; }
+    internal bool UseNativeUpsert => false;
+    /// <summary>When set with DeleteIfNotMatched, performs UPDATE instead of DELETE on unmatched rows.</summary>
+    public Expression<Func<T, object>> SoftDeleteColumns { get; set; }
 
     public BulkMergeOptions()
     {

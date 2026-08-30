@@ -18,4 +18,3 @@ public class TableExists : DatabaseExtensionsBase
         Assert.IsTrue(!orderNewTableExists, "Orders_New table should not exist");
     }
 }
-

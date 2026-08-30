@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="bc0e57d8-ca7a-4b40-83fa-ef2e5e4994d7" name="ttsch@TIMO-PC 2026-08-27 11:36:38" runUser="TIMO-PC\ttsch" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-08-27T11:36:39.0106926-04:00" queuing="2026-08-27T11:36:39.0106930-04:00" start="2026-08-27T11:36:31.2304695-04:00" finish="2026-08-27T11:36:41.7325405-04:00" />
+  <TestSettings name="default" id="0e9ab80b-827b-4fbb-b2a5-f5aabeffb19c">
+    <Deployment runDeploymentRoot="ttsch_TIMO-PC_2026-08-27_11_36_38" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="5596e010-0e99-4a1b-8930-afcd4217f4d4" testId="1fac3d60-850e-842f-8939-ba1097657586" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.3829894" startTime="2026-08-27T11:36:39.2671886-04:00" endTime="2026-08-27T11:36:39.6545977-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5596e010-0e99-4a1b-8930-afcd4217f4d4" />
+    <UnitTestResult executionId="14ff7ed0-d552-4022-b607-b981e17489d0" testId="1952e718-4417-803d-b08e-710307d15da1" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:06.3908626" startTime="2026-08-27T11:36:32.5166559-04:00" endTime="2026-08-27T11:36:38.9521556-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="14ff7ed0-d552-4022-b607-b981e17489d0">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\DbContextExtensions\BulkInsert.cs:line 416&#xD;
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)&#xD;
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="16d29211-b26a-4027-8997-837f60b4678c" testId="19e6b7f0-1400-8212-b45e-faef6ead71f7" testName="With_IncludeGraph" computerName="TIMO-PC" duration="00:00:00.0562194" startTime="2026-08-27T11:36:41.5328048-04:00" endTime="2026-08-27T11:36:41.5927716-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="16d29211-b26a-4027-8997-837f60b4678c" />
+    <UnitTestResult executionId="94407296-f2bb-43cb-bb1f-e84066df4bd6" testId="19fac6c8-e3a0-8da4-bc19-58a7687bc219" testName="With_Options_InsertOnCondition" computerName="TIMO-PC" duration="00:00:01.8772322" startTime="2026-08-27T11:36:39.6551088-04:00" endTime="2026-08-27T11:36:41.5327181-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="94407296-f2bb-43cb-bb1f-e84066df4bd6">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;100&gt;. Actual:&lt;150&gt;. 'expected' expression: '100', 'actual' expression: 'rowsInserted'. Only rows that do not match InsertOnCondition should insert</Message>
+          <StackTrace>   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 665&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 492&#xD;
+   at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:line 405&#xD;
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_Options_InsertOnCondition() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\DbContextExtensions\BulkInsertAsync.cs:line 458&#xD;
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="3293f4ef-4584-4cba-a867-7e5dfba2c995" testId="1886d3e7-d547-84de-9f59-7c6577f9c3b9" testName="With_Client_Guid_PrimaryKey" computerName="TIMO-PC" duration="00:00:00.2857749" startTime="2026-08-27T11:36:38.9800903-04:00" endTime="2026-08-27T11:36:39.2664293-04:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3293f4ef-4584-4cba-a867-7e5dfba2c995" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.sqlite.test\bin\release\net10.0\n.entityframeworkcore.extensions.sqlite.test.dll" id="19fac6c8-e3a0-8da4-bc19-58a7687bc219">
+      <Execution id="94407296-f2bb-43cb-bb1f-e84066df4bd6" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Sqlite.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.sqlite.test\bin\release\net10.0\n.entityframeworkcore.extensions.sqlite.test.dll" id="1fac3d60-850e-842f-8939-ba1097657586">
+      <Execution id="5596e010-0e99-4a1b-8930-afcd4217f4d4" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Sqlite.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_Options_InsertOnCondition" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.sqlite.test\bin\release\net10.0\n.entityframeworkcore.extensions.sqlite.test.dll" id="1952e718-4417-803d-b08e-710307d15da1">
+      <Execution id="14ff7ed0-d552-4022-b607-b981e17489d0" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Sqlite.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Options_InsertOnCondition" />
+    </UnitTest>
+    <UnitTest name="With_IncludeGraph" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.sqlite.test\bin\release\net10.0\n.entityframeworkcore.extensions.sqlite.test.dll" id="19e6b7f0-1400-8212-b45e-faef6ead71f7">
+      <Execution id="16d29211-b26a-4027-8997-837f60b4678c" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Sqlite.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync" name="With_IncludeGraph" />
+    </UnitTest>
+    <UnitTest name="With_Client_Guid_PrimaryKey" storage="c:\users\ttsch\source\n.entityframeworkcore.extensions\n.entityframeworkcore.extensions.test\n.entityframeworkcore.extensions.sqlite.test\bin\release\net10.0\n.entityframeworkcore.extensions.sqlite.test.dll" id="1886d3e7-d547-84de-9f59-7c6577f9c3b9">
+      <Execution id="3293f4ef-4584-4cba-a867-7e5dfba2c995" />
+      <TestMethod codeBase="C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Sqlite.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Sqlite.Test.dll" adapterTypeName="executor://mstestadapter/v4" className="N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsert" name="With_Client_Guid_PrimaryKey" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="1fac3d60-850e-842f-8939-ba1097657586" executionId="5596e010-0e99-4a1b-8930-afcd4217f4d4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1952e718-4417-803d-b08e-710307d15da1" executionId="14ff7ed0-d552-4022-b607-b981e17489d0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="19e6b7f0-1400-8212-b45e-faef6ead71f7" executionId="16d29211-b26a-4027-8997-837f60b4678c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="19fac6c8-e3a0-8da4-bc19-58a7687bc219" executionId="94407296-f2bb-43cb-bb1f-e84066df4bd6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1886d3e7-d547-84de-9f59-7c6577f9c3b9" executionId="3293f4ef-4584-4cba-a867-7e5dfba2c995" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="5" executed="5" passed="3" failed="2" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

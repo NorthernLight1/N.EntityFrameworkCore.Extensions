@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -95,13 +95,10 @@ public static class DatabaseFacadeExtensions
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS SIGNED) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        // MySQL TEMPORARY tables do not cause implicit transaction commits (unlike regular DDL tables)
-        string createKeyword = database.IsMySql() && isTemporary ? "CREATE TEMPORARY TABLE" : "CREATE TABLE";
-        string sql = database.IsMySql()
-            ? $"{createKeyword} {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
-            : database.IsPostgreSql()
-                ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
-                : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
+        if (!database.IsMySql())
+            throw new InvalidOperationException("CloneTable requires a MySQL database.");
+        string createKeyword = isTemporary ? "CREATE TEMPORARY TABLE" : "CREATE TABLE";
+        string sql = $"{createKeyword} {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0";
         return database.ExecuteSqlInternal(sql);
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
@@ -137,18 +134,6 @@ public static class DatabaseFacadeExtensions
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return command.ExecuteScalar();
-    }
-    internal static void ToggleIdentityInsert(this DatabaseFacade database, string tableName, bool enable)
-    {
-        if (database.IsPostgreSql() || database.IsMySql())
-            return;
-
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            database.ExecuteSql($"SET IDENTITY_INSERT {tableName} {boolString}");
-        }
     }
     internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
     {

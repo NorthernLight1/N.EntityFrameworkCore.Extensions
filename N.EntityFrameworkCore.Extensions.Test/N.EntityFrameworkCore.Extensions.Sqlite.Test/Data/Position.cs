@@ -6,4 +6,3 @@ public class Position
     public int Aisle;
     public int Bay;
 }
-

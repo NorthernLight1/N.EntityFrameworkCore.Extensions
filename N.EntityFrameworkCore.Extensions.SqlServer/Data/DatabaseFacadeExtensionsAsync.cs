@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,14 +66,5 @@ public static class DatabaseFacadeExtensionsAsync
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return await command.ExecuteScalarAsync(cancellationToken);
-    }
-    internal static async Task ToggleIdentityInsertAsync(this DatabaseFacade database, string tableName, bool enable)
-    {
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            await database.ExecuteSqlAsync($"SET IDENTITY_INSERT {tableName} {boolString}", database.GetCommandTimeout());
-        }
     }
 }

@@ -60,6 +60,16 @@ public class BulkInsert : DbContextExtensionsBase
 
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+
+        dbContext.ChangeTracker.Clear();
+        var saved = dbContext.OrdersWithComplexType.OrderBy(o => o.Id).ToList();
+        Assert.AreEqual(orders.Count, saved.Count - oldTotal);
+        var first = saved.First(o => o.ShippingAddress.Line1 == "123 Main St, 1");
+        Assert.AreEqual("Atlanta", first.ShippingAddress.City);
+        Assert.AreEqual("456 Oak St, 1", first.BillingAddress.Line1);
+        var last = saved.First(o => o.ShippingAddress.Line1 == "123 Main St, 999");
+        Assert.AreEqual("Atlanta", last.ShippingAddress.City);
+        Assert.AreEqual("456 Oak St, 999", last.BillingAddress.Line1);
     }
     [TestMethod]
     public void With_Default_Options()
@@ -314,6 +324,26 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(allIdentityFieldsMatch, "The identities between the source and the database should match.");
     }
+    [DoNotParallelize]
+    [TestMethod]
+    public void With_KeepIdentity_Under_Transaction()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order>();
+        for (int i = 1; i <= 500; i++)
+            orders.Add(new Order { Id = i, Price = 2.22M, ExternalId = $"ki-{i}" });
+
+        int oldTotal = dbContext.Orders.Count();
+        using (var transaction = dbContext.Database.BeginTransaction())
+        {
+            int rowsInserted = dbContext.BulkInsert(orders, o => o.KeepIdentity = true);
+            Assert.AreEqual(500, rowsInserted);
+            Assert.AreEqual(oldTotal + 500, dbContext.Orders.Count());
+            transaction.Rollback();
+        }
+        Assert.AreEqual(oldTotal, dbContext.Orders.Count(),
+            "KeepIdentity must not commit the ambient transaction (ALTER TABLE AUTO_INCREMENT must not auto-commit)");
+    }
     [TestMethod]
     public void With_Schema()
     {
@@ -382,6 +412,33 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == expectedRowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public void With_Options_InsertOnCondition()
+    {
+        var dbContext = SetupDbContext(true);
+        var existing = dbContext.Orders.Where(o => o.ExternalId != null).OrderBy(o => o.Id).Take(50).ToList();
+        Assert.IsTrue(existing.Count > 0);
+
+        long maxId = dbContext.Orders.Max(o => o.Id);
+        var toInsert = new List<Order>();
+        // Reuse existing ExternalIds (should be skipped) + new ExternalIds (should insert)
+        foreach (var order in existing)
+            toInsert.Add(new Order { Id = maxId + order.Id + 1, ExternalId = order.ExternalId, Price = 9.99M });
+        for (int i = 0; i < 100; i++)
+            toInsert.Add(new Order { Id = maxId + 100000 + i, ExternalId = $"insert-on-{i}", Price = 9.99M });
+
+        int oldTotal = dbContext.Orders.Count(o => o.Price == 9.99M);
+        int rowsInserted = dbContext.BulkInsert(toInsert, o =>
+        {
+            o.InsertIfNotExists = true;
+            o.InsertOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.KeepIdentity = true;
+        });
+        int newTotal = dbContext.Orders.Count(o => o.Price == 9.99M);
+
+        Assert.AreEqual(100, rowsInserted, "Only rows that do not match InsertOnCondition should insert");
+        Assert.AreEqual(100, newTotal - oldTotal);
+    }
+    [TestMethod]
     public void With_Proxy_Type()
     {
         var dbContext = SetupDbContext(false);
@@ -429,7 +486,7 @@ public class BulkInsert : DbContextExtensionsBase
         var orders = new List<Order>();
         for (int i = 0; i < 20000; i++)
         {
-            orders.Add(new Order { Id = i, Price = 1.57M });
+            orders.Add(new Order { Id = i, Price = 1.57M, DbActive = true, DbAddedDateTime = nowDateTime.AddSeconds(1) });
         }
         int oldTotal = dbContext.Orders.Where(o => o.Price <= 10).Count();
         int rowsInserted = dbContext.BulkInsert(orders);
@@ -454,5 +511,105 @@ public class BulkInsert : DbContextExtensionsBase
 
         Assert.IsTrue(rowsInserted == orders.Count, "The number of rows inserted must match the count of order list");
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+    }
+    [TestMethod]
+    public void With_Client_Guid_PrimaryKey()
+    {
+        var dbContext = SetupDbContext(false);
+        var id1 = Guid.NewGuid();
+        var id2 = Guid.NewGuid();
+        var entities = new List<GuidKeyEntity>
+        {
+            new GuidKeyEntity { Id = id1, Name = "One" },
+            new GuidKeyEntity { Id = id2, Name = "Two" }
+        };
+
+        // No KeepIdentity — client Guid PKs without SQL defaults must still be inserted (#82/#65)
+        int rowsInserted = dbContext.BulkInsert(entities);
+        dbContext.ChangeTracker.Clear();
+        var saved = dbContext.GuidKeyEntities.OrderBy(e => e.Name).ToList();
+
+        Assert.AreEqual(2, rowsInserted);
+        Assert.AreEqual(2, saved.Count);
+        Assert.AreEqual(id1, saved[0].Id);
+        Assert.AreEqual(id2, saved[1].Id);
+    }
+    [TestMethod]
+    public void With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blogs = new List<Blog>
+        {
+            new Blog
+            {
+                Title = "Graph Blog 1",
+                Posts =
+                [
+                    new BlogPost { Title = "Post A" },
+                    new BlogPost { Title = "Post B" }
+                ]
+            },
+            new Blog
+            {
+                Title = "Graph Blog 2",
+                Posts =
+                [
+                    new BlogPost { Title = "Post C" }
+                ]
+            }
+        };
+
+        int rowsInserted = dbContext.BulkInsert(blogs, options =>
+        {
+            options.IncludeGraph = true;
+            options.AutoMapOutput = true;
+        });
+
+        var savedBlogs = dbContext.Blogs.Include(b => b.Posts).OrderBy(b => b.Id).ToList();
+        Assert.AreEqual(2, savedBlogs.Count, "Both blogs should be inserted");
+        Assert.AreEqual(3, dbContext.BlogPosts.Count(), "All related posts should be inserted");
+        Assert.IsTrue(savedBlogs.All(b => b.Id > 0), "Blog identity values should be mapped back");
+        Assert.IsTrue(savedBlogs.SelectMany(b => b.Posts).All(p => p.BlogId > 0 && p.Id > 0),
+            "Posts should receive foreign keys from inserted blogs and have their own identity values");
+        Assert.AreEqual(2, savedBlogs[0].Posts.Count);
+        Assert.AreEqual(1, savedBlogs[1].Posts.Count);
+        Assert.IsTrue(rowsInserted >= 5, "Rows affected should include blogs and posts");
+    }
+
+    [TestMethod]
+    public void With_OwnedType()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<OrderWithOwnedDetail>
+        {
+            new() { Price = 9.99M, Detail = new OwnedDetail { City = "Seattle", Region = "WA" } }
+        };
+        int rows = dbContext.BulkInsert(orders, o => o.AutoMapOutput = true);
+        Assert.AreEqual(1, rows);
+        var saved = dbContext.OrdersWithOwnedDetail.First();
+        Assert.AreEqual("Seattle", saved.Detail.City);
+    }
+
+    [TestMethod]
+    public void With_DefaultValue_Columns_Explicit_Values()
+    {
+        var dbContext = SetupDbContext(false);
+        var explicitAdded = new DateTime(2022, 1, 1, 8, 30, 0);
+        var orders = new List<Order>
+        {
+            new Order { Id = 990001, Price = 3.25M, DbActive = false, DbAddedDateTime = explicitAdded },
+            new Order { Id = 990002, Price = 4.50M, DbActive = true, DbAddedDateTime = explicitAdded }
+        };
+
+        int rowsInserted = dbContext.BulkInsert(orders, o => o.KeepIdentity = true);
+        dbContext.ChangeTracker.Clear();
+        var saved = dbContext.Orders.Where(o => o.Id == 990001 || o.Id == 990002).OrderBy(o => o.Id).ToList();
+
+        Assert.AreEqual(2, rowsInserted);
+        Assert.AreEqual(2, saved.Count);
+        Assert.IsFalse(saved[0].DbActive, "Explicit false must be inserted even when the column has a SQL default (#86)");
+        Assert.IsTrue(saved[1].DbActive);
+        Assert.AreEqual(explicitAdded, saved[0].DbAddedDateTime, "Explicit DateTime must be inserted even with database default (#83)");
+        Assert.AreEqual(explicitAdded, saved[1].DbAddedDateTime);
     }
 }

@@ -103,18 +103,10 @@ public static class DatabaseFacadeExtensions
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS INTEGER) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        string sql;
-        if (database.IsSqliteProvider())
-        {
-            string createKeyword = destinationTable.StartsWith("main.", StringComparison.OrdinalIgnoreCase) ? "CREATE TABLE" : "CREATE TEMP TABLE";
-            sql = $"{createKeyword} {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0";
-        }
-        else
-        {
-            sql = database.IsPostgreSql()
-                ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
-                : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
-        }
+        if (!database.IsSqliteProvider())
+            throw new InvalidOperationException("CloneTable requires a SQLite database.");
+        string createKeyword = destinationTable.StartsWith("main.", StringComparison.OrdinalIgnoreCase) ? "CREATE TABLE" : "CREATE TEMP TABLE";
+        string sql = $"{createKeyword} {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0";
         return database.ExecuteSqlRaw(sql);
     }
     internal static DbCommand CreateCommand(this DatabaseFacade database, ConnectionBehavior connectionBehavior = ConnectionBehavior.Default)
@@ -151,18 +143,6 @@ public static class DatabaseFacadeExtensions
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return command.ExecuteScalar();
-    }
-    internal static void ToggleIdentityInsert(this DatabaseFacade database, string tableName, bool enable)
-    {
-        if (database.IsPostgreSql() || database.IsSqliteProvider())
-            return;
-
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            database.ExecuteSql($"SET IDENTITY_INSERT {tableName} {boolString}");
-        }
     }
     internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
     {

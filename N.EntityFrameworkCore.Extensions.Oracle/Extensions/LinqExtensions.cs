@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -16,26 +16,17 @@ internal static class LinqExtensions
     internal static List<string> GetObjectProperties<T>(this Expression<Func<T, object>> expression)
     {
         if (expression == null)
-        {
             return [];
-        }
-        else if (expression.Body is MemberExpression propertyExpression)
+
+        return UnwrapConvert(expression.Body) switch
         {
-            return [propertyExpression.Member.Name];
-        }
-        else if (expression.Body is NewExpression newExpression)
-        {
-            return newExpression.Members.Select(o => o.Name).ToList();
-        }
-        else if ((expression.Body is UnaryExpression unaryExpression) && (unaryExpression.Operand.GetPrivateFieldValue("Member") is PropertyInfo propertyInfo))
-        {
-            return [propertyInfo.Name];
-        }
-        else
-        {
-            throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type");
-        }
+            MemberExpression memberExpression => [memberExpression.Member.Name],
+            NewExpression newExpression when newExpression.Members != null => newExpression.Members.Select(o => o.Name).ToList(),
+            MemberInitExpression memberInitExpression => memberInitExpression.Bindings.OfType<MemberAssignment>().Select(b => b.Member.Name).ToList(),
+            _ => throw new InvalidOperationException("GetObjectProperties() encountered an unsupported expression type")
+        };
     }
+
     internal static string ToSql(this ExpressionType expressionType) => expressionType switch
     {
         ExpressionType.AndAlso => "AND",
@@ -49,198 +40,287 @@ internal static class LinqExtensions
         _ => string.Empty
     };
 
-    internal static string ToSql(this MemberBinding binding)
+    internal static string ToSql(this MemberBinding binding) => binding switch
     {
-        if (binding is MemberAssignment memberAssingment)
-        {
-            return GetExpressionValueAsString(memberAssingment.Expression);
-        }
-        else
-        {
-            throw new NotSupportedException();
-        }
-    }
-    internal static string ToSql(this Expression expression)
-    {
-        var sb = new StringBuilder();
-        if (expression is BinaryExpression binaryExpression)
-        {
-            sb.Append(binaryExpression.Left.ToSql());
-            sb.Append($" {expression.NodeType.ToSql()} ");
-            sb.Append(binaryExpression.Right.ToSql());
-        }
-        else if (expression is MemberExpression memberExpression)
-        {
-            return $"{memberExpression}";
-        }
-        else if (expression is UnaryExpression unaryExpression)
-        {
-            return $"{unaryExpression.Operand}";
-        }
-        return sb.ToString();
-    }
-    internal static string GetExpressionValueAsString(Expression expression)
-    {
-        if (expression is ConstantExpression constantExpression)
-        {
-            return ConvertToSqlValue(constantExpression.Value);
-        }
-        else if (expression is MemberExpression memberExpression)
-        {
-            if (memberExpression.Expression is ParameterExpression parameterExpression)
-            {
-                return memberExpression.ToString();
-            }
-            else
-            {
-                return ConvertToSqlValue(Expression.Lambda(expression).Compile().DynamicInvoke());
-            }
-        }
-        else if (expression.NodeType == ExpressionType.Convert)
-        {
-            return ConvertToSqlValue(Expression.Lambda(expression).Compile().DynamicInvoke());
-        }
-        else if (expression.NodeType == ExpressionType.Call)
-        {
-            var methodCallExpression = expression as MethodCallExpression;
-            List<string> argValues = [];
-            foreach (var argument in methodCallExpression.Arguments)
-            {
-                argValues.Add(GetExpressionValueAsString(argument));
-            }
-            return methodCallExpression.Method.Name switch
-            {
-                "ToString" => $"CONVERT(VARCHAR,{argValues[0]})",
-                _ => $"{methodCallExpression.Method.Name}({string.Join(",", argValues)})"
-            };
-        }
-        else
-        {
-            var binaryExpression = expression as BinaryExpression;
-            string leftValue = GetExpressionValueAsString(binaryExpression.Left);
-            string rightValue = GetExpressionValueAsString(binaryExpression.Right);
-            string joinValue = expression.NodeType.ToSql();
+        MemberAssignment memberAssignment => GetExpressionValueAsString(memberAssignment.Expression),
+        _ => throw new NotSupportedException()
+    };
 
-            return $"({leftValue} {joinValue} {rightValue})";
-        }
-    }
-    internal static string ToSqlPredicate2<T>(this Expression<T> expression, params string[] parameters)
+    internal static string GetExpressionValueAsString(Expression expression) => expression switch
     {
-        var sql = ToSqlString(expression.Body);
+        ConstantExpression constantExpression => ConvertToSqlValue(constantExpression.Value),
+        MemberExpression { Expression: ParameterExpression } memberExpression => memberExpression.ToString(),
+        MemberExpression => ConvertToSqlValue(Expression.Lambda(expression).Compile().DynamicInvoke()),
+        { NodeType: ExpressionType.Convert } => ConvertToSqlValue(Expression.Lambda(expression).Compile().DynamicInvoke()),
+        MethodCallExpression methodCallExpression => FormatMethodCallExpression(methodCallExpression),
+        BinaryExpression binaryExpression => FormatBinaryExpression(binaryExpression),
+        _ => throw new NotSupportedException($"Unsupported expression type: {expression.NodeType}")
+    };
 
-        for (var i = 0; i < parameters.Length; i++)
-            sql = sql.Replace($"${expression.Parameters[i].Name!}.", $"{parameters[i]}.");
-
-        return sql;
-    }
     internal static string ToSqlPredicate<T>(this Expression<T> expression, params string[] parameters)
     {
-        var expressionBody = (string)expression.Body.GetPrivateFieldValue("DebugView");
-        expressionBody = expressionBody.Replace(System.Environment.NewLine, " ");
-        var stringBuilder = new StringBuilder(expressionBody);
+        var paramMap = new Dictionary<ParameterExpression, string>();
+        for (int i = 0; i < expression.Parameters.Count && i < parameters.Length; i++)
+            paramMap[expression.Parameters[i]] = parameters[i];
 
-        int i = 0;
-        foreach (var expressionParam in expression.Parameters)
-        {
-            if (parameters.Length <= i) break;
-            stringBuilder.Replace((string)expressionParam.GetPrivateFieldValue("DebugView"), parameters[i]);
-            i++;
-        }
-        stringBuilder.Replace("== null", "IS NULL");
-        stringBuilder.Replace("!= null", "IS NOT NULL");
-        stringBuilder.Replace("&&", "AND");
-        stringBuilder.Replace("==", "=");
-        stringBuilder.Replace("||", "OR");
-        stringBuilder.Replace("(System.Nullable`1[System.Int32])", "");
-        stringBuilder.Replace("(System.Int32)", "");
-        return stringBuilder.ToString();
+        return ExpressionToSqlPredicate(expression.Body, paramMap);
     }
+
     internal static string ToSqlPredicate<T>(this Expression<T> expression, DbContext dbContext, params string[] parameters)
     {
         string predicate = expression.ToSqlPredicate(parameters);
         return DelimitMemberAccess(dbContext, predicate);
     }
+
+    internal static IEnumerable<string> GetPredicatePropertyNames<T>(this Expression<Func<T, T, bool>> expression)
+    {
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (expression?.Body != null)
+            CollectPredicatePropertyNames(expression.Body, columns);
+        return columns;
+    }
+
+    private static void CollectPredicatePropertyNames(Expression expression, HashSet<string> columns)
+    {
+        expression = UnwrapConvert(expression);
+        switch (expression)
+        {
+            case BinaryExpression binary:
+                CollectPredicatePropertyNames(binary.Left, columns);
+                CollectPredicatePropertyNames(binary.Right, columns);
+                break;
+            case MemberExpression member:
+                columns.Add(member.Member.Name);
+                break;
+            case UnaryExpression { NodeType: ExpressionType.Not } unary:
+                CollectPredicatePropertyNames(unary.Operand, columns);
+                break;
+        }
+    }
+
+    private static string ExpressionToSqlPredicate(Expression expression, IReadOnlyDictionary<ParameterExpression, string> paramMap)
+    {
+        expression = UnwrapConvert(expression);
+        return expression switch
+        {
+            BinaryExpression binary => BinaryExpressionToSqlPredicate(binary, paramMap),
+            MemberExpression member => MemberExpressionToSqlPredicate(member, paramMap),
+            ConstantExpression { Value: null } => "NULL",
+            ConstantExpression constant => ConvertToSqlValue(constant.Value),
+            MethodCallExpression method when IsEqualsMethod(method) => EqualsMethodToSqlPredicate(method, paramMap),
+            UnaryExpression { NodeType: ExpressionType.Not } unary =>
+                $"NOT ({ExpressionToSqlPredicate(unary.Operand, paramMap)})",
+            _ => throw new NotSupportedException($"Unsupported expression type in ToSqlPredicate: {expression.NodeType}")
+        };
+    }
+
+    private static string MemberExpressionToSqlPredicate(MemberExpression member, IReadOnlyDictionary<ParameterExpression, string> paramMap)
+    {
+        var segments = new Stack<string>();
+        Expression current = member;
+        while (current is MemberExpression memberExpression)
+        {
+            segments.Push(memberExpression.Member.Name);
+            current = memberExpression.Expression;
+        }
+
+        if (current is not ParameterExpression parameter)
+            throw new NotSupportedException($"Unsupported member expression in ToSqlPredicate: {member}");
+
+        return $"{paramMap[parameter]}.{string.Join('.', segments)}";
+    }
+
+    private static bool IsEqualsMethod(MethodCallExpression method) =>
+        (method.Method.Name == nameof(object.Equals) && method.Method.DeclaringType == typeof(object))
+        || (method.Method.Name == nameof(string.Equals) && method.Method.DeclaringType == typeof(string));
+
+    private static string EqualsMethodToSqlPredicate(MethodCallExpression method, IReadOnlyDictionary<ParameterExpression, string> paramMap)
+    {
+        Expression left = method.Object ?? method.Arguments[0];
+        Expression right = method.Object != null ? method.Arguments[0] : method.Arguments[1];
+
+        if (IsNullConstant(right))
+            return $"{ExpressionToSqlPredicate(left, paramMap)} IS NULL";
+        if (IsNullConstant(left))
+            return $"{ExpressionToSqlPredicate(right, paramMap)} IS NULL";
+
+        string leftSql = ExpressionToSqlPredicate(left, paramMap);
+        string rightSql = ExpressionToSqlPredicate(right, paramMap);
+        if (IsNullableEquality(left, right))
+            return $"({leftSql} = {rightSql} OR ({leftSql} IS NULL AND {rightSql} IS NULL))";
+        return $"{leftSql} = {rightSql}";
+    }
+
+    private static string BinaryExpressionToSqlPredicate(BinaryExpression binary, IReadOnlyDictionary<ParameterExpression, string> paramMap)
+    {
+        if (binary.NodeType == ExpressionType.Equal)
+        {
+            if (IsNullConstant(binary.Right))
+                return $"{ExpressionToSqlPredicate(binary.Left, paramMap)} IS NULL";
+            if (IsNullConstant(binary.Left))
+                return $"{ExpressionToSqlPredicate(binary.Right, paramMap)} IS NULL";
+
+            string left = ExpressionToSqlPredicate(binary.Left, paramMap);
+            string right = ExpressionToSqlPredicate(binary.Right, paramMap);
+            if (IsNullableEquality(binary.Left, binary.Right))
+                return $"({left} = {right} OR ({left} IS NULL AND {right} IS NULL))";
+            return $"{left} = {right}";
+        }
+
+        if (binary.NodeType == ExpressionType.NotEqual)
+        {
+            if (IsNullConstant(binary.Right))
+                return $"{ExpressionToSqlPredicate(binary.Left, paramMap)} IS NOT NULL";
+            if (IsNullConstant(binary.Left))
+                return $"{ExpressionToSqlPredicate(binary.Right, paramMap)} IS NOT NULL";
+        }
+
+        string leftSql = ExpressionToSqlPredicate(binary.Left, paramMap);
+        string rightSql = ExpressionToSqlPredicate(binary.Right, paramMap);
+        string op = binary.NodeType switch
+        {
+            ExpressionType.AndAlso => "AND",
+            ExpressionType.OrElse => "OR",
+            ExpressionType.NotEqual => "<>",
+            ExpressionType.GreaterThan => ">",
+            ExpressionType.GreaterThanOrEqual => ">=",
+            ExpressionType.LessThan => "<",
+            ExpressionType.LessThanOrEqual => "<=",
+            _ => binary.NodeType.ToSql()
+        };
+
+        bool wrapLeft = binary.NodeType is ExpressionType.AndAlso && NeedsParenthesesForAnd(binary.Left);
+        bool wrapRight = binary.NodeType is ExpressionType.AndAlso && NeedsParenthesesForAnd(binary.Right);
+        if (wrapLeft) leftSql = $"({leftSql})";
+        if (wrapRight) rightSql = $"({rightSql})";
+        return $"{leftSql} {op} {rightSql}";
+    }
+
+    private static bool NeedsParenthesesForAnd(Expression expression)
+    {
+        expression = UnwrapConvert(expression);
+        return expression is BinaryExpression { NodeType: ExpressionType.OrElse };
+    }
+
+    private static bool IsNullableEquality(Expression left, Expression right)
+    {
+        left = UnwrapConvert(left);
+        right = UnwrapConvert(right);
+        return IsNullableExpressionType(left) || IsNullableExpressionType(right);
+    }
+
+    private static bool IsNullableExpressionType(Expression expression)
+    {
+        expression = UnwrapConvert(expression);
+        Type type = expression.Type;
+        return !type.IsValueType || Nullable.GetUnderlyingType(type) != null;
+    }
+
+    private static bool IsNullConstant(Expression expression)
+    {
+        expression = UnwrapConvert(expression);
+        return expression is ConstantExpression { Value: null };
+    }
+
+    private static Expression UnwrapConvert(Expression expression)
+    {
+        while (expression is UnaryExpression { NodeType: ExpressionType.Convert or ExpressionType.ConvertChecked or ExpressionType.Quote } unary)
+            expression = unary.Operand;
+        return expression;
+    }
+
     internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, string tableName)
     {
-        List<string> setValues = [];
-        var memberInitExpression = expression.Body as MemberInitExpression;
+        var memberInitExpression = (MemberInitExpression)expression.Body;
+        var parameterName = expression.Parameters.First().Name;
+        var sb = new StringBuilder();
         foreach (var binding in memberInitExpression.Bindings)
         {
-            string expValue = binding.ToSql();
-            expValue = expValue.Replace($"{expression.Parameters.First().Name}.", "");
-            setValues.Add($"[{binding.Member.Name}]={expValue}");
+            if (sb.Length > 0)
+                sb.Append(',');
+            string expValue = binding.ToSql().Replace($"{parameterName}.", "");
+            sb.Append('"').Append(binding.Member.Name).Append("\"=").Append(expValue);
         }
-        return string.Join(",", setValues);
+        return sb.ToString();
     }
+
     internal static string ToSqlUpdateSetExpression<T>(this Expression<T> expression, DbContext dbContext, string tableName)
     {
-        List<string> setValues = [];
-        var memberInitExpression = expression.Body as MemberInitExpression;
+        var memberInitExpression = (MemberInitExpression)expression.Body;
+        var parameterName = expression.Parameters.First().Name;
+        var sb = new StringBuilder();
         foreach (var binding in memberInitExpression.Bindings)
         {
-            string expValue = binding.ToSql();
-            expValue = expValue.Replace($"{expression.Parameters.First().Name}.", "");
+            if (sb.Length > 0)
+                sb.Append(',');
+            string expValue = binding.ToSql().Replace($"{parameterName}.", "");
             expValue = DelimitMemberAccess(dbContext, expValue);
-            setValues.Add($"{dbContext.DelimitIdentifier(binding.Member.Name)}={expValue}");
+            sb.Append(dbContext.DelimitIdentifier(binding.Member.Name)).Append('=').Append(expValue);
         }
-        return string.Join(",", setValues);
+        return sb.ToString();
     }
-    private static string ToSqlString(Expression expression, string sql = null)
+
+    internal static string ToSqlConstantUpdateSetExpression<T>(this Expression<Func<T, object>> expression, DbContext dbContext, string tableAlias = null)
     {
-        sql ??= "";
-        if (expression is not BinaryExpression b)
-            return sql;
+        if (expression == null)
+            throw new ArgumentNullException(nameof(expression));
 
-        var sb = new StringBuilder();
-        if (b.Left is MemberExpression mel)
-            sb.Append($"${mel} = ");
-        if (b.Right is MemberExpression mer)
-            sb.Append($"${mer}");
+        string prefix = string.IsNullOrEmpty(tableAlias) ? string.Empty : $"{tableAlias}.";
 
-        if (b.Left is UnaryExpression ubl)
-            sb.Append($"${ubl.Operand} = ");
-        if (b.Right is UnaryExpression ubr)
-            sb.Append($"${ubr.Operand}");
+        if (expression.Body is MemberInitExpression)
+            return expression.ToSqlUpdateSetExpression(dbContext, tableAlias ?? "t");
 
-        if (sb.Length > 0)
-            return sb.ToString();
-
-        var left = ToSqlString(b.Left, sql);
-        if (string.IsNullOrWhiteSpace(left))
-            return sql;
-
-        var right = ToSqlString(b.Right, sql);
-        return $"{left} AND {right}";
-    }
-    private static string ConvertToSqlValue(object value)
-    {
-        if (value == null)
-            return "NULL";
-        if (value is string str)
-            return $"'{str.Replace("'", "''")}'";
-        if (value is Guid guid)
-            return $"'{guid}'";
-        if (value is bool b)
-            return b ? "1" : "0";
-        if (value is DateTime dt)
-            return $"'{dt:yyyy-MM-ddTHH:mm:ss.fffffff}'"; // Convert to ISO-8601
-        if (value is DateTimeOffset dto)
-            return $"'{dto:yyyy-MM-ddTHH:mm:ss.fffffffzzzz}'"; // Convert to ISO-8601
-        var valueType = value.GetType();
-        if (valueType.IsEnum)
-            return Convert.ToString((int)value);
-        if (!valueType.IsClass)
-            return Convert.ToString(value, CultureInfo.InvariantCulture);
-
-        throw new NotImplementedException("Unhandled data type.");
-    }
-    private static string DelimitMemberAccess(DbContext dbContext, string expression)
-    {
-        return Regex.Replace(expression, @"(?<![""\]\w])([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)", match =>
+        if (expression.Body is NewExpression newExpression)
         {
-            string alias = match.Groups[1].Value;
-            string member = match.Groups[2].Value;
-            return dbContext.DelimitMemberAccess(alias, member);
-        });
+            var sb = new StringBuilder();
+            for (int i = 0; i < newExpression.Members.Count; i++)
+            {
+                if (sb.Length > 0)
+                    sb.Append(',');
+                string colName = newExpression.Members[i].Name;
+                string value = GetExpressionValueAsString(newExpression.Arguments[i]);
+                sb.Append(prefix).Append(dbContext.DelimitIdentifier(colName)).Append('=').Append(value);
+            }
+            return sb.ToString();
+        }
+
+        throw new InvalidOperationException("SoftDeleteColumns expression must be a MemberInit or NewExpression with constant values.");
     }
+
+    private static string FormatMethodCallExpression(MethodCallExpression methodCallExpression)
+    {
+        var argValues = methodCallExpression.Arguments.Select(GetExpressionValueAsString).ToArray();
+        return methodCallExpression.Method.Name switch
+        {
+            "ToString" => $"TO_CHAR({argValues[0]})",
+            _ => $"{methodCallExpression.Method.Name}({string.Join(",", argValues)})"
+        };
+    }
+
+    private static string FormatBinaryExpression(BinaryExpression binaryExpression)
+    {
+        string leftValue = GetExpressionValueAsString(binaryExpression.Left);
+        string rightValue = GetExpressionValueAsString(binaryExpression.Right);
+        return $"({leftValue} {binaryExpression.NodeType.ToSql()} {rightValue})";
+    }
+
+    private static string ConvertToSqlValue(object value) => value switch
+    {
+        null => "NULL",
+        string str => $"'{str.Replace("'", "''")}'",
+        Guid guid => $"'{guid}'",
+        bool b => b ? "1" : "0",
+        DateTime dt => $"'{dt:yyyy-MM-ddTHH:mm:ss.fffffff}'",
+        DateTimeOffset dto => $"'{dto:yyyy-MM-ddTHH:mm:ss.fffffffzzzz}'",
+        _ when value.GetType().IsEnum => Convert.ToString((int)value),
+        _ when !value.GetType().IsClass => Convert.ToString(value, CultureInfo.InvariantCulture),
+        _ => throw new NotImplementedException("Unhandled data type.")
+    };
+
+    private static string DelimitMemberAccess(DbContext dbContext, string expression) =>
+        Regex.Replace(expression, @"(?<![""\]\w])([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*))+", match =>
+        {
+            var parts = match.Value.Split('.');
+            return string.Join(".", parts.Select((part, index) => index == 0 ? part : dbContext.DelimitIdentifier(part)));
+        });
 }

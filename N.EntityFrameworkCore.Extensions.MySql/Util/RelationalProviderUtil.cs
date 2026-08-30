@@ -123,6 +123,9 @@ internal static class RelationalProviderUtil
         ((IInfrastructure<IServiceProvider>)database).Instance.GetService(typeof(ISqlGenerationHelper)) as ISqlGenerationHelper
         ?? throw new InvalidOperationException("Unable to resolve ISqlGenerationHelper.");
 
-    private static bool IsTemporaryName(string objectName) =>
-        UnwrapIdentifier(objectName).StartsWith("#", StringComparison.Ordinal);
+    private static bool IsTemporaryName(string objectName)
+    {
+        var unwrapped = UnwrapIdentifier(objectName);
+        return unwrapped.Length > 0 && unwrapped[0] == '#';
+    }
 }

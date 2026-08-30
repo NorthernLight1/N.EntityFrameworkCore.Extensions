@@ -1,4 +1,4 @@
-﻿namespace N.EntityFrameworkCore.Extensions;
+namespace N.EntityFrameworkCore.Extensions;
 
 internal static class SqlMergeAction
 {

@@ -18,6 +18,7 @@ public class Order
     public DateTime DbModifiedDateTime { get; set; }
     public bool? Trigger { get; set; }
     public bool Active { get; set; }
+    public bool IsDeleted { get; set; }
     public OrderStatus Status { get; set; }
     public Order()
     {
@@ -32,4 +33,3 @@ public enum OrderStatus
     Completed,
     Error
 }
-

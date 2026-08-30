@@ -275,4 +275,3 @@ public class UpdateFromQueryAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal == 0, "The new count must be 0 to indicate all records were updated");
     }
 }
-

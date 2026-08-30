@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,12 +38,10 @@ public static class DatabaseFacadeExtensionsAsync
         if (!string.IsNullOrEmpty(internalIdColumnName))
             columns = $"{columns},CAST(NULL AS SIGNED) AS {database.DelimitIdentifier(internalIdColumnName)}";
 
-        string temporaryKeyword = isTemporary && database.IsMySql() ? "TEMPORARY " : "";
-        string sql = database.IsMySql()
-            ? $"CREATE {temporaryKeyword}TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0"
-            : database.IsPostgreSql()
-                ? $"CREATE TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} LIMIT 0"
-                : $"SELECT TOP 0 {columns} INTO {destinationTable} FROM {string.Join(",", sourceTables)}";
+        if (!database.IsMySql())
+            throw new InvalidOperationException("CloneTable requires a MySQL database.");
+        string temporaryKeyword = isTemporary ? "TEMPORARY " : "";
+        string sql = $"CREATE {temporaryKeyword}TABLE {destinationTable} AS SELECT {columns} FROM {string.Join(",", sourceTables)} WHERE 1=0";
         return await database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
     internal static async Task<int> ExecuteSqlAsync(this DatabaseFacade database, string sql, int? commandTimeout = null, CancellationToken cancellationToken = default)
@@ -73,17 +72,5 @@ public static class DatabaseFacadeExtensionsAsync
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return await command.ExecuteScalarAsync(cancellationToken);
-    }
-    internal static async Task ToggleIdentityInsertAsync(this DatabaseFacade database, string tableName, bool enable)
-    {
-        if (database.IsPostgreSql() || database.IsMySql())
-            return;
-
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            await database.ExecuteSqlAsync($"SET IDENTITY_INSERT {tableName} {boolString}", database.GetCommandTimeout());
-        }
     }
 }

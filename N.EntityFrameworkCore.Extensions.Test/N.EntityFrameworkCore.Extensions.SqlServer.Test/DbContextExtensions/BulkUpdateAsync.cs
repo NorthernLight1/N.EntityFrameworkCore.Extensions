@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -182,8 +182,8 @@ public class BulkUpdateAsync : DbContextExtensionsBase
     public async Task With_Options_UpdateOnCondition()
     {
         var dbContext = SetupDbContext(true);
-        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).ToList();
-        int ordersWithExternalId = orders.Where(o => o.ExternalId != null).Count();
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M && o.ExternalId != null).OrderBy(o => o.Id).ToList();
+        int ordersWithExternalId = orders.Count;
         foreach (var order in orders)
         {
             order.Price = 2.35M;
@@ -239,5 +239,18 @@ public class BulkUpdateAsync : DbContextExtensionsBase
         Assert.IsTrue(rowsUpdated == orders.Count, "The number of rows updated must match the count of entities that were retrieved");
         Assert.IsTrue(newOrders == rowsUpdated, "The count of new orders must be equal the number of rows updated in the database.");
         Assert.IsTrue(rollbackTotal == orders.Count, "The number of rows after the transacation has been rollbacked should match the original count");
+    }
+
+    [TestMethod]
+    public async Task With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blog = new Blog { Title = "Upd Graph", Posts = [new BlogPost { Title = "Old" }] };
+        dbContext.Blogs.Add(blog);
+        await dbContext.SaveChangesAsync();
+        blog.Posts.First().Title = "New";
+        int rows = await dbContext.BulkUpdateAsync([blog], o => o.IncludeGraph = true);
+        Assert.IsTrue(rows >= 2);
+        Assert.AreEqual("New", dbContext.BlogPosts.First(p => p.BlogId == blog.Id).Title);
     }
 }

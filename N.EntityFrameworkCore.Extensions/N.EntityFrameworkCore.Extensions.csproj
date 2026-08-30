@@ -9,7 +9,8 @@
     <Authors>Northern25</Authors>
     <Copyright>Copyright © 2026</Copyright>
     <Company />
-    <Description>Meta-package that includes both N.EntityFrameworkCore.Extensions (SQL Server) and N.EntityFrameworkCore.Extensions.PostgreSql (PostgreSql). Extends your DbContext in EF Core with high-performance bulk operations: BulkDelete, BulkInsert, BulkMerge, BulkSync, BulkUpdate, Fetch, DeleteFromQuery, InsertFromQuery, UpdateFromQuery.</Description>
+    <Description>Meta-package that references all provider packages: SqlServer, PostgreSql, MySql, Sqlite, and Oracle. Prefer installing the provider-specific package for your database when you only need one provider.</Description>
+    <PackageReleaseNotes>Meta-package now references N.EntityFrameworkCore.Extensions.SqlServer, .PostgreSql, .MySql, .Sqlite, and .Oracle. Prefer installing a single provider package for new projects.</PackageReleaseNotes>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <NoWarn>NU5128</NoWarn>
@@ -18,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\README.md">
+    <None Include="README.md">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
@@ -27,6 +28,9 @@
   <ItemGroup>
     <ProjectReference Include="..\N.EntityFrameworkCore.Extensions.SqlServer\N.EntityFrameworkCore.Extensions.SqlServer.csproj" />
     <ProjectReference Include="..\N.EntityFrameworkCore.Extensions.PostgreSql\N.EntityFrameworkCore.Extensions.PostgreSql.csproj" />
+    <ProjectReference Include="..\N.EntityFrameworkCore.Extensions.MySql\N.EntityFrameworkCore.Extensions.MySql.csproj" />
+    <ProjectReference Include="..\N.EntityFrameworkCore.Extensions.Sqlite\N.EntityFrameworkCore.Extensions.Sqlite.csproj" />
+    <ProjectReference Include="..\N.EntityFrameworkCore.Extensions.Oracle\N.EntityFrameworkCore.Extensions.Oracle.csproj" />
   </ItemGroup>
 
 </Project>

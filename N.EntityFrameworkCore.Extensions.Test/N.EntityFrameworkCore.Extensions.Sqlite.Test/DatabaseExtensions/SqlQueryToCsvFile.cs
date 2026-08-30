@@ -34,5 +34,3 @@ public class SqlQueryToCsvFile : DatabaseExtensionsBase
         Assert.IsTrue(queryToCsvFileResult.TotalRowCount == count + 1, "The total number of rows written to the file should match the count from the database plus the header row");
     }
 }
-
-

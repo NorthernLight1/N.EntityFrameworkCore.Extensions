@@ -175,4 +175,3 @@ public class Fetch : DbContextExtensionsBase
         Assert.IsTrue(expectedBatchCount == batchCount, "The total number of batches fetched must match what is expected");
     }
 }
-

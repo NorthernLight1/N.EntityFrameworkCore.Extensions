@@ -23,4 +23,3 @@ public class ProductWithComplexKey
         Key4 = Guid.NewGuid();
     }
 }
-

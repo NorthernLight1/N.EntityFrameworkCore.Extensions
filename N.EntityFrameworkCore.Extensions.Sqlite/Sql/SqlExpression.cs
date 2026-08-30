@@ -68,4 +68,3 @@ internal sealed class SqlExpression
         return sbSql.ToString();
     }
 }
-

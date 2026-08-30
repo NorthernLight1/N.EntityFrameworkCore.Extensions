@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -97,15 +97,6 @@ public static class DatabaseFacadeExtensions
         if (parameters != null)
             command.Parameters.AddRange(parameters);
         return command.ExecuteScalar();
-    }
-    internal static void ToggleIdentityInsert(this DatabaseFacade database, string tableName, bool enable)
-    {
-        bool hasIdentity = database.TableHasIdentity(tableName);
-        if (hasIdentity)
-        {
-            string boolString = enable ? "ON" : "OFF";
-            database.ExecuteSql($"SET IDENTITY_INSERT {tableName} {boolString}");
-        }
     }
     internal static DbConnection GetDbConnection(this DatabaseFacade database, ConnectionBehavior connectionBehavior)
     {

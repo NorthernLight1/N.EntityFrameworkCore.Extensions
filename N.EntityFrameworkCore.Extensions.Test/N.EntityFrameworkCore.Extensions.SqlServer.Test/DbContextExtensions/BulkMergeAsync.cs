@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -38,6 +38,16 @@ public class BulkMergeAsync : DbContextExtensionsBase
                 break;
             }
         }
+        for (int i = 0; i < productsToAdd; i++)
+        {
+            var externalId = (20000 + i).ToString();
+            var added = allProducts.FirstOrDefault(p => p.ExternalId == externalId);
+            if (added == null || added.Price != 3.55M)
+            {
+                areAddedOrdersMerged = false;
+                break;
+            }
+        }
 
         Assert.IsTrue(result.RowsAffected == products.Count(), "The number of rows inserted must match the count of order list");
         Assert.IsTrue(result.RowsUpdated == productsToUpdate.Count, "The number of rows updated must match");
@@ -58,7 +68,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         }
         for (int i = 0; i < ordersToAdd; i++)
         {
-            orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
+            orders.Add(new Order { Id = 100000 + i, ExternalId = $"new-{i}", Price = 3.55M });
         }
         var result = await dbContext.BulkMergeAsync(orders);
         var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
@@ -72,7 +82,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
                 break;
             }
         }
-        foreach (var newOrder in newOrders.Where(o => o.Id >= 500000).OrderBy(o => o.Id))
+        foreach (var newOrder in newOrders.Where(o => o.Id >= 100000).OrderBy(o => o.Id))
         {
             if (newOrder.Price != 3.55M)
             {
@@ -190,7 +200,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         }
         for (int i = 0; i < ordersToAdd; i++)
         {
-            orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
+            orders.Add(new Order { Id = 100000 + i, ExternalId = $"new-{i}", Price = 3.55M });
         }
         var result = await dbContext.BulkMergeAsync(orders, options => { options.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId; options.BatchSize = 1000; });
         var newOrders = dbContext.Orders.OrderBy(o => o.Id).ToList();
@@ -204,7 +214,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
                 break;
             }
         }
-        foreach (var newOrder in newOrders.Where(o => o.Id >= 500000).OrderBy(o => o.Id))
+        foreach (var newOrder in newOrders.Where(o => o.Id >= 100000).OrderBy(o => o.Id))
         {
             if (newOrder.Price != 3.55M)
             {
@@ -334,7 +344,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         }
         for (int i = 0; i < ordersToAdd; i++)
         {
-            orders.Add(new Order { Id = 100000 + i, Price = 3.55M });
+            orders.Add(new Order { Id = 100000 + i, ExternalId = $"new-{i}", Price = 3.55M });
         }
         BulkMergeResult<Order> result;
         using (var transaction = dbContext.Database.BeginTransaction())
@@ -359,7 +369,7 @@ public class BulkMergeAsync : DbContextExtensionsBase
         var orders = new List<Order>();
         for (int i = 0; i < 1000; i++)
         {
-            orders.Add(new Order { Id = i, Price = 1.57M });
+            orders.Add(new Order { Id = i, Price = 1.57M, DbActive = true, DbAddedDateTime = nowDateTime.AddSeconds(1) });
         }
         int oldTotal = dbContext.Orders.Where(o => o.DbAddedDateTime > nowDateTime).Count();
         var mergeResult = await dbContext.BulkMergeAsync(orders);
@@ -402,5 +412,81 @@ public class BulkMergeAsync : DbContextExtensionsBase
 
         Assert.AreEqual(1, result.RowsInserted);
         Assert.AreEqual(19, result.RowsUpdated);
+    }
+
+    [TestMethod]
+    public async Task With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blogs = new List<Blog> { new Blog { Title = "Merge Graph", Posts = [new BlogPost { Title = "P1" }] } };
+        var result = await dbContext.BulkMergeAsync(blogs, o => { o.IncludeGraph = true; o.AutoMapOutput = true; });
+        Assert.IsTrue(result.RowsAffected >= 2);
+        Assert.AreEqual(1, dbContext.Blogs.Count(b => b.Title == "Merge Graph"));
+        Assert.AreEqual(1, dbContext.BlogPosts.Count(p => p.Title == "P1"));
+    }
+
+    [TestMethod]
+    public async Task With_Options_IgnoreColumnsOnInsert()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(5).Select(o => new Order { Id = o.Id, Price = 99M, Active = o.Active }).ToList();
+        await dbContext.BulkMergeAsync(orders, o => { o.IgnoreColumnsOnUpdate = x => new { x.Price }; o.AutoMapOutput = false; });
+        Assert.IsTrue(dbContext.Orders.Where(o => o.Price == 1.25M).Count() >= 5);
+    }
+
+    [TestMethod]
+    public async Task With_Options_InputColumnsOnInsert()
+    {
+        var dbContext = SetupDbContext(true);
+        var modifiedDateTime = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = "inputcols-insert-1", Price = 3.33M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime },
+            new Order { ExternalId = "inputcols-insert-2", Price = 4.44M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime }
+        };
+
+        var result = await dbContext.BulkMergeAsync(mergeOrders, o =>
+        {
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.InputColumnsOnInsert = x => new { x.ExternalId, x.Price, x.AddedDateTime, x.Active, x.Status };
+            o.AutoMapOutput = true;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        Assert.AreEqual(2, result.RowsInserted);
+        var inserted = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.StartsWith("inputcols-insert-")).OrderBy(o => o.ExternalId).ToList();
+        Assert.AreEqual(2, inserted.Count);
+        Assert.AreEqual(3.33M, inserted[0].Price);
+        Assert.AreEqual(4.44M, inserted[1].Price);
+        Assert.IsNull(inserted[0].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+        Assert.IsNull(inserted[1].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+    }
+
+    [TestMethod]
+    public async Task With_Options_InputColumnsOnUpdate()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.StartsWith("id-")).OrderBy(o => o.Id).Take(3).ToList();
+        Assert.AreEqual(3, orders.Count);
+        decimal newPrice = 12.34M;
+        foreach (var order in orders)
+        {
+            order.Price = newPrice;
+            order.Active = false;
+        }
+
+        await dbContext.BulkMergeAsync(orders, o =>
+        {
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.InputColumnsOnUpdate = x => new { x.Price };
+        });
+
+        dbContext.ChangeTracker.Clear();
+        foreach (var order in orders)
+        {
+            var saved = dbContext.Orders.Single(o => o.Id == order.Id);
+            Assert.AreEqual(newPrice, saved.Price);
+            Assert.IsTrue(saved.Active, "Active should be excluded from update");
+        }
     }
 }

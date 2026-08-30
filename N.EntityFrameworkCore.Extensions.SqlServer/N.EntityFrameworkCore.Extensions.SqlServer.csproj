@@ -32,6 +32,8 @@ Inheritance models supported: Table-Per-Concrete, Table-Per-Hierarchy, Table-Per
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.5" />
+    <PackageReference Include="NetTopologySuite" Version="2.6.0" />
+    <PackageReference Include="NetTopologySuite.IO.SqlServerBytes" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>

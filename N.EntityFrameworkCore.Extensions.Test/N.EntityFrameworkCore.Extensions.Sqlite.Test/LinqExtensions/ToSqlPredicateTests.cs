@@ -64,7 +64,7 @@ public class ToSqlPredicateTests
 
         var sqlPredicate = expression.ToSqlPredicate("s", "t");
 
-        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId AND s.TesterVar1 = t.TesterVar1 AND s.TesterVar2 = t.TesterVar2 AND s.TesterVar3 = t.TesterVar3 AND s.TesterVar4 = t.TesterVar4 AND s.TesterVar5 = t.TesterVar5", sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId AND (s.TesterVar1 = t.TesterVar1 OR (s.TesterVar1 IS NULL AND t.TesterVar1 IS NULL)) AND (s.TesterVar2 = t.TesterVar2 OR (s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL)) AND (s.TesterVar3 = t.TesterVar3 OR (s.TesterVar3 IS NULL AND t.TesterVar3 IS NULL)) AND (s.TesterVar4 = t.TesterVar4 OR (s.TesterVar4 IS NULL AND t.TesterVar4 IS NULL)) AND (s.TesterVar5 = t.TesterVar5 OR (s.TesterVar5 IS NULL AND t.TesterVar5 IS NULL))", sqlPredicate);
     }
 
     [TestMethod]
@@ -78,7 +78,7 @@ public class ToSqlPredicateTests
 
         var sqlPredicate = expression.ToSqlPredicate("s", "t");
 
-        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND (s.ExternalId = t.ExternalId OR s.TesterVar1 = t.TesterVar1) AND (s.TesterVar2 = t.TesterVar2 OR s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL) AND (s.TesterVar3 = t.TesterVar3 OR s.TesterVar3 IS NOT NULL AND t.TesterVar3 IS NOT NULL)", sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND (s.ExternalId = t.ExternalId OR (s.TesterVar1 = t.TesterVar1 OR (s.TesterVar1 IS NULL AND t.TesterVar1 IS NULL))) AND ((s.TesterVar2 = t.TesterVar2 OR (s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL)) OR s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL) AND ((s.TesterVar3 = t.TesterVar3 OR (s.TesterVar3 IS NULL AND t.TesterVar3 IS NULL)) OR s.TesterVar3 IS NOT NULL AND t.TesterVar3 IS NOT NULL)", sqlPredicate);
     }
 
     record Entity
@@ -100,4 +100,3 @@ public class ToSqlPredicateTests
         Three
     }
 }
-

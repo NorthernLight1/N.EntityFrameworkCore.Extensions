@@ -12,6 +12,7 @@ internal sealed class DbTransactionContext : IDisposable
 {
     private bool closeConnection;
     private bool ownsTransaction;
+    private bool transactionCompleted;
     private int? defaultCommandTimeout;
     private DbContext context;
     private IDbContextTransaction transaction;
@@ -19,7 +20,7 @@ internal sealed class DbTransactionContext : IDisposable
     public DbConnection Connection { get; internal set; }
     public DbTransaction CurrentTransaction { get; private set; }
     public DbContext DbContext => context;
-    internal bool OwnsTransaction => ownsTransaction;
+    public bool OwnsTransaction => ownsTransaction;
 
     public DbTransactionContext(DbContext context, BulkOptions bulkOptions, bool openConnection = true) : this(context, bulkOptions.CommandTimeout, bulkOptions.ConnectionBehavior, openConnection)
     {
@@ -44,6 +45,11 @@ internal sealed class DbTransactionContext : IDisposable
             transaction = context.Database.CurrentTransaction;
             if (transaction != null)
                 CurrentTransaction = transaction.GetDbTransaction();
+            else if (ownsTransaction)
+            {
+                transaction = context.Database.BeginTransaction();
+                CurrentTransaction = transaction.GetDbTransaction();
+            }
         }
 
         context.Database.SetCommandTimeout(commandTimeout);
@@ -52,6 +58,13 @@ internal sealed class DbTransactionContext : IDisposable
     public void Dispose()
     {
         context.Database.SetCommandTimeout(defaultCommandTimeout);
+        if (ownsTransaction && transaction != null && !transactionCompleted)
+        {
+            transaction.Rollback();
+            transaction.Dispose();
+            transaction = null;
+            CurrentTransaction = null;
+        }
         if (closeConnection)
         {
             Connection.Close();
@@ -60,12 +73,24 @@ internal sealed class DbTransactionContext : IDisposable
 
     internal void Commit()
     {
-        if (ownsTransaction && transaction != null)
+        if (ownsTransaction && transaction != null && !transactionCompleted)
+        {
             transaction.Commit();
+            transactionCompleted = true;
+            transaction.Dispose();
+            transaction = null;
+            CurrentTransaction = null;
+        }
     }
     internal void Rollback()
     {
-        if (ownsTransaction && transaction != null)
+        if (ownsTransaction && transaction != null && !transactionCompleted)
+        {
             transaction.Rollback();
+            transactionCompleted = true;
+            transaction.Dispose();
+            transaction = null;
+            CurrentTransaction = null;
+        }
     }
 }

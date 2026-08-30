@@ -1,0 +1,85 @@
+Test run for C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\bin\Release\net10.0\N.EntityFrameworkCore.Extensions.Oracle.Test.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Failed With_IncludeGraph [372 ms]
+  Error Message:
+   Test method N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_IncludeGraph threw exception:
+System.InvalidOperationException: Sequence contains more than one matching element
+  Stack Trace:
+     at System.Linq.ThrowHelper.ThrowMoreThanOneMatchException()
+   at System.Linq.Enumerable.TryGetSingle[TSource](IEnumerable`1 source, Func`2 predicate, Boolean& found)
+   at System.Linq.Enumerable.Single[TSource](IEnumerable`1 source, Func`2 predicate)
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.InvokeBulkInsertAsync(DbContext context, Type entityClrType, List`1 entities, Boolean autoMapOutput, BulkOptions parentOptions, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 240
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertDependentNavigationAsync[T](DbContext context, IList`1 principals, INavigation navigation, BulkInsertOptions`1 parentOptions, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 189
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertIncludeGraphAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 135
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertIncludeGraphAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 139
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertAsync[T](DbContext context, IEnumerable`1 entities, BulkInsertOptions`1 options, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 92
+   at N.EntityFrameworkCore.Extensions.DbContextExtensionsAsync.BulkInsertAsync[T](DbContext context, IEnumerable`1 entities, Action`1 optionsAction, CancellationToken cancellationToken) in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Oracle\Data\DbContextExtensionsAsync.cs:line 87
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkInsertAsync.With_IncludeGraph() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkInsertAsync.cs:line 543
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+
+  Failed With_Inheritance_Tpt [803 ms]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'result.RowsAffected == customers.Count()'. The number of rows inserted must match the count of customer list
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkMerge.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkMerge.cs:line 183
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed With_Inheritance_Tpt [671 ms]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'result.RowsAffected == customers.Count()'. The number of rows inserted must match the count of customer list
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkMergeAsync.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkMergeAsync.cs:line 184
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+  Failed With_Inheritance_Tpt [5 s]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'rowsAffected == expectedRowsAffected'. The new count minus the old count should match the number of rows inserted.
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkSaveChanges.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkSaveChanges.cs:line 224
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed With_Inheritance_Tpt [833 ms]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'rowsAffected == expectedRowsAffected'. The new count minus the old count should match the number of rows inserted.
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkSaveChangesAsync.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkSaveChangesAsync.cs:line 226
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+  Failed With_Inheritance_Tpt [2 s]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'result.RowsAffected == customersAdded + customersToUpdate + customersToDelete'. The number of rows affected must match the sum of customers added, updated and deleted.
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkSync.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkSync.cs:line 153
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed With_Inheritance_Tpt [1 s]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'result.RowsAffected == customersAdded + customersToUpdate + customersToDelete'. The number of rows affected must match the sum of customers added, updated and deleted.
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkSyncAsync.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkSyncAsync.cs:line 155
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+  Failed With_Inheritance_Tpt [620 ms]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'rowsUpdated == customers.Count'. The number of rows updated must match the count of entities that were retrieved
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkUpdate.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkUpdate.cs:line 102
+   at System.RuntimeMethodHandle.InvokeMethod(ObjectHandleOnStack target, Void** arguments, ObjectHandleOnStack sig, BOOL isConstructor, ObjectHandleOnStack result)
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.RuntimeMethodInfo.Invoke(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed With_Inheritance_Tpt [564 ms]
+  Error Message:
+   Assert.IsTrue failed. 'condition' expression: 'rowsUpdated == customers.Count'. The number of rows updated must match the count of entities that were retrieved
+  Stack Trace:
+     at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.IsTrue(Nullable`1 condition, String message, String conditionExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.IsTrue.cs:line 153
+   at N.EntityFrameworkCore.Extensions.Test.DbContextExtensions.BulkUpdateAsync.With_Inheritance_Tpt() in C:\Users\ttsch\source\N.EntityFrameworkCore.Extensions\N.EntityFrameworkCore.Extensions.Test\N.EntityFrameworkCore.Extensions.Oracle.Test\DbContextExtensions\BulkUpdateAsync.cs:line 102
+   at Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.Execution.TestMethodInfo.ExecuteInternalAsync(Object[] arguments, CancellationTokenSource timeoutTokenSource) in /_/src/Adapter/MSTestAdapter.PlatformServices/Execution/TestMethodInfo.cs:line 408
+
+Failed!  - Failed:     9, Passed:   269, Skipped:     0, Total:   278, Duration: 9 m 5 s - N.EntityFrameworkCore.Extensions.Oracle.Test.dll (net10.0)

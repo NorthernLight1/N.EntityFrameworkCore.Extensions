@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -13,12 +13,12 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.EntityFrameworkCore.Query.Internal;
-using Npgsql;
 using N.EntityFrameworkCore.Extensions.Common;
 using N.EntityFrameworkCore.Extensions.Enums;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Sql;
 using N.EntityFrameworkCore.Extensions.Util;
+using Npgsql;
 
 namespace N.EntityFrameworkCore.Extensions;
 
@@ -60,14 +60,30 @@ public static class DbContextExtensions
                 if (keyColumnNames.Length == 0 && options.DeleteOnCondition == null)
                     throw new InvalidDataException("BulkDelete requires that the entity have a primary key or the Options.DeleteOnCondition must be set.");
 
-                context.Database.CloneTable(destinationTableName, stagingTableName, keyColumnNames);
-                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, keyColumnNames, false);
+                string[] softDeleteColumnNames = options.SoftDeleteColumns?.GetObjectProperties().ToArray() ?? [];
+                string[] stagingColumnNames = softDeleteColumnNames.Length > 0
+                    ? keyColumnNames.Concat(softDeleteColumnNames).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
+                    : keyColumnNames;
+
+                context.Database.CloneTable(destinationTableName, stagingTableName, stagingColumnNames);
+                BulkInsert(entities, options, tableMapping, dbConnection, transaction, stagingTableName, stagingColumnNames, false);
 
                 string joinCondition = CommonUtil<T>.GetJoinConditionSql(context, options.DeleteOnCondition, keyColumnNames);
-                string deleteSql = context.Database.IsPostgreSql()
-                    ? $"DELETE FROM {destinationTableName} AS t USING {stagingTableName} AS s WHERE {joinCondition}"
-                    : $"DELETE t FROM {stagingTableName} s JOIN {destinationTableName} t ON {joinCondition}";
-                rowsAffected = context.Database.ExecuteSqlInternal(deleteSql, options.CommandTimeout);
+                if (options.SoftDeleteColumns != null)
+                {
+                    string setExpression = string.Join(",", softDeleteColumnNames.Select(c => $"{context.DelimitIdentifier(c)}={context.DelimitMemberAccess("s", c)}"));
+                    string updateSql = context.Database.IsPostgreSql()
+                        ? $"UPDATE {destinationTableName} AS t SET {setExpression} FROM {stagingTableName} AS s WHERE {joinCondition}"
+                        : $"UPDATE t SET {setExpression} FROM {stagingTableName} s JOIN {destinationTableName} t ON {joinCondition}";
+                    rowsAffected = context.Database.ExecuteSqlInternal(updateSql, options.CommandTimeout);
+                }
+                else
+                {
+                    string deleteSql = context.Database.IsPostgreSql()
+                        ? $"DELETE FROM {destinationTableName} AS t USING {stagingTableName} AS s WHERE {joinCondition}"
+                        : $"DELETE t FROM {stagingTableName} s JOIN {destinationTableName} t ON {joinCondition}";
+                    rowsAffected = context.Database.ExecuteSqlInternal(deleteSql, options.CommandTimeout);
+                }
 
                 context.Database.DropTable(stagingTableName);
                 dbTransactionContext.Commit();
@@ -123,7 +139,7 @@ public static class DbContextExtensions
                 throw;
             }
 
-                                    List<T> items;
+            List<T> items;
             try
             {
                 items = context.FetchInternal<T>(selectSql).ToList();
@@ -131,6 +147,11 @@ public static class DbContextExtensions
             finally
             {
                 context.Database.DropTable(stagingTableName);
+            }
+            if (options.AttachToContext)
+            {
+                foreach (var item in items)
+                    context.Attach(item);
             }
             foreach (var item in items)
                 yield return item;
@@ -175,6 +196,9 @@ public static class DbContextExtensions
     }
     public static int BulkInsert<T>(this DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
     {
+        if (options.IncludeGraph)
+            return BulkInsertIncludeGraph(context, entities, options);
+
         int rowsAffected = 0;
         using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
         {
@@ -197,12 +221,348 @@ public static class DbContextExtensions
         }
         return rowsAffected;
     }
+    private static int BulkInsertIncludeGraph<T>(DbContext context, IEnumerable<T> entities, BulkInsertOptions<T> options)
+    {
+        var entityList = entities as IList<T> ?? entities.ToList();
+        bool ownsTransaction = context.Database.CurrentTransaction == null;
+        using var transaction = ownsTransaction ? context.Database.BeginTransaction() : null;
+        var rootOptions = CloneBulkInsertOptionsWithoutGraph(options);
+        rootOptions.AutoMapOutput = true;
+        int rowsAffected = BulkInsert(context, entityList, rootOptions);
+
+        var entityType = options.EntityType ?? context.Model.FindEntityType(typeof(T))
+            ?? throw new InvalidOperationException($"Entity type {typeof(T).FullName} was not found in the model.");
+        foreach (var navigation in entityType.GetNavigations().Where(n => !n.IsOnDependent))
+            rowsAffected += BulkInsertDependentNavigation(context, entityList, navigation, options);
+
+        transaction?.Commit();
+        return rowsAffected;
+    }
+    private static BulkInsertOptions<T> CloneBulkInsertOptionsWithoutGraph<T>(BulkInsertOptions<T> options) => new()
+    {
+        AutoMapOutput = options.AutoMapOutput,
+        BatchSize = options.BatchSize,
+        CommandTimeout = options.CommandTimeout,
+        ConnectionBehavior = options.ConnectionBehavior,
+        EntityType = options.EntityType,
+        IgnoreColumns = options.IgnoreColumns,
+        IncludeGraph = false,
+        InputColumns = options.InputColumns,
+        InsertIfNotExists = options.InsertIfNotExists,
+        InsertOnCondition = options.InsertOnCondition,
+        KeepIdentity = options.KeepIdentity,
+        UsePermanentTable = options.UsePermanentTable
+    };
+    private static int BulkInsertDependentNavigation<T>(DbContext context, IList<T> principals, INavigation navigation, BulkInsertOptions<T> parentOptions)
+    {
+        var foreignKey = navigation.ForeignKey;
+        var dependentClrType = navigation.TargetEntityType.ClrType;
+        var dependents = new List<object>();
+
+        foreach (var principal in principals)
+        {
+            if (navigation.IsCollection)
+            {
+                if (GetNavigationValue(principal, navigation) is not System.Collections.IEnumerable collection)
+                    continue;
+                foreach (var dependent in collection)
+                {
+                    if (dependent == null)
+                        continue;
+                    AssignForeignKey(principal, dependent, foreignKey);
+                    dependents.Add(dependent);
+                }
+            }
+            else
+            {
+                var dependent = GetNavigationValue(principal, navigation);
+                if (dependent == null)
+                    continue;
+                AssignForeignKey(principal, dependent, foreignKey);
+                dependents.Add(dependent);
+            }
+        }
+
+        if (dependents.Count == 0)
+            return 0;
+
+        return InvokeBulkInsert(context, dependentClrType, dependents, parentOptions.AutoMapOutput, parentOptions);
+    }
+    private static object GetNavigationValue(object entity, INavigation navigation)
+    {
+        if (navigation.PropertyInfo != null)
+            return navigation.PropertyInfo.GetValue(entity);
+        return navigation.GetMemberInfo(forMaterialization: false, forSet: false) switch
+        {
+            PropertyInfo propertyInfo => propertyInfo.GetValue(entity),
+            FieldInfo fieldInfo => fieldInfo.GetValue(entity),
+            _ => null
+        };
+    }
+    private static void AssignForeignKey(object principal, object dependent, IForeignKey foreignKey)
+    {
+        for (int i = 0; i < foreignKey.Properties.Count; i++)
+        {
+            var principalProperty = foreignKey.PrincipalKey.Properties[i];
+            var dependentProperty = foreignKey.Properties[i];
+            object value = principalProperty.PropertyInfo != null
+                ? principalProperty.PropertyInfo.GetValue(principal)
+                : principalProperty.GetGetter().GetClrValue(principal);
+
+            if (dependentProperty.PropertyInfo != null)
+                dependentProperty.PropertyInfo.SetValue(dependent, value);
+            else
+                throw new InvalidOperationException($"Cannot set foreign key '{dependentProperty.Name}' because it has no CLR property.");
+        }
+    }
+    private static int InvokeBulkInsert(DbContext context, Type entityClrType, List<object> entities, bool autoMapOutput, BulkOptions parentOptions)
+    {
+        var listType = typeof(List<>).MakeGenericType(entityClrType);
+        var typedList = (System.Collections.IList)Activator.CreateInstance(listType)!;
+        foreach (var entity in entities)
+            typedList.Add(entity);
+
+        var optionsType = typeof(BulkInsertOptions<>).MakeGenericType(entityClrType);
+        var childOptions = Activator.CreateInstance(optionsType)!;
+        optionsType.GetProperty(nameof(BulkInsertOptions<object>.AutoMapOutput))!.SetValue(childOptions, autoMapOutput);
+        optionsType.GetProperty(nameof(BulkInsertOptions<object>.IncludeGraph))!.SetValue(childOptions, true);
+        optionsType.GetProperty(nameof(BulkOptions.CommandTimeout))!.SetValue(childOptions, parentOptions.CommandTimeout);
+        optionsType.GetProperty(nameof(BulkOptions.UsePermanentTable))!.SetValue(childOptions, parentOptions.UsePermanentTable);
+        optionsType.GetProperty(nameof(BulkOptions.BatchSize))!.SetValue(childOptions, parentOptions.BatchSize);
+        optionsType.GetProperty(nameof(BulkOptions.ConnectionBehavior), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(childOptions, parentOptions.ConnectionBehavior);
+        var parentType = parentOptions.GetType();
+        if (parentType.GetProperty(nameof(BulkInsertOptions<object>.KeepIdentity)) is { } keepIdentityProp)
+            optionsType.GetProperty(nameof(BulkInsertOptions<object>.KeepIdentity))!.SetValue(childOptions, keepIdentityProp.GetValue(parentOptions));
+        if (parentType.GetProperty(nameof(BulkInsertOptions<object>.InsertIfNotExists)) is { } insertIfNotExistsProp)
+            optionsType.GetProperty(nameof(BulkInsertOptions<object>.InsertIfNotExists))!.SetValue(childOptions, insertIfNotExistsProp.GetValue(parentOptions));
+
+        var method = typeof(DbContextExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(BulkInsert)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 3
+                && m.GetParameters()[2].ParameterType.IsGenericType
+                && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(BulkInsertOptions<>));
+
+        return (int)method.MakeGenericMethod(entityClrType).Invoke(null, [context, typedList, childOptions])!;
+    }
+    private static BulkMergeResult<T> BulkMergeIncludeGraph<T>(DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
+    {
+        var entityList = entities as IList<T> ?? entities.ToList();
+        bool ownsTransaction = context.Database.CurrentTransaction == null;
+        using var transaction = ownsTransaction ? context.Database.BeginTransaction() : null;
+        var rootOptions = CloneBulkMergeOptionsWithoutGraph(options);
+        rootOptions.AutoMapOutput = true;
+        var result = InternalBulkMerge(context, entityList, rootOptions);
+        int rowsAffected = result.RowsAffected;
+
+        var entityType = options.EntityType ?? context.Model.FindEntityType(typeof(T))
+            ?? throw new InvalidOperationException($"Entity type {typeof(T).FullName} was not found in the model.");
+        foreach (var navigation in entityType.GetNavigations().Where(n => !n.IsOnDependent))
+            rowsAffected += BulkMergeDependentNavigation(context, entityList, navigation, options);
+
+        transaction?.Commit();
+        return new BulkMergeResult<T> { RowsAffected = rowsAffected, RowsInserted = result.RowsInserted, RowsUpdated = result.RowsUpdated, RowsDeleted = result.RowsDeleted, Output = result.Output };
+    }
+    private static BulkMergeOptions<T> CloneBulkMergeOptionsWithoutGraph<T>(BulkMergeOptions<T> options) => new()
+    {
+        AutoMapOutput = options.AutoMapOutput,
+        BatchSize = options.BatchSize,
+        CommandTimeout = options.CommandTimeout,
+        ConnectionBehavior = options.ConnectionBehavior,
+        DeleteIfNotMatched = options.DeleteIfNotMatched,
+        EntityType = options.EntityType,
+        IgnoreColumnsOnInsert = options.IgnoreColumnsOnInsert,
+        IgnoreColumnsOnUpdate = options.IgnoreColumnsOnUpdate,
+        IncludeGraph = false,
+        InputColumnsOnInsert = options.InputColumnsOnInsert,
+        InputColumnsOnUpdate = options.InputColumnsOnUpdate,
+        MergeOnCondition = options.MergeOnCondition,
+        NotifyAfter = options.NotifyAfter,
+        SoftDeleteColumns = options.SoftDeleteColumns,
+        UseNativeUpsert = options.UseNativeUpsert,
+        UsePermanentTable = options.UsePermanentTable
+    };
+    private static int BulkMergeDependentNavigation<T>(DbContext context, IList<T> principals, INavigation navigation, BulkMergeOptions<T> parentOptions)
+    {
+        var foreignKey = navigation.ForeignKey;
+        var dependentClrType = navigation.TargetEntityType.ClrType;
+        var dependents = new List<object>();
+
+        foreach (var principal in principals)
+        {
+            if (navigation.IsCollection)
+            {
+                if (GetNavigationValue(principal, navigation) is not System.Collections.IEnumerable collection)
+                    continue;
+                foreach (var dependent in collection)
+                {
+                    if (dependent == null)
+                        continue;
+                    AssignForeignKey(principal, dependent, foreignKey);
+                    dependents.Add(dependent);
+                }
+            }
+            else
+            {
+                var dependent = GetNavigationValue(principal, navigation);
+                if (dependent == null)
+                    continue;
+                AssignForeignKey(principal, dependent, foreignKey);
+                dependents.Add(dependent);
+            }
+        }
+
+        if (dependents.Count == 0)
+            return 0;
+
+        return InvokeBulkMerge(context, dependentClrType, dependents, parentOptions);
+    }
+    private static int InvokeBulkMerge(DbContext context, Type entityClrType, List<object> entities, BulkOptions parentOptions)
+    {
+        var listType = typeof(List<>).MakeGenericType(entityClrType);
+        var typedList = (System.Collections.IList)Activator.CreateInstance(listType)!;
+        foreach (var entity in entities)
+            typedList.Add(entity);
+
+        var optionsType = typeof(BulkMergeOptions<>).MakeGenericType(entityClrType);
+        var childOptions = Activator.CreateInstance(optionsType)!;
+        optionsType.GetProperty(nameof(BulkMergeOptions<object>.IncludeGraph))!.SetValue(childOptions, false);
+        optionsType.GetProperty(nameof(BulkOptions.CommandTimeout))!.SetValue(childOptions, parentOptions.CommandTimeout);
+        optionsType.GetProperty(nameof(BulkOptions.UsePermanentTable))!.SetValue(childOptions, parentOptions.UsePermanentTable);
+        optionsType.GetProperty(nameof(BulkOptions.BatchSize))!.SetValue(childOptions, parentOptions.BatchSize);
+        optionsType.GetProperty(nameof(BulkOptions.NotifyAfter))!.SetValue(childOptions, parentOptions.NotifyAfter);
+        optionsType.GetProperty(nameof(BulkOptions.ConnectionBehavior), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(childOptions, parentOptions.ConnectionBehavior);
+        var parentType = parentOptions.GetType();
+        if (parentType.IsGenericType && parentType.GetGenericTypeDefinition() == typeof(BulkMergeOptions<>))
+        {
+            optionsType.GetProperty(nameof(BulkMergeOptions<object>.AutoMapOutput))!.SetValue(childOptions, parentType.GetProperty(nameof(BulkMergeOptions<object>.AutoMapOutput))!.GetValue(parentOptions));
+            if (parentType.GetProperty(nameof(BulkMergeOptions<object>.UseNativeUpsert)) is { } useNativeUpsertProp)
+                optionsType.GetProperty(nameof(BulkMergeOptions<object>.UseNativeUpsert))!.SetValue(childOptions, useNativeUpsertProp.GetValue(parentOptions));
+            if (parentType.GetProperty(nameof(BulkMergeOptions<object>.DeleteIfNotMatched), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is { } parentDeleteIfNotMatchedProp
+                && optionsType.GetProperty(nameof(BulkMergeOptions<object>.DeleteIfNotMatched), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is { } childDeleteIfNotMatchedProp)
+                childDeleteIfNotMatchedProp.SetValue(childOptions, parentDeleteIfNotMatchedProp.GetValue(parentOptions));
+        }
+
+        var method = typeof(DbContextExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(BulkMerge)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 3
+                && m.GetParameters()[2].ParameterType.IsGenericType
+                && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(BulkMergeOptions<>));
+
+        var result = method.MakeGenericMethod(entityClrType).Invoke(null, [context, typedList, childOptions])!;
+        return (int)result.GetType().GetProperty(nameof(BulkMergeResult<object>.RowsAffected))!.GetValue(result)!;
+    }
+    private static int BulkUpdateIncludeGraph<T>(DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
+    {
+        var entityList = entities as IList<T> ?? entities.ToList();
+        bool ownsTransaction = context.Database.CurrentTransaction == null;
+        using var transaction = ownsTransaction ? context.Database.BeginTransaction() : null;
+        var rootOptions = CloneBulkUpdateOptionsWithoutGraph(options);
+        int rowsAffected = BulkUpdate(context, entityList, rootOptions);
+
+        var entityType = options.EntityType ?? context.Model.FindEntityType(typeof(T))
+            ?? throw new InvalidOperationException($"Entity type {typeof(T).FullName} was not found in the model.");
+        foreach (var navigation in entityType.GetNavigations().Where(n => !n.IsOnDependent))
+            rowsAffected += BulkUpdateDependentNavigation(context, entityList, navigation, options);
+
+        transaction?.Commit();
+        return rowsAffected;
+    }
+    private static BulkUpdateOptions<T> CloneBulkUpdateOptionsWithoutGraph<T>(BulkUpdateOptions<T> options) => new()
+    {
+        BatchSize = options.BatchSize,
+        CommandTimeout = options.CommandTimeout,
+        ConnectionBehavior = options.ConnectionBehavior,
+        EntityType = options.EntityType,
+        IgnoreColumns = options.IgnoreColumns,
+        IncludeGraph = false,
+        InputColumns = options.InputColumns,
+        NotifyAfter = options.NotifyAfter,
+        UpdateOnCondition = options.UpdateOnCondition,
+        UsePermanentTable = options.UsePermanentTable
+    };
+    private static int BulkUpdateDependentNavigation<T>(DbContext context, IList<T> principals, INavigation navigation, BulkUpdateOptions<T> parentOptions)
+    {
+        var foreignKey = navigation.ForeignKey;
+        var dependentClrType = navigation.TargetEntityType.ClrType;
+        var dependents = new List<object>();
+
+        foreach (var principal in principals)
+        {
+            if (navigation.IsCollection)
+            {
+                if (GetNavigationValue(principal, navigation) is not System.Collections.IEnumerable collection)
+                    continue;
+                foreach (var dependent in collection)
+                {
+                    if (dependent == null)
+                        continue;
+                    AssignForeignKey(principal, dependent, foreignKey);
+                    dependents.Add(dependent);
+                }
+            }
+            else
+            {
+                var dependent = GetNavigationValue(principal, navigation);
+                if (dependent == null)
+                    continue;
+                AssignForeignKey(principal, dependent, foreignKey);
+                dependents.Add(dependent);
+            }
+        }
+
+        if (dependents.Count == 0)
+            return 0;
+
+        return InvokeBulkUpdate(context, dependentClrType, dependents, parentOptions);
+    }
+    private static int InvokeBulkUpdate(DbContext context, Type entityClrType, List<object> entities, BulkOptions parentOptions)
+    {
+        var listType = typeof(List<>).MakeGenericType(entityClrType);
+        var typedList = (System.Collections.IList)Activator.CreateInstance(listType)!;
+        foreach (var entity in entities)
+            typedList.Add(entity);
+
+        var optionsType = typeof(BulkUpdateOptions<>).MakeGenericType(entityClrType);
+        var childOptions = Activator.CreateInstance(optionsType)!;
+        optionsType.GetProperty(nameof(BulkUpdateOptions<object>.IncludeGraph))!.SetValue(childOptions, true);
+        optionsType.GetProperty(nameof(BulkOptions.CommandTimeout))!.SetValue(childOptions, parentOptions.CommandTimeout);
+        optionsType.GetProperty(nameof(BulkOptions.UsePermanentTable))!.SetValue(childOptions, parentOptions.UsePermanentTable);
+        optionsType.GetProperty(nameof(BulkOptions.BatchSize))!.SetValue(childOptions, parentOptions.BatchSize);
+        optionsType.GetProperty(nameof(BulkOptions.NotifyAfter))!.SetValue(childOptions, parentOptions.NotifyAfter);
+        optionsType.GetProperty(nameof(BulkOptions.ConnectionBehavior), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!
+            .SetValue(childOptions, parentOptions.ConnectionBehavior);
+        var parentType = parentOptions.GetType();
+        if (parentType.IsGenericType && parentType.GetGenericTypeDefinition() == typeof(BulkUpdateOptions<>))
+        {
+            optionsType.GetProperty(nameof(BulkUpdateOptions<object>.InputColumns))!.SetValue(childOptions, parentType.GetProperty(nameof(BulkUpdateOptions<object>.InputColumns))!.GetValue(parentOptions));
+            optionsType.GetProperty(nameof(BulkUpdateOptions<object>.IgnoreColumns))!.SetValue(childOptions, parentType.GetProperty(nameof(BulkUpdateOptions<object>.IgnoreColumns))!.GetValue(parentOptions));
+            optionsType.GetProperty(nameof(BulkUpdateOptions<object>.UpdateOnCondition))!.SetValue(childOptions, parentType.GetProperty(nameof(BulkUpdateOptions<object>.UpdateOnCondition))!.GetValue(parentOptions));
+        }
+
+        var method = typeof(DbContextExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == nameof(BulkUpdate)
+                && m.IsGenericMethodDefinition
+                && m.GetParameters().Length == 3
+                && m.GetParameters()[2].ParameterType.IsGenericType
+                && m.GetParameters()[2].ParameterType.GetGenericTypeDefinition() == typeof(BulkUpdateOptions<>));
+
+        return (int)method.MakeGenericMethod(entityClrType).Invoke(null, [context, typedList, childOptions])!;
+    }
     public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities)
     {
         return BulkMerge(context, entities, new BulkMergeOptions<T>());
     }
     public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
     {
+        if (options.IncludeGraph)
+            return BulkMergeIncludeGraph(context, entities, options);
         return InternalBulkMerge(context, entities, options);
     }
     public static BulkMergeResult<T> BulkMerge<T>(this DbContext context, IEnumerable<T> entities, Action<BulkMergeOptions<T>> optionsAction)
@@ -278,6 +638,9 @@ public static class DbContextExtensions
     }
     public static int BulkUpdate<T>(this DbContext context, IEnumerable<T> entities, BulkUpdateOptions<T> options)
     {
+        if (options.IncludeGraph)
+            return BulkUpdateIncludeGraph(context, entities, options);
+
         int rowsUpdated = 0;
         using (var bulkOperation = new BulkOperation<T>(context, options, options.InputColumns, options.IgnoreColumns))
         {
@@ -407,6 +770,106 @@ public static class DbContextExtensions
     {
         return InternalQueryToFile(database.GetDbConnection(), stream, options, sqlText, parameters);
     }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, string filePath) where T : class
+    {
+        return QueryToJsonFile<T>(queryable, filePath, new QueryToJsonFileOptions());
+    }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, Stream stream) where T : class
+    {
+        return QueryToJsonFile<T>(queryable, stream, new QueryToJsonFileOptions());
+    }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, string filePath, Action<QueryToJsonFileOptions> optionsAction) where T : class
+    {
+        return QueryToJsonFile<T>(queryable, filePath, optionsAction.Build());
+    }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, Stream stream, Action<QueryToJsonFileOptions> optionsAction) where T : class
+    {
+        return QueryToJsonFile<T>(queryable, stream, optionsAction.Build());
+    }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, string filePath, QueryToJsonFileOptions options) where T : class
+    {
+        using var fileStream = File.Create(filePath);
+        return QueryToJsonFile<T>(queryable, fileStream, options);
+    }
+    public static QueryToFileResult QueryToJsonFile<T>(this IQueryable<T> queryable, Stream stream, QueryToJsonFileOptions options) where T : class
+    {
+        return QueryToJsonFileUtil.WriteEntities(queryable.AsNoTracking(), stream, options);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonFile(database, filePath, new QueryToJsonFileOptions(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonFile(database, stream, new QueryToJsonFileOptions(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, string filePath, Action<QueryToJsonFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonFile(database, filePath, optionsAction.Build(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, Stream stream, Action<QueryToJsonFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonFile(database, stream, optionsAction.Build(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, string filePath, QueryToJsonFileOptions options, string sqlText, params object[] parameters)
+    {
+        using var fileStream = File.Create(filePath);
+        return SqlQueryToJsonFile(database, fileStream, options, sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonFile(this DatabaseFacade database, Stream stream, QueryToJsonFileOptions options, string sqlText, params object[] parameters)
+    {
+        return InternalSqlQueryToJsonFile(database.GetDbConnection(), stream, options, sqlText, parameters);
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, string filePath) where T : class
+    {
+        return QueryToJsonLinesFile<T>(queryable, filePath, new QueryToJsonFileOptions());
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, Stream stream) where T : class
+    {
+        return QueryToJsonLinesFile<T>(queryable, stream, new QueryToJsonFileOptions());
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, string filePath, Action<QueryToJsonFileOptions> optionsAction) where T : class
+    {
+        return QueryToJsonLinesFile<T>(queryable, filePath, optionsAction.Build());
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, Stream stream, Action<QueryToJsonFileOptions> optionsAction) where T : class
+    {
+        return QueryToJsonLinesFile<T>(queryable, stream, optionsAction.Build());
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, string filePath, QueryToJsonFileOptions options) where T : class
+    {
+        using var fileStream = File.Create(filePath);
+        return QueryToJsonLinesFile<T>(queryable, fileStream, options);
+    }
+    public static QueryToFileResult QueryToJsonLinesFile<T>(this IQueryable<T> queryable, Stream stream, QueryToJsonFileOptions options) where T : class
+    {
+        return QueryToJsonFileUtil.WriteEntitiesAsLines(queryable.AsNoTracking(), stream, options);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, string filePath, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonLinesFile(database, filePath, new QueryToJsonFileOptions(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, Stream stream, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonLinesFile(database, stream, new QueryToJsonFileOptions(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, string filePath, Action<QueryToJsonFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonLinesFile(database, filePath, optionsAction.Build(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, Stream stream, Action<QueryToJsonFileOptions> optionsAction, string sqlText, params object[] parameters)
+    {
+        return SqlQueryToJsonLinesFile(database, stream, optionsAction.Build(), sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, string filePath, QueryToJsonFileOptions options, string sqlText, params object[] parameters)
+    {
+        using var fileStream = File.Create(filePath);
+        return SqlQueryToJsonLinesFile(database, fileStream, options, sqlText, parameters);
+    }
+    public static QueryToFileResult SqlQueryToJsonLinesFile(this DatabaseFacade database, Stream stream, QueryToJsonFileOptions options, string sqlText, params object[] parameters)
+    {
+        return InternalSqlQueryToJsonLinesFile(database.GetDbConnection(), stream, options, sqlText, parameters);
+    }
     public static void Clear<T>(this DbSet<T> dbSet) where T : class
     {
         var dbContext = dbSet.GetDbContext();
@@ -486,6 +949,7 @@ public static class DbContextExtensions
         string copySql = $"COPY {tableName} ({string.Join(",", columnNames.Select(tableMapping.DbContext.DelimitIdentifier))}) FROM STDIN (FORMAT BINARY)";
         using var importer = npgsqlConnection.BeginBinaryImport(copySql);
         long rowsCopied = 0;
+        long lastNotified = 0;
         while (dataReader.Read())
         {
             importer.StartRow();
@@ -498,8 +962,10 @@ public static class DbContextExtensions
                     importer.Write(value);
             }
             rowsCopied++;
+            BulkProgress.Notify(options, ref lastNotified, rowsCopied);
         }
         importer.Complete();
+        BulkProgress.NotifyFinal(options, rowsCopied);
 
         return new BulkInsertResult<T>
         {
@@ -591,6 +1057,9 @@ public static class DbContextExtensions
     }
     private static BulkMergeResult<T> InternalBulkMerge<T>(this DbContext context, IEnumerable<T> entities, BulkMergeOptions<T> options)
     {
+        if (options.IncludeGraph)
+            return BulkMergeIncludeGraph(context, entities, options);
+
         BulkMergeResult<T> bulkMergeResult;
         using (var bulkOperation = new BulkOperation<T>(context, options))
         {
@@ -613,22 +1082,6 @@ public static class DbContextExtensions
             }
         }
         return bulkMergeResult;
-    }
-    private static void ClearEntityStateToUnchanged<T>(DbContext dbContext, IEnumerable<T> entities)
-    {
-        foreach (var entity in entities)
-        {
-            var entry = dbContext.Entry(entity);
-            if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
-                dbContext.Entry(entity).State = EntityState.Unchanged;
-        }
-    }
-    private static void Validate(TableMapping tableMapping)
-    {
-        if (!tableMapping.GetPrimaryKeyColumns().Any())
-        {
-            throw new Exception("You must have a primary key on this table to use this function.");
-        }
     }
     private static QueryToFileResult InternalQueryToFile<T>(this IQueryable<T> queryable, Stream stream, QueryToFileOptions options) where T : class
     {
@@ -720,6 +1173,36 @@ public static class DbContextExtensions
         streamWriter.Flush();
         bytesWritten = streamWriter.BaseStream.Length;
         return new QueryToFileResult { BytesWritten = bytesWritten, DataRowCount = dataRowCount, TotalRowCount = totalRowCount };
+    }
+    private static QueryToFileResult InternalSqlQueryToJsonFile(DbConnection dbConnection, Stream stream, QueryToJsonFileOptions options, string sqlText, object[] parameters = null)
+    {
+        if (dbConnection.State == ConnectionState.Closed)
+            dbConnection.Open();
+
+        using var command = dbConnection.CreateCommand();
+        command.CommandText = sqlText;
+        if (parameters != null)
+            command.Parameters.AddRange(parameters);
+        if (options.CommandTimeout.HasValue)
+            command.CommandTimeout = options.CommandTimeout.Value;
+
+        using var reader = command.ExecuteReader();
+        return QueryToJsonFileUtil.WriteDataReader(reader, stream, options);
+    }
+    private static QueryToFileResult InternalSqlQueryToJsonLinesFile(DbConnection dbConnection, Stream stream, QueryToJsonFileOptions options, string sqlText, object[] parameters = null)
+    {
+        if (dbConnection.State == ConnectionState.Closed)
+            dbConnection.Open();
+
+        using var command = dbConnection.CreateCommand();
+        command.CommandText = sqlText;
+        if (parameters != null)
+            command.Parameters.AddRange(parameters);
+        if (options.CommandTimeout.HasValue)
+            command.CommandTimeout = options.CommandTimeout.Value;
+
+        using var reader = command.ExecuteReader();
+        return QueryToJsonFileUtil.WriteDataReaderAsLines(reader, stream, options);
     }
     private static HashSet<string> GetIncludedColumns<T>(TableMapping tableMapping, Expression<Func<T, object>> inputColumns, Expression<Func<T, object>> ignoreColumns)
     {

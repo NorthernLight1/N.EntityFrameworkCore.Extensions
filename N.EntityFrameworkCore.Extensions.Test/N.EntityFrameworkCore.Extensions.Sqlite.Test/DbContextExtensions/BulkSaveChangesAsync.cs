@@ -261,4 +261,3 @@ public class BulkSaveChangesAsync : DbContextExtensionsBase
         Assert.IsTrue(productsUpdatedCount == productsToUpdate.Count(), "The number of products that was updated did not match what was expected.");
     }
 }
-

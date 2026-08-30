@@ -8,4 +8,3 @@ public class TphCustomer : TphPerson
     public string Phone { get; set; }
     public DateTime AddedDate { get; set; }
 }
-

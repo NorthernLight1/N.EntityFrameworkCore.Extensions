@@ -1,19 +1,16 @@
 ## N.EntityFrameworkCore.Extensions.MySql
 
-[![latest version](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.MySql)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql) [![downloads](https://img.shields.io/nuget/dt/N.EntityFrameworkCore.Extensions.MySql)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql)
+[![NuGet](https://img.shields.io/nuget/v/N.EntityFrameworkCore.Extensions.MySql)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql)
+[![Downloads](https://img.shields.io/nuget/dt/N.EntityFrameworkCore.Extensions.MySql)](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions.MySql)
 
-High-performance bulk data extensions for Entity Framework Core — **MySQL** provider. Extends your `DbContext` with bulk operations, query-based DML, CSV export, and utility helpers — all without loading entities into memory.
+Bulk data extensions for Entity Framework Core — **MySQL** provider.
 
-**Supported operations:** BulkDelete · BulkFetch · BulkInsert · BulkMerge · BulkSaveChanges · BulkSync · BulkUpdate · Fetch · DeleteFromQuery · InsertFromQuery · UpdateFromQuery · QueryToCsvFile · SqlQueryToCsvFile
+| | |
+| --- | --- |
+| **Operations** | BulkDelete · BulkFetch · BulkInsert · BulkMerge · BulkSaveChanges · BulkSync · BulkUpdate · Fetch · DeleteFromQuery · InsertFromQuery · UpdateFromQuery · QueryToCsvFile · QueryToJsonFile · QueryToJsonLinesFile · SqlQueryToCsvFile · SqlQueryToJsonFile · SqlQueryToJsonLinesFile |
+| **Also supports** | Multiple schemas · Complex properties · Value converters · Transactions · Sync & async APIs · TPC / TPH / TPT inheritance |
 
-**Supports:** Multiple Schemas · Complex Properties · Value Converters · Transactions · Synchronous & Asynchronous Execution
-
-**Inheritance Models:** Table-Per-Concrete · Table-Per-Hierarchy · Table-Per-Type
-
----
-
-> 💬 **Feedback & Feature Requests**
-> Found a bug or have an idea? Please [open an issue](https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/issues) on GitHub.
+Questions, bugs, and feature requests: [open an issue](https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions/issues).
 
 ---
 
@@ -22,6 +19,8 @@ High-performance bulk data extensions for Entity Framework Core — **MySQL** pr
 ```sh
 dotnet add package N.EntityFrameworkCore.Extensions.MySql
 ```
+
+The meta-package [`N.EntityFrameworkCore.Extensions`](https://www.nuget.org/packages/N.EntityFrameworkCore.Extensions) also installs this provider along with SqlServer, PostgreSql, Sqlite, and Oracle.
 
 ---
 
@@ -52,6 +51,8 @@ The MySQL server must also have `local_infile=1` enabled.
 
 ## Usage
 
+Common examples below. For options tables, result objects, and the full API reference, see the [main README](https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions#readme).
+
 ### BulkInsert
 
 ```csharp
@@ -61,6 +62,81 @@ for (int i = 0; i < 10000; i++)
 
 dbContext.BulkInsert(orders);
 await dbContext.BulkInsertAsync(orders);
+```
+
+With options:
+
+```csharp
+dbContext.BulkInsert(orders, options =>
+{
+    options.BatchSize = 5000;
+    options.KeepIdentity = true;
+    options.InsertIfNotExists = true;
+});
+```
+
+Progress reporting:
+
+```csharp
+dbContext.BulkInsert(orders, options =>
+{
+    options.NotifyAfter = 1000;
+    options.RowsCopied = e => Console.WriteLine($"Copied {e.RowsCopied} rows");
+});
+```
+
+From an async stream (batches internally; default `BatchSize` is `10000` when unset):
+
+```csharp
+await dbContext.BulkInsertAsync(ReadOrdersAsync());
+
+async IAsyncEnumerable<Order> ReadOrdersAsync()
+{
+    // yield entities from a stream, channel, or remote source
+    yield break;
+}
+```
+
+### BulkDelete
+
+```csharp
+var orders = dbContext.Orders.Where(o => o.TotalPrice < 5.35M).ToList();
+
+dbContext.BulkDelete(orders);
+await dbContext.BulkDeleteAsync(orders);
+```
+
+Soft delete (updates columns from entity values instead of a physical delete):
+
+```csharp
+foreach (var order in orders)
+    order.IsDeleted = true;
+
+dbContext.BulkDelete(orders, options =>
+{
+    options.SoftDeleteColumns = x => new { x.IsDeleted };
+});
+```
+
+### BulkFetch
+
+```csharp
+var stubs = new List<Product>
+{
+    new() { Id = 10001 },
+    new() { Id = 10002 },
+    new() { Id = 10003 },
+};
+var products = dbContext.Products.BulkFetch(stubs).ToList();
+await dbContext.Products.BulkFetchAsync(stubs);
+```
+
+Attach fetched entities to the change tracker:
+
+```csharp
+var products = dbContext.Products
+    .BulkFetch(stubs, options => { options.AttachToContext = true; })
+    .ToList();
 ```
 
 ### BulkUpdate
@@ -73,13 +149,13 @@ dbContext.BulkUpdate(products);
 await dbContext.BulkUpdateAsync(products);
 ```
 
-### BulkDelete
+Update only specific columns:
 
 ```csharp
-var orders = dbContext.Orders.Where(o => o.TotalPrice < 5.35M).ToList();
-
-dbContext.BulkDelete(orders);
-await dbContext.BulkDeleteAsync(orders);
+dbContext.BulkUpdate(products, options =>
+{
+    options.InputColumns = o => new { o.Price };
+});
 ```
 
 ### BulkMerge (Upsert)
@@ -89,11 +165,64 @@ BulkMergeResult<Product> result = dbContext.BulkMerge(products);
 Console.WriteLine($"Inserted: {result.RowsInserted}, Updated: {result.RowsUpdated}");
 ```
 
+With a custom match condition:
+
+```csharp
+dbContext.BulkMerge(products, options =>
+{
+    options.MergeOnCondition = (s, t) => s.Id == t.Id;
+    options.IgnoreColumnsOnInsert = o => new { o.CreatedDate };
+    options.IgnoreColumnsOnUpdate = o => new { o.CreatedDate };
+});
+```
+
+Use `UseNativeUpsert` for `INSERT ... ON DUPLICATE KEY UPDATE` on the primary key (**BulkMerge** only; custom `MergeOnCondition` is not applied):
+
+```csharp
+dbContext.BulkMerge(products, options =>
+{
+    options.UseNativeUpsert = true;
+});
+```
+
 ### BulkSync
 
 ```csharp
 BulkSyncResult<Product> result = dbContext.BulkSync(products);
 Console.WriteLine($"Inserted: {result.RowsInserted}, Updated: {result.RowsUpdated}, Deleted: {result.RowsDeleted}");
+```
+
+Soft-delete unmatched rows instead of removing them:
+
+```csharp
+dbContext.BulkSync(orders, options =>
+{
+    options.SoftDeleteColumns = x => new { IsDeleted = true };
+});
+```
+
+### BulkSaveChanges
+
+```csharp
+dbContext.Orders.AddRange(orders);
+dbContext.BulkSaveChanges();
+await dbContext.BulkSaveChangesAsync();
+```
+
+### Fetch
+
+```csharp
+dbContext.Products.Where(o => o.Price < 5.35M).Fetch(result =>
+{
+    Console.WriteLine($"Batch {result.Batch}: {result.Results.Count} rows");
+},
+new FetchOptions<Product> { BatchSize = 1000 });
+
+await dbContext.Products.Where(o => o.Price < 5.35M).FetchAsync(async result =>
+{
+    await ProcessBatchAsync(result.Results);
+},
+new FetchOptions<Product> { BatchSize = 1000 });
 ```
 
 ### DeleteFromQuery
@@ -111,7 +240,7 @@ dbContext.Products
     .InsertFromQuery("ProductsUnderTen", o => new { o.Id, o.Price });
 ```
 
-> ⚠️ **MySQL limitation:** `InsertFromQuery` cannot be used inside a user-managed transaction. MySQL executes `CREATE TABLE ... SELECT` internally, which is a DDL statement that causes an implicit commit and will silently commit your active transaction. Use `BulkInsert` instead when transactional safety is required.
+> **Note:** Creating the destination table uses MySQL DDL, which auto-commits. If the table does not exist and a user transaction is open, `InsertFromQuery` throws `InvalidOperationException`. Inserting into an existing table inside a transaction is supported.
 
 ### UpdateFromQuery
 
@@ -119,6 +248,66 @@ dbContext.Products
 dbContext.Products
     .Where(x => x.Price == 5.35M)
     .UpdateFromQuery(o => new Product { Price = 5.75M });
+```
+
+### QueryToCsvFile
+
+```csharp
+QueryToFileResult result = dbContext.Products
+    .Where(x => x.Price > 5M)
+    .QueryToCsvFile("products.csv");
+```
+
+### SqlQueryToCsvFile
+
+```csharp
+dbContext.Database.SqlQueryToCsvFile(
+    "output.csv",
+    "SELECT Id, Name, Price FROM Products WHERE Price > @p0",
+    5M);
+```
+
+### QueryToJsonFile
+
+```csharp
+dbContext.Products.Where(x => x.Price > 5M).QueryToJsonFile("products.json");
+await dbContext.Products.QueryToJsonFileAsync("products.json");
+```
+
+### SqlQueryToJsonFile
+
+```csharp
+dbContext.Database.SqlQueryToJsonFile("output.json", "SELECT Id, Name FROM Products WHERE Price > @p0", 5M);
+```
+
+### QueryToJsonLinesFile
+
+```csharp
+dbContext.Products.Where(x => x.Price > 5M).QueryToJsonLinesFile("products.jsonl");
+```
+
+### SqlQueryToJsonLinesFile
+
+```csharp
+dbContext.Database.SqlQueryToJsonLinesFile("output.jsonl", "SELECT Id, Name FROM Products WHERE Price > @p0", 5M);
+```
+
+### Clear / Truncate
+
+```csharp
+dbContext.Orders.Clear();
+await dbContext.Orders.ClearAsync();
+
+dbContext.Orders.Truncate();
+await dbContext.Orders.TruncateAsync();
+```
+
+### FromSqlQuery
+
+```csharp
+var sqlQuery = dbContext.Database.FromSqlQuery(
+    "SELECT * FROM Products WHERE Price > @p0", 5M);
+int count = sqlQuery.Count();
 ```
 
 ### Transactions
@@ -134,16 +323,10 @@ try
 catch
 {
     transaction.Rollback();
+    throw;
 }
 ```
 
 ---
 
 For full documentation including all options, result objects, and the complete API reference, see the [main README](https://github.com/NorthernLight1/N.EntityFrameworkCore.Extensions#readme).
-
----
-
-## Donations
-
-- 💳 **PayPal:** [Donate via PayPal](https://www.paypal.com/donate/?hosted_button_id=HR6JSVYKAMLSQ)
-- ₿ **Bitcoin:** `bc1qxqpymnf4gj22nt4wj3wy56ks48fw59v8y9sg9z`

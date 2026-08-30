@@ -4,6 +4,8 @@ using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 using N.EntityFrameworkCore.Extensions.Extensions;
 using N.EntityFrameworkCore.Extensions.Util;
 
@@ -18,7 +20,13 @@ public class TableMapping
     public string TableName { get; }
     public IEnumerable<IEntityType> EntityTypes { get; }
 
-    public bool HasIdentityColumn => EntityType.FindPrimaryKey().Properties.Any(o => o.ValueGenerated != ValueGenerated.Never);
+    public bool HasIdentityColumn => EntityType.FindPrimaryKey().Properties.Any(IsSqlServerIdentityColumn);
+
+    private static bool IsSqlServerIdentityColumn(IProperty property)
+    {
+        var strategy = property.FindAnnotation("SqlServer:ValueGenerationStrategy")?.Value?.ToString();
+        return string.Equals(strategy, "IdentityColumn", StringComparison.Ordinal);
+    }
     public StoreObjectIdentifier StoreObjectIdentifier => StoreObjectIdentifier.Table(TableName, EntityType.GetSchema() ?? DbContext.Database.GetDefaultSchema());
     private Dictionary<string, IProperty> ColumnMap { get; set; }
     public string FullQualifedTableName => DbContext.DelimitIdentifier(TableName, Schema);
@@ -28,7 +36,9 @@ public class TableMapping
         DbContext = dbContext;
         EntityType = entityType;
         Properties = GetProperties(entityType);
-        ColumnMap = Properties.Select(p => new KeyValuePair<string, IProperty>(GetColumnName(p), p)).ToDictionary();
+        ColumnMap = Properties
+            .GroupBy(p => GetColumnName(p), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
         Schema = entityType.GetSchema() ?? dbContext.Database.GetDefaultSchema();
         TableName = entityType.GetTableName();
         EntityTypes = EntityType.GetAllBaseTypesInclusive().Where(o => !o.IsAbstract());
@@ -38,7 +48,34 @@ public class TableMapping
     {
         var properties = entityType.GetProperties().ToList();
         properties.AddRange(entityType.GetComplexProperties().SelectMany(p => p.ComplexType.GetProperties()));
-        return properties.ToArray();
+        properties.AddRange(entityType.GetNavigations()
+            .Where(n => n.ForeignKey.IsOwnership)
+            .SelectMany(n => n.TargetEntityType.GetProperties()
+                .Where(p => !n.ForeignKey.Properties.Contains(p))));
+        return properties
+            .Select(p => new { Property = p, Column = FindMappedColumn(p, entityType) })
+            .Where(x => x.Column != null && !string.IsNullOrEmpty(x.Column.Name))
+            .Where(x => !IsTemporalPeriodProperty(x.Property))
+            .DistinctBy(x => x.Column!.Name)
+            .Select(x => x.Property)
+            .ToArray();
+    }
+    private static IColumnBase FindMappedColumn(IProperty property, IEntityType rootEntityType)
+    {
+        IEntityType entityType = property.DeclaringType switch
+        {
+            IEntityType declaringEntityType => declaringEntityType,
+            IComplexType complexType when complexType.ComplexProperty.DeclaringType is IEntityType complexDeclaringEntityType => complexDeclaringEntityType,
+            _ => rootEntityType
+        };
+        if (entityType == null || entityType.IsAbstract())
+            entityType = rootEntityType;
+        if (entityType.IsOwned())
+            entityType = entityType.FindOwnership()?.PrincipalEntityType ?? rootEntityType;
+        var tableName = entityType.GetTableName();
+        if (string.IsNullOrEmpty(tableName))
+            return null;
+        return property.FindColumn(StoreObjectIdentifier.Table(tableName, entityType.GetSchema()));
     }
 
     public IEnumerable<string> GetQualifiedColumnNames(IEnumerable<string> columnNames, IEntityType entityType = null)
@@ -55,34 +92,84 @@ public class TableMapping
     public string GetColumnName(IProperty property) => FindColumn(property)?.Name ?? property.Name;
     private IColumnBase FindColumn(IProperty property)
     {
-        var entityType = property.GetDeclaringEntityType();
+        IEntityType entityType = property.DeclaringType switch
+        {
+            IEntityType declaringEntityType => declaringEntityType,
+            IComplexType complexType when complexType.ComplexProperty.DeclaringType is IEntityType complexDeclaringEntityType => complexDeclaringEntityType,
+            _ => EntityType
+        };
         if (entityType == null || entityType.IsAbstract())
             entityType = EntityType;
+        if (entityType.IsOwned())
+            entityType = entityType.FindOwnership()?.PrincipalEntityType ?? EntityType;
         var storeObjectIdentifier = StoreObjectIdentifier.Table(entityType.GetTableName(), entityType.GetSchema());
         return property.FindColumn(storeObjectIdentifier);
     }
 
     private string FindTableName(IEntityType declaringEntityType, IEntityType entityType) =>
         declaringEntityType != null && declaringEntityType.IsAbstract() ? declaringEntityType.GetTableName() : entityType.GetTableName();
+    private static bool IsTemporalPeriodProperty(IProperty property)
+    {
+        if (property.FindAnnotation("SqlServer:TemporalIsPeriodStartColumn")?.Value as bool? == true)
+            return true;
+        if (property.FindAnnotation("SqlServer:TemporalIsPeriodEndColumn")?.Value as bool? == true)
+            return true;
+        return false;
+    }
+    /// <summary>
+    /// Columns included in bulk insert/update payloads. Includes OnAdd properties that have
+    /// SQL/CLR defaults so explicit entity values are written (#83/#86), while still excluding
+    /// identity PKs (no default SQL) and computed columns.
+    /// </summary>
+    private static bool IsWritableDataProperty(IProperty property)
+    {
+        if (IsTemporalPeriodProperty(property))
+            return false;
+        if (property.GetComputedColumnSql() != null)
+            return false;
+        if (property.ValueGenerated == ValueGenerated.Never)
+            return true;
+        if (property.ValueGenerated != ValueGenerated.OnAdd)
+            return false;
+        if (property.IsPrimaryKey())
+        {
+            // Client-assigned Guid PKs without a DB default must be included (#82/#65)
+            Type clrType = Nullable.GetUnderlyingType(property.ClrType) ?? property.ClrType;
+            return clrType == typeof(Guid) && property.GetDefaultValueSql() == null && !IsSqlServerIdentityColumn(property);
+        }
+        return property.GetDefaultValueSql() != null || property.GetDefaultValue() != null;
+    }
     public IEnumerable<string> GetColumnNames(IEntityType entityType, bool primaryKeyColumns)
     {
         List<string> columns;
         if (entityType != null)
         {
             columns = entityType.GetProperties().Where(o => (o.GetDeclaringEntityType() == entityType || o.GetDeclaringEntityType().IsAbstract()
-                    || o.IsForeignKeyToSelf()) && o.ValueGenerated == ValueGenerated.Never)
+                    || o.IsForeignKeyToSelf()) && IsWritableDataProperty(o))
                 .Select(GetColumnName).ToList();
 
             columns.AddRange(entityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                .Where(IsWritableDataProperty)
                 .Select(GetColumnName)));
+            columns.AddRange(entityType.GetNavigations()
+                .Where(n => n.ForeignKey.IsOwnership)
+                .SelectMany(n => n.TargetEntityType.GetProperties()
+                    .Where(p => !n.ForeignKey.Properties.Contains(p) && IsWritableDataProperty(p))
+                    .Select(GetColumnName)));
         }
         else
         {
-            columns = EntityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
+            columns = EntityType.GetProperties().Where(IsWritableDataProperty)
             .Select(GetColumnName).ToList();
 
             columns.AddRange(EntityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                .Where(IsWritableDataProperty)
                 .Select(GetColumnName)));
+            columns.AddRange(EntityType.GetNavigations()
+                .Where(n => n.ForeignKey.IsOwnership)
+                .SelectMany(n => n.TargetEntityType.GetProperties()
+                    .Where(p => !n.ForeignKey.Properties.Contains(p) && IsWritableDataProperty(p))
+                    .Select(GetColumnName)));
         }
         if (primaryKeyColumns)
         {
@@ -96,11 +183,17 @@ public class TableMapping
         foreach (var entityType in EntityTypes)
         {
             var storeObjectIdentifier = StoreObjectIdentifier.Create(entityType, StoreObjectType.Table).GetValueOrDefault();
-            columns.AddRange(entityType.GetProperties().Where(o => o.ValueGenerated == ValueGenerated.Never)
+            columns.AddRange(entityType.GetProperties().Where(IsWritableDataProperty)
                 .Select(GetColumnName));
 
-            columns.AddRange(EntityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+            columns.AddRange(entityType.GetComplexProperties().SelectMany(o => o.ComplexType.GetProperties()
+                .Where(IsWritableDataProperty)
                 .Select(GetColumnName)));
+            columns.AddRange(entityType.GetNavigations()
+                .Where(n => n.ForeignKey.IsOwnership)
+                .SelectMany(n => n.TargetEntityType.GetProperties()
+                    .Where(p => !n.ForeignKey.Properties.Contains(p) && IsWritableDataProperty(p))
+                    .Select(GetColumnName)));
 
             if (includePrimaryKeyColumns)
                 columns.AddRange(GetPrimaryKeyColumns());
@@ -125,7 +218,29 @@ public class TableMapping
     internal Func<object, object> GetValueFromProvider(IProperty property)
     {
         var valueConverter = property.GetTypeMapping().Converter;
-        return valueConverter != null ? value => valueConverter.ConvertFromProvider(value) : value => value;
+        if (typeof(Geometry).IsAssignableFrom(property.ClrType))
+        {
+            var isGeography = string.Equals(property.GetColumnType(), "geography", StringComparison.OrdinalIgnoreCase);
+            var spatialReader = new SqlServerBytesReader { IsGeography = isGeography };
+            return value =>
+            {
+                if (value == null || value == DBNull.Value)
+                    return null;
+                if (value is Geometry geometry)
+                    return geometry;
+                if (value is byte[] bytes)
+                    return spatialReader.Read(bytes);
+                return valueConverter?.ConvertFromProvider(value);
+            };
+        }
+        return value =>
+        {
+            if (value == null || value == DBNull.Value)
+                return null;
+            if (valueConverter != null)
+                return valueConverter.ConvertFromProvider(value);
+            return value;
+        };
     }
     internal IEnumerable<string> GetSchemaQualifiedTableNames()
     {

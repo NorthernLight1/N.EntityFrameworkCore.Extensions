@@ -34,4 +34,3 @@ public class SqlQuery
         return database.ExecuteSql(SqlText, Parameters);
     }
 }
-
