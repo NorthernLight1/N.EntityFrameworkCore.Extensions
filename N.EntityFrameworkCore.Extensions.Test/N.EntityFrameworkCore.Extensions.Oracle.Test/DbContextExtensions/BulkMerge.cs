@@ -414,6 +414,68 @@ public class BulkMerge : DbContextExtensionsBase
     }
 
     [TestMethod]
+    public void With_MergeOnCondition_Nullable_Columns()
+    {
+        var dbContext = SetupDbContext(false);
+        dbContext.Orders.Add(new Order { ExternalId = null, GlobalId = null, Price = 1.00M });
+        dbContext.Orders.Add(new Order { ExternalId = "match-me", GlobalId = null, Price = 2.00M });
+        dbContext.SaveChanges();
+
+        var existingNull = dbContext.Orders.Single(o => o.ExternalId == null && o.GlobalId == null);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = null, GlobalId = null, Price = 9.99M },
+            new Order { ExternalId = "new-order", GlobalId = null, Price = 4.50M }
+        };
+
+        var result = dbContext.BulkMerge(mergeOrders, options =>
+        {
+            options.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId && s.GlobalId == t.GlobalId;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        var orders = dbContext.Orders.OrderBy(o => o.Id).ToList();
+        var updated = orders.Single(o => o.Id == existingNull.Id);
+
+        Assert.AreEqual(1, result.RowsUpdated, "Nullable NULL=NULL keys should match the existing row for update");
+        Assert.AreEqual(1, result.RowsInserted, "Only the unmatched order should be inserted");
+        Assert.AreEqual(3, orders.Count, "Matching on NULL keys must not create a duplicate of the null-key row");
+        Assert.AreEqual(9.99M, updated.Price, "The matched NULL-key row should be updated");
+        Assert.AreEqual(1, orders.Count(o => o.ExternalId == null && o.GlobalId == null),
+            "There must be exactly one row with both keys null");
+        Assert.IsTrue(orders.Any(o => o.ExternalId == "new-order" && o.Price == 4.50M));
+        Assert.IsTrue(orders.Any(o => o.ExternalId == "match-me" && o.Price == 2.00M));
+    }
+
+    [TestMethod]
+    public void With_MergeOnCondition_Excludes_On_Columns_From_Update()
+    {
+        var dbContext = SetupDbContext(false);
+        dbContext.Orders.Add(new Order { ExternalId = "on-col-1", Price = 1.00M, Active = true });
+        dbContext.SaveChanges();
+        dbContext.ChangeTracker.Clear();
+
+        var existing = dbContext.Orders.Single(o => o.ExternalId == "on-col-1");
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = "on-col-1", Price = 9.99M, Active = false }
+        };
+
+        var result = dbContext.BulkMerge(mergeOrders, options =>
+        {
+            options.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        var updated = dbContext.Orders.Single(o => o.Id == existing.Id);
+
+        Assert.AreEqual(1, result.RowsUpdated);
+        Assert.AreEqual("on-col-1", updated.ExternalId, "ON columns must not be overwritten (ORA-38104 prevention)");
+        Assert.AreEqual(9.99M, updated.Price);
+        Assert.IsFalse(updated.Active);
+    }
+
+    [TestMethod]
     public void With_IncludeGraph()
     {
         var dbContext = SetupDbContext(false);
@@ -426,6 +488,34 @@ public class BulkMerge : DbContextExtensionsBase
 
     [TestMethod]
     public void With_Options_IgnoreColumnsOnInsert()
+    {
+        var dbContext = SetupDbContext(true);
+        var modifiedDateTime = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = "ignorecols-insert-1", Price = 3.33M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime },
+            new Order { ExternalId = "ignorecols-insert-2", Price = 4.44M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime }
+        };
+
+        var result = dbContext.BulkMerge(mergeOrders, o =>
+        {
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.IgnoreColumnsOnInsert = x => new { x.ModifiedDateTime };
+            o.AutoMapOutput = true;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        Assert.AreEqual(2, result.RowsInserted);
+        var inserted = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.StartsWith("ignorecols-insert-")).OrderBy(o => o.ExternalId).ToList();
+        Assert.AreEqual(2, inserted.Count);
+        Assert.AreEqual(3.33M, inserted[0].Price);
+        Assert.AreEqual(4.44M, inserted[1].Price);
+        Assert.IsNull(inserted[0].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+        Assert.IsNull(inserted[1].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+    }
+
+    [TestMethod]
+    public void With_Options_IgnoreColumnsOnUpdate()
     {
         var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(5).Select(o => new Order { Id = o.Id, Price = 99M, Active = o.Active }).ToList();

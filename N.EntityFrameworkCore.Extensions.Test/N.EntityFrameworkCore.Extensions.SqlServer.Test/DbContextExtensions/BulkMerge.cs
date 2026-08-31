@@ -492,6 +492,34 @@ public class BulkMerge : DbContextExtensionsBase
     public void With_Options_IgnoreColumnsOnInsert()
     {
         var dbContext = SetupDbContext(true);
+        var modifiedDateTime = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = "ignorecols-insert-1", Price = 3.33M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime },
+            new Order { ExternalId = "ignorecols-insert-2", Price = 4.44M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime }
+        };
+
+        var result = dbContext.BulkMerge(mergeOrders, o =>
+        {
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.IgnoreColumnsOnInsert = x => new { x.ModifiedDateTime };
+            o.AutoMapOutput = true;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        Assert.AreEqual(2, result.RowsInserted);
+        var inserted = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.StartsWith("ignorecols-insert-")).OrderBy(o => o.ExternalId).ToList();
+        Assert.AreEqual(2, inserted.Count);
+        Assert.AreEqual(3.33M, inserted[0].Price);
+        Assert.AreEqual(4.44M, inserted[1].Price);
+        Assert.IsNull(inserted[0].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+        Assert.IsNull(inserted[1].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+    }
+
+    [TestMethod]
+    public void With_Options_IgnoreColumnsOnUpdate()
+    {
+        var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(5).Select(o => new Order { Id = o.Id, Price = 99M, Active = o.Active }).ToList();
         dbContext.BulkMerge(orders, o => { o.IgnoreColumnsOnUpdate = x => new { x.Price }; o.AutoMapOutput = false; });
         Assert.IsTrue(dbContext.Orders.Where(o => o.Price == 1.25M).Count() >= 5);

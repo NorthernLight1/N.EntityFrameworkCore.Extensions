@@ -1,6 +1,8 @@
 using System;
 using System.Linq.Expressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using N.EntityFrameworkCore.Extensions.Test.Common;
+using N.EntityFrameworkCore.Extensions.Test.Data;
 
 namespace N.EntityFrameworkCore.Extensions.Test.LinqExtensions;
 
@@ -11,20 +13,14 @@ public class ToSqlPredicateTests
     public void Should_handle_int()
     {
         Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.Id == t.Id;
-
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
-
-        Assert.AreEqual("s.Id = t.Id", sqlPredicate);
+        Assert.AreEqual("s.Id = t.Id", expression.ToSqlPredicate("s", "t"));
     }
 
     [TestMethod]
     public void Should_handle_enum()
     {
         Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.Type == t.Type;
-
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
-
-        Assert.AreEqual("s.Type = t.Type", sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type", expression.ToSqlPredicate("s", "t"));
     }
 
     [TestMethod]
@@ -33,10 +29,7 @@ public class ToSqlPredicateTests
         Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.Type == t.Type &&
                                                                       (s.Id == t.Id &&
                                                                        s.ExternalId == t.ExternalId);
-
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
-
-        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId", sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId", expression.ToSqlPredicate("s", "t"));
     }
 
     [TestMethod]
@@ -44,10 +37,7 @@ public class ToSqlPredicateTests
     {
         Expression<Func<Entity, Entity, bool>> expression = (source, target) => source.Id == target.Id &&
                                                                                 source.ExternalId == target.ExternalId;
-
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
-
-        Assert.AreEqual("s.Id = t.Id AND s.ExternalId = t.ExternalId", sqlPredicate);
+        Assert.AreEqual("s.Id = t.Id AND s.ExternalId = t.ExternalId", expression.ToSqlPredicate("s", "t"));
     }
 
     [TestMethod]
@@ -61,10 +51,7 @@ public class ToSqlPredicateTests
                                                                       s.TesterVar3 == t.TesterVar3 &&
                                                                       s.TesterVar4 == t.TesterVar4 &&
                                                                       s.TesterVar5 == t.TesterVar5;
-
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
-
-        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId AND s.TesterVar1 <=> t.TesterVar1 AND s.TesterVar2 <=> t.TesterVar2 AND s.TesterVar3 <=> t.TesterVar3 AND s.TesterVar4 <=> t.TesterVar4 AND s.TesterVar5 <=> t.TesterVar5", sqlPredicate);
+        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND s.ExternalId = t.ExternalId AND (s.TesterVar1 = t.TesterVar1 OR (s.TesterVar1 IS NULL AND t.TesterVar1 IS NULL)) AND (s.TesterVar2 = t.TesterVar2 OR (s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL)) AND (s.TesterVar3 = t.TesterVar3 OR (s.TesterVar3 IS NULL AND t.TesterVar3 IS NULL)) AND (s.TesterVar4 = t.TesterVar4 OR (s.TesterVar4 IS NULL AND t.TesterVar4 IS NULL)) AND (s.TesterVar5 = t.TesterVar5 OR (s.TesterVar5 IS NULL AND t.TesterVar5 IS NULL))", expression.ToSqlPredicate("s", "t"));
     }
 
     [TestMethod]
@@ -75,15 +62,88 @@ public class ToSqlPredicateTests
                                                                       (s.ExternalId == t.ExternalId || s.TesterVar1 == t.TesterVar1) &&
                                                                       (s.TesterVar2 == t.TesterVar2 || (s.TesterVar2 == null && t.TesterVar2 == null)) &&
                                                                       (s.TesterVar3 == t.TesterVar3 || (s.TesterVar3 != null && t.TesterVar3 != null));
+        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND (s.ExternalId = t.ExternalId OR (s.TesterVar1 = t.TesterVar1 OR (s.TesterVar1 IS NULL AND t.TesterVar1 IS NULL))) AND ((s.TesterVar2 = t.TesterVar2 OR (s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL)) OR s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL) AND ((s.TesterVar3 = t.TesterVar3 OR (s.TesterVar3 IS NULL AND t.TesterVar3 IS NULL)) OR s.TesterVar3 IS NOT NULL AND t.TesterVar3 IS NOT NULL)", expression.ToSqlPredicate("s", "t"));
+    }
 
-        var sqlPredicate = expression.ToSqlPredicate("s", "t");
+    [TestMethod]
+    public void Should_handle_nullable_column_equality()
+    {
+        Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.ExternalId == t.ExternalId && s.OptionalCode == t.OptionalCode;
+        Assert.AreEqual(
+            "s.ExternalId = t.ExternalId AND (s.OptionalCode = t.OptionalCode OR (s.OptionalCode IS NULL AND t.OptionalCode IS NULL))",
+            expression.ToSqlPredicate("s", "t"));
+    }
 
-        Assert.AreEqual("s.Type = t.Type AND s.Id = t.Id AND (s.ExternalId = t.ExternalId OR s.TesterVar1 <=> t.TesterVar1) AND (s.TesterVar2 <=> t.TesterVar2 OR s.TesterVar2 IS NULL AND t.TesterVar2 IS NULL) AND (s.TesterVar3 <=> t.TesterVar3 OR s.TesterVar3 IS NOT NULL AND t.TesterVar3 IS NOT NULL)", sqlPredicate);
+    [TestMethod]
+    public void Should_handle_nullable_guid_equality()
+    {
+        Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.GlobalId == t.GlobalId;
+        Assert.AreEqual("(s.GlobalId = t.GlobalId OR (s.GlobalId IS NULL AND t.GlobalId IS NULL))", expression.ToSqlPredicate("s", "t"));
+    }
+
+    [TestMethod]
+    public void Should_delimit_reserved_keyword_members()
+    {
+        Expression<Func<ReservedEntity, ReservedEntity, bool>> expression = (s, t) => s.Order == t.Order && s.Index == t.Index;
+        using var dbContext = new TestDbContext();
+        var sqlPredicate = expression.ToSqlPredicate(dbContext, "s", "t");
+        string s = Config.DelimitIdentifier("s");
+        string t = Config.DelimitIdentifier("t");
+        string order = Config.DelimitIdentifier("Order");
+        string index = Config.DelimitIdentifier("Index");
+        Assert.AreEqual($"{s}.{order} = {t}.{order} AND {s}.{index} = {t}.{index}", sqlPredicate);
+    }
+
+    [TestMethod]
+    public void Should_handle_nested_member_access()
+    {
+        Expression<Func<NestedEntity, NestedEntity, bool>> expression = (s, t) => s.Address.City == t.Address.City && s.Address.Zip == t.Address.Zip;
+        Assert.AreEqual(
+            "(s.Address.City = t.Address.City OR (s.Address.City IS NULL AND t.Address.City IS NULL)) AND (s.Address.Zip = t.Address.Zip OR (s.Address.Zip IS NULL AND t.Address.Zip IS NULL))",
+            expression.ToSqlPredicate("s", "t"));
+    }
+
+    [TestMethod]
+    public void Should_handle_string_equals_method()
+    {
+        Expression<Func<Entity, Entity, bool>> expression = (s, t) => string.Equals(s.TesterVar1, t.TesterVar1);
+        Assert.AreEqual("(s.TesterVar1 = t.TesterVar1 OR (s.TesterVar1 IS NULL AND t.TesterVar1 IS NULL))", expression.ToSqlPredicate("s", "t"));
+    }
+
+    [TestMethod]
+    public void Should_handle_boolean_member_shorthand()
+    {
+        Expression<Func<FlagEntity, FlagEntity, bool>> expression = (s, t) => s.IsActive && t.IsActive;
+        Assert.AreEqual("s.IsActive AND t.IsActive", expression.ToSqlPredicate("s", "t"));
+    }
+
+    [TestMethod]
+    public void Should_handle_enum_constant_comparison()
+    {
+        Expression<Func<Entity, Entity, bool>> expression = (s, t) => s.Type == EntityType.One && t.Type == EntityType.Two;
+        Assert.AreEqual("s.Type = 0 AND t.Type = 1", expression.ToSqlPredicate("s", "t"));
+    }
+
+    record NestedEntity
+    {
+        public Address Address { get; set; }
+    }
+
+    record Address
+    {
+        public string City { get; set; }
+        public string Zip { get; set; }
+    }
+
+    record FlagEntity
+    {
+        public bool IsActive { get; set; }
     }
 
     record Entity
     {
         public Guid Id { get; set; }
+        public Guid? GlobalId { get; set; }
         public EntityType Type { get; set; }
         public int ExternalId { get; set; }
         public string TesterVar1 { get; set; }
@@ -91,6 +151,13 @@ public class ToSqlPredicateTests
         public string TesterVar3 { get; set; }
         public string TesterVar4 { get; set; }
         public string TesterVar5 { get; set; }
+        public string OptionalCode { get; set; }
+    }
+
+    record ReservedEntity
+    {
+        public int Order { get; set; }
+        public int Index { get; set; }
     }
 
     enum EntityType

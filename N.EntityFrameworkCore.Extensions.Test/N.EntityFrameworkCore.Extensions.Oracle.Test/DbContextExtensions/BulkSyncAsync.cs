@@ -262,4 +262,16 @@ public class BulkSyncAsync : DbContextExtensionsBase
         Assert.AreEqual(unmatchedBefore, result.RowsDeleted);
     }
 
+
+    [TestMethod]
+    public async Task With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blogs = new List<Blog> { new Blog { Title = "Sync Graph Async", Posts = [new BlogPost { Title = "P1A" }] } };
+        var result = await dbContext.BulkSyncAsync(blogs, o => { o.IncludeGraph = true; o.AutoMapOutput = true; });
+        Assert.IsTrue(result.RowsAffected >= 2);
+        Assert.AreEqual(1, dbContext.Blogs.Count(b => b.Title == "Sync Graph Async"));
+        Assert.AreEqual(1, dbContext.BlogPosts.Count(p => p.Title == "P1A"));
+    }
+
 }

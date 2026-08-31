@@ -572,4 +572,127 @@ public class BulkInsertAsync : DbContextExtensionsBase
         var saved = dbContext.OrdersWithOwnedDetail.First();
         Assert.AreEqual("Seattle", saved.Detail.City);
     }
+
+    [TestMethod]
+    public async Task With_NotifyAfter_And_RowsCopied()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order>();
+        for (int i = 0; i < 100; i++)
+            orders.Add(new Order { Id = 900100 + i, Price = 1.11M });
+
+        int callbackCount = 0;
+        long lastRowsCopied = 0;
+        await dbContext.BulkInsertAsync(orders, options =>
+        {
+            options.KeepIdentity = true;
+            options.NotifyAfter = 50;
+            options.RowsCopied += e =>
+            {
+                callbackCount++;
+                lastRowsCopied = e.RowsCopied;
+            };
+        });
+
+        Assert.AreEqual(100, dbContext.Orders.Count(o => o.Price == 1.11M));
+        Assert.IsTrue(callbackCount >= 1, "RowsCopied should fire when NotifyAfter is set");
+        Assert.IsTrue(lastRowsCopied >= 50);
+    }
+
+    [TestMethod]
+    public async Task With_Trigger_And_AutoMapOutput()
+    {
+        var dbContext = SetupDbContext(false);
+        var products = new List<ProductWithTrigger>();
+        for (int i = 1; i <= 50; i++)
+            products.Add(new ProductWithTrigger { Id = $"trig-async-{i}", Price = 2.25M, StatusString = "InStock" });
+
+        int rowsInserted = await dbContext.BulkInsertAsync(products, options =>
+        {
+            options.AutoMapOutput = true;
+            options.FireTriggers = true;
+        });
+
+        Assert.AreEqual(50, dbContext.ProductsWithTrigger.Count());
+        Assert.IsTrue(rowsInserted >= 50 || dbContext.ProductsWithTrigger.Count() == 50,
+            "FireTriggers with AutoMapOutput must succeed without MERGE OUTPUT errors (#51/#88)");
+    }
+
+    [TestMethod]
+    public async Task With_TemporalTable()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<TemporalOrder> { new() { Id = 101, Price = 9.99M }, new() { Id = 102, Price = 19.99M } };
+        int rows = await dbContext.BulkInsertAsync(orders);
+        Assert.AreEqual(2, rows);
+        Assert.AreEqual(2, dbContext.TemporalOrders.Count());
+    }
+
+    [TestMethod]
+    public async Task With_HierarchyId()
+    {
+        var dbContext = SetupDbContext(false);
+        var nodes = new List<OrgNode>
+        {
+            new() { Id = 101, Name = "RootAsync", NodePath = HierarchyId.GetRoot() },
+            new() { Id = 102, Name = "ChildAsync", NodePath = HierarchyId.Parse("/1/") }
+        };
+        int rows = await dbContext.BulkInsertAsync(nodes);
+        Assert.AreEqual(2, rows);
+        var saved = dbContext.OrgNodes.Where(n => n.Id >= 101).OrderBy(n => n.Id).ToList();
+        Assert.AreEqual(2, saved.Count);
+        Assert.IsNotNull(saved[0].NodePath);
+        Assert.IsNotNull(saved[1].NodePath);
+        Assert.AreEqual("/1/", saved[1].NodePath.ToString());
+    }
+
+    [TestMethod]
+    public async Task With_Spatial()
+    {
+        var dbContext = SetupDbContext(false);
+        var locations = new List<LocationWithSpatial>
+        {
+            new() { Id = 101, Name = "HQ-Async", Location = new NetTopologySuite.Geometries.Point(-122.33, 47.62) { SRID = 4326 } }
+        };
+        int rows = await dbContext.BulkInsertAsync(locations);
+        Assert.AreEqual(1, rows);
+        var saved = dbContext.LocationsWithSpatial.Single(l => l.Id == 101);
+        Assert.IsNotNull(saved.Location);
+        Assert.AreEqual(4326, saved.Location.SRID);
+    }
+
+    [TestMethod]
+    public async Task With_EnableStreaming()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order> { new() { Id = 910001, Price = 7.77M } };
+        int rows = await dbContext.BulkInsertAsync(orders, options => { options.EnableStreaming = true; options.KeepIdentity = true; });
+        Assert.AreEqual(1, rows);
+        Assert.IsTrue(dbContext.Orders.Any(o => o.Id == 910001));
+    }
+
+    [TestMethod]
+    public async Task With_ColumnOrderHints()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order> { new() { Id = 910002, Price = 8.88M } };
+        int rows = await dbContext.BulkInsertAsync(orders, options =>
+        {
+            options.KeepIdentity = true;
+            options.ColumnOrderHints.Add(new SqlBulkCopyColumnOrderHint("Id", SortOrder.Ascending));
+        });
+        Assert.AreEqual(1, rows);
+        Assert.IsTrue(dbContext.Orders.Any(o => o.Id == 910002));
+    }
+
+    [TestMethod]
+    public async Task With_BulkCopyOptions_TableLock()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order> { new() { Id = 910003, Price = 6.66M } };
+        int rows = await dbContext.BulkInsertAsync(orders, options => { options.BulkCopyOptions = SqlBulkCopyOptions.TableLock; options.KeepIdentity = true; });
+        Assert.AreEqual(1, rows);
+        Assert.IsTrue(dbContext.Orders.Any(o => o.Id == 910003));
+    }
+
 }

@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version (e.g. 10.0.5.5 or v10.0.5.5). Tag will be v{version}.'
+        description: 'Release version (e.g. 10.0.5.6 or v10.0.5.6). Tag will be v{version}.'
         required: true
         type: string
       nuget_publish:

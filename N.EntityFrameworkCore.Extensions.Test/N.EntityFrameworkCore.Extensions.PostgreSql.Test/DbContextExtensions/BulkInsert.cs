@@ -592,4 +592,30 @@ public class BulkInsert : DbContextExtensionsBase
         Assert.AreEqual(explicitAdded, saved[0].DbAddedDateTime, "Explicit DateTime must be inserted even with database default (#83)");
         Assert.AreEqual(explicitAdded, saved[1].DbAddedDateTime);
     }
+
+    [TestMethod]
+    public void With_NotifyAfter_And_RowsCopied()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order>();
+        for (int i = 0; i < 100; i++)
+            orders.Add(new Order { Id = 900100 + i, Price = 1.11M });
+
+        int callbackCount = 0;
+        long lastRowsCopied = 0;
+        dbContext.BulkInsert(orders, options =>
+        {
+            options.KeepIdentity = true;
+            options.NotifyAfter = 50;
+            options.RowsCopied = e =>
+            {
+                callbackCount++;
+                lastRowsCopied = e.RowsCopied;
+            };
+        });
+
+        Assert.AreEqual(100, dbContext.Orders.Count(o => o.Price == 1.11M));
+        Assert.IsTrue(callbackCount >= 1, "RowsCopied should fire when NotifyAfter is set");
+        Assert.IsTrue(lastRowsCopied >= 50);
+    }
 }

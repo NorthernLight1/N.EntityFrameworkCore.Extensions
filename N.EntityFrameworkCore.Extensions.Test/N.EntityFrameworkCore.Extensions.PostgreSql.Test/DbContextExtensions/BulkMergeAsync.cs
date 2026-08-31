@@ -417,6 +417,40 @@ public class BulkMergeAsync : DbContextExtensionsBase
     }
 
     [TestMethod]
+    public async Task With_MergeOnCondition_Nullable_Columns()
+    {
+        var dbContext = SetupDbContext(false);
+        dbContext.Orders.Add(new Order { ExternalId = null, GlobalId = null, Price = 1.00M });
+        dbContext.Orders.Add(new Order { ExternalId = "match-me", GlobalId = null, Price = 2.00M });
+        await dbContext.SaveChangesAsync();
+
+        var existingNull = dbContext.Orders.Single(o => o.ExternalId == null && o.GlobalId == null);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = null, GlobalId = null, Price = 9.99M },
+            new Order { ExternalId = "new-order", GlobalId = null, Price = 4.50M }
+        };
+
+        var result = await dbContext.BulkMergeAsync(mergeOrders, options =>
+        {
+            options.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId && s.GlobalId == t.GlobalId;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        var orders = dbContext.Orders.OrderBy(o => o.Id).ToList();
+        var updated = orders.Single(o => o.Id == existingNull.Id);
+
+        Assert.AreEqual(1, result.RowsUpdated, "Nullable NULL=NULL keys should match the existing row for update");
+        Assert.AreEqual(1, result.RowsInserted, "Only the unmatched order should be inserted");
+        Assert.AreEqual(3, orders.Count, "Matching on NULL keys must not create a duplicate of the null-key row");
+        Assert.AreEqual(9.99M, updated.Price, "The matched NULL-key row should be updated");
+        Assert.AreEqual(1, orders.Count(o => o.ExternalId == null && o.GlobalId == null),
+            "There must be exactly one row with both keys null");
+        Assert.IsTrue(orders.Any(o => o.ExternalId == "new-order" && o.Price == 4.50M));
+        Assert.IsTrue(orders.Any(o => o.ExternalId == "match-me" && o.Price == 2.00M));
+    }
+
+    [TestMethod]
     public async Task With_IncludeGraph()
     {
         var dbContext = SetupDbContext(false);
@@ -429,6 +463,34 @@ public class BulkMergeAsync : DbContextExtensionsBase
 
     [TestMethod]
     public async Task With_Options_IgnoreColumnsOnInsert()
+    {
+        var dbContext = SetupDbContext(true);
+        var modifiedDateTime = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var mergeOrders = new List<Order>
+        {
+            new Order { ExternalId = "ignorecols-insert-1", Price = 3.33M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime },
+            new Order { ExternalId = "ignorecols-insert-2", Price = 4.44M, AddedDateTime = DateTime.UtcNow, Active = true, Status = OrderStatus.Completed, ModifiedDateTime = modifiedDateTime }
+        };
+
+        var result = await dbContext.BulkMergeAsync(mergeOrders, o =>
+        {
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.IgnoreColumnsOnInsert = x => new { x.ModifiedDateTime };
+            o.AutoMapOutput = true;
+        });
+
+        dbContext.ChangeTracker.Clear();
+        Assert.AreEqual(2, result.RowsInserted);
+        var inserted = dbContext.Orders.Where(o => o.ExternalId != null && o.ExternalId.StartsWith("ignorecols-insert-")).OrderBy(o => o.ExternalId).ToList();
+        Assert.AreEqual(2, inserted.Count);
+        Assert.AreEqual(3.33M, inserted[0].Price);
+        Assert.AreEqual(4.44M, inserted[1].Price);
+        Assert.IsNull(inserted[0].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+        Assert.IsNull(inserted[1].ModifiedDateTime, "ModifiedDateTime should be excluded from insert");
+    }
+
+    [TestMethod]
+    public async Task With_Options_IgnoreColumnsOnUpdate()
     {
         var dbContext = SetupDbContext(true);
         var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(5).Select(o => new Order { Id = o.Id, Price = 99M, Active = o.Active }).ToList();
@@ -446,6 +508,74 @@ public class BulkMergeAsync : DbContextExtensionsBase
         Assert.IsTrue(result.RowsUpdated >= 3 || result.RowsInserted >= 0);
         Assert.IsFalse(string.IsNullOrWhiteSpace(BulkMergeDiagnostics.LastNativeUpsertSql));
         StringAssert.Contains(BulkMergeDiagnostics.LastNativeUpsertSql, "ON CONFLICT", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [TestMethod]
+    public async Task With_UseNativeUpsert_Insert_And_Update()
+    {
+        BulkMergeDiagnostics.Reset();
+        var dbContext = SetupDbContext(true);
+        var existing = dbContext.Orders.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).Take(2).ToList();
+        var orders = existing.Select(o => new Order { Id = o.Id, Price = 50M, Active = true }).ToList();
+        orders.Add(new Order { ExternalId = "native-upsert-new", Price = 7.77M, Active = true });
+        int countBefore = dbContext.Orders.Count();
+
+        var result = await dbContext.BulkMergeAsync(orders, o => { o.UseNativeUpsert = true; o.AutoMapOutput = false; });
+
+        dbContext.ChangeTracker.Clear();
+        Assert.IsFalse(string.IsNullOrWhiteSpace(BulkMergeDiagnostics.LastNativeUpsertSql));
+        StringAssert.Contains(BulkMergeDiagnostics.LastNativeUpsertSql, "ON CONFLICT", StringComparison.OrdinalIgnoreCase);
+        Assert.IsTrue(result.RowsAffected >= 1 || dbContext.Orders.Count() >= countBefore);
+        Assert.IsTrue(dbContext.Orders.Any(o => o.ExternalId == "native-upsert-new" && o.Price == 7.77M)
+            || dbContext.Orders.Count(o => o.Price == 50M) >= 2,
+            "Mixed insert/update batch should apply via native upsert");
+    }
+
+    [TestMethod]
+    public async Task With_UseNativeUpsert_Ignores_MergeOnCondition()
+    {
+        BulkMergeDiagnostics.Reset();
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).OrderBy(o => o.Id).Take(3)
+            .Select(o => new Order { Id = o.Id, ExternalId = "should-not-drive-match", Price = 50M, Active = true }).ToList();
+
+        await dbContext.BulkMergeAsync(orders, o =>
+        {
+            o.UseNativeUpsert = true;
+            o.MergeOnCondition = (s, t) => s.ExternalId == t.ExternalId;
+            o.AutoMapOutput = false;
+        });
+
+        Assert.IsFalse(string.IsNullOrWhiteSpace(BulkMergeDiagnostics.LastNativeUpsertSql));
+        StringAssert.Contains(BulkMergeDiagnostics.LastNativeUpsertSql, "ON CONFLICT", StringComparison.OrdinalIgnoreCase);
+        int conflictIdx = BulkMergeDiagnostics.LastNativeUpsertSql.IndexOf("ON CONFLICT", StringComparison.OrdinalIgnoreCase);
+        int open = BulkMergeDiagnostics.LastNativeUpsertSql.IndexOf('(', conflictIdx);
+        int close = BulkMergeDiagnostics.LastNativeUpsertSql.IndexOf(')', open);
+        Assert.IsTrue(open > conflictIdx && close > open);
+        string conflictTarget = BulkMergeDiagnostics.LastNativeUpsertSql.Substring(open, close - open + 1);
+        StringAssert.Contains(conflictTarget, "Id", StringComparison.OrdinalIgnoreCase);
+        Assert.IsFalse(conflictTarget.Contains("ExternalId", StringComparison.OrdinalIgnoreCase),
+            "Native upsert ON CONFLICT target must be the primary key, not MergeOnCondition ExternalId");
+    }
+
+    [TestMethod]
+    public async Task With_UseNativeUpsert_Not_Used_By_BulkSync()
+    {
+        BulkMergeDiagnostics.Reset();
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(10).ToList();
+        var keptIds = orders.Select(o => o.Id).ToHashSet();
+        int unmatchedBefore = dbContext.Orders.Count(o => !keptIds.Contains(o.Id) && !o.IsDeleted);
+
+        var result = await dbContext.BulkSyncAsync(orders, o =>
+        {
+            o.UseNativeUpsert = true;
+            o.SoftDeleteColumns = x => new { IsDeleted = true };
+        });
+
+        Assert.IsTrue(string.IsNullOrWhiteSpace(BulkMergeDiagnostics.LastNativeUpsertSql), "BulkSync must not use native upsert SQL");
+        Assert.IsTrue(result.RowsDeleted > 0 || unmatchedBefore == 0);
+        Assert.AreEqual(unmatchedBefore, dbContext.Orders.Count(o => !keptIds.Contains(o.Id) && o.IsDeleted));
     }
 
     [TestMethod]

@@ -253,4 +253,20 @@ public class BulkUpdate : DbContextExtensionsBase
         Assert.IsTrue(rows >= 2);
         Assert.AreEqual("New", dbContext.BlogPosts.First(p => p.BlogId == blog.Id).Title);
     }
+
+    [TestMethod]
+    public void With_NotifyAfter_And_RowsCopied()
+    {
+        var dbContext = SetupDbContext(true);
+        var orders = dbContext.Orders.Where(o => o.Price == 1.25M).Take(100).ToList();
+        foreach (var o in orders) o.Price = 2.25M;
+        int callbackCount = 0;
+        dbContext.BulkUpdate(orders, options =>
+        {
+            options.NotifyAfter = 50;
+            options.RowsCopied += e => callbackCount++;
+        });
+        Assert.IsTrue(dbContext.Orders.Count(o => o.Price == 2.25M) >= 100);
+        Assert.IsTrue(callbackCount >= 1);
+    }
 }

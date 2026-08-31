@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Vibrant Blue Gradient for Bolt Accent -->
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#0369A1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Solid Light Blue Background Base -->
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="#BAE6FD" />
+
+  <!-- Database Cylinder 1 (Bottom) -->
+  <path d="M 34 82 C 34 88 50 92 64 92 C 78 92 94 88 94 82 V 92 C 94 98 78 102 64 102 C 50 102 34 98 34 92 Z" fill="#0284C7" opacity="0.3" />
+  
+  <!-- Database Cylinder 2 (Middle) -->
+  <path d="M 34 66 C 34 72 50 76 64 76 C 78 76 94 72 94 66 V 76 C 94 82 78 86 64 86 C 50 86 34 82 34 76 Z" fill="#0284C7" opacity="0.6" />
+
+  <!-- Database Top Rim -->
+  <path d="M 34 50 C 34 44 50 40 64 40 C 78 40 94 44 94 50 V 60 C 94 66 78 70 64 70 C 50 70 34 66 34 60 Z" fill="#0369A1" opacity="0.85" />
+
+  <!-- High Speed / Bulk Lightning Overlay -->
+  <path d="M 72 22 L 48 62 H 66 L 56 104 L 88 54 H 70 Z" fill="url(#boltGrad)" stroke="#BAE6FD" stroke-width="2.5" stroke-linejoin="round" />
+</svg>

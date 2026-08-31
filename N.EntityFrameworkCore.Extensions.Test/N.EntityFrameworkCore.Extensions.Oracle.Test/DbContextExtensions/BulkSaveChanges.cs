@@ -258,4 +258,15 @@ public class BulkSaveChanges : DbContextExtensionsBase
         Assert.IsTrue(productsDeletedCount == 0, "The number of products that was deleted did not match what was expected.");
         Assert.IsTrue(productsUpdatedCount == productsToUpdate.Count(), "The number of products that was updated did not match what was expected.");
     }
+
+    [TestMethod]
+    public void With_AcceptAllChangesOnSuccess_False()
+    {
+        var dbContext = SetupDbContext(false);
+        dbContext.Orders.Add(new Order { Price = 1.23M });
+        int rows = dbContext.BulkSaveChanges(acceptAllChangesOnSuccess: false);
+        Assert.AreEqual(1, rows);
+        Assert.AreEqual(1, dbContext.ChangeTracker.Entries().Count(e => e.State == Microsoft.EntityFrameworkCore.EntityState.Added));
+        Assert.AreEqual(1, dbContext.Orders.Count(o => o.Price == 1.23M));
+    }
 }

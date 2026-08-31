@@ -1,4 +1,18 @@
-bin/
-obj/
+# Build / IDE
+[Bb]in/
+[Oo]bj/
 .vs/
-/.idea/.idea**
+*.user
+*.suo
+*.nupkg
+*.snupkg
+/.idea/
+
+# Local / generated test output
+*.trx
+**/TestResults/
+test-results*.txt
+oracle-test-results.txt
+test-results-focus/
+PROJECT_FILES_CONTENT.txt
+tmp-*.csx

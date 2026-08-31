@@ -17,4 +17,11 @@ public class TruncateTable : DatabaseExtensionsBase
         Assert.IsTrue(oldOrdersCount > 0, "Orders table should have data");
         Assert.IsTrue(newOrdersCount == 0, "Order table should be empty after truncating");
     }
+
+    [TestMethod]
+    public void With_IfExists_Missing_Table()
+    {
+        var dbContext = SetupDbContext(false);
+        dbContext.Database.TruncateTable("TruncateMissingTable_XYZ", true);
+    }
 }

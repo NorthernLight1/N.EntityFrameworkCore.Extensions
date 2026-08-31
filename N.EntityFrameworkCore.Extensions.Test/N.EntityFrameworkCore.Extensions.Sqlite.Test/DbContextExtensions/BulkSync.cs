@@ -260,4 +260,16 @@ public class BulkSync : DbContextExtensionsBase
         Assert.AreEqual(unmatchedBefore, result.RowsDeleted);
     }
 
+
+    [TestMethod]
+    public void With_IncludeGraph()
+    {
+        var dbContext = SetupDbContext(false);
+        var blogs = new List<Blog> { new Blog { Title = "Sync Graph", Posts = [new BlogPost { Title = "P1" }] } };
+        var result = dbContext.BulkSync(blogs, o => { o.IncludeGraph = true; o.AutoMapOutput = true; });
+        Assert.IsTrue(result.RowsAffected >= 2);
+        Assert.AreEqual(1, dbContext.Blogs.Count(b => b.Title == "Sync Graph"));
+        Assert.AreEqual(1, dbContext.BlogPosts.Count(p => p.Title == "P1"));
+    }
+
 }

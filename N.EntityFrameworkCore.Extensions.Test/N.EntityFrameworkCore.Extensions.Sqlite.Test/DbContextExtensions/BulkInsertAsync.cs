@@ -89,6 +89,26 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
     }
     [TestMethod]
+    public async Task With_IEnumerable()
+    {
+        var dbContext = SetupDbContext(false);
+        const int orderCount = 20000;
+        IEnumerable<Order> orders = CreateOrders(orderCount);
+
+        int oldTotal = dbContext.Orders.Where(o => o.Price == 15.75M).Count();
+        int rowsInserted = await dbContext.BulkInsertAsync(orders);
+        int newTotal = dbContext.Orders.Where(o => o.Price == 15.75M).Count();
+
+        Assert.IsTrue(rowsInserted == orderCount, "The number of rows inserted must match the count of order list");
+        Assert.IsTrue(newTotal - oldTotal == rowsInserted, "The new count minus the old count should match the number of rows inserted.");
+
+        static IEnumerable<Order> CreateOrders(int count)
+        {
+            for (int i = 0; i < count; i++)
+                yield return new Order { Id = i, Price = 15.75M };
+        }
+    }
+    [TestMethod]
     public async Task With_Inheritance_Tpc()
     {
         var dbContext = SetupDbContext(false);
@@ -547,5 +567,31 @@ public class BulkInsertAsync : DbContextExtensionsBase
         Assert.AreEqual(1, rows);
         var saved = dbContext.OrdersWithOwnedDetail.First();
         Assert.AreEqual("Seattle", saved.Detail.City);
+    }
+
+    [TestMethod]
+    public async Task With_NotifyAfter_And_RowsCopied()
+    {
+        var dbContext = SetupDbContext(false);
+        var orders = new List<Order>();
+        for (int i = 0; i < 100; i++)
+            orders.Add(new Order { Id = 900100 + i, Price = 1.11M });
+
+        int callbackCount = 0;
+        long lastRowsCopied = 0;
+        await dbContext.BulkInsertAsync(orders, options =>
+        {
+            options.KeepIdentity = true;
+            options.NotifyAfter = 50;
+            options.RowsCopied = e =>
+            {
+                callbackCount++;
+                lastRowsCopied = e.RowsCopied;
+            };
+        });
+
+        Assert.AreEqual(100, dbContext.Orders.Count(o => o.Price == 1.11M));
+        Assert.IsTrue(callbackCount >= 1, "RowsCopied should fire when NotifyAfter is set");
+        Assert.IsTrue(lastRowsCopied >= 50);
     }
 }
